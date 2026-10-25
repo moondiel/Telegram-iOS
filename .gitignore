@@ -79,3 +79,6 @@ xcode-files
 **/node_modules/
 tools/sim-watcher/dist/
 .mcp.json
+
+# Local development configuration (contains api_id/api_hash)
+build-system/my_development_configuration.json
