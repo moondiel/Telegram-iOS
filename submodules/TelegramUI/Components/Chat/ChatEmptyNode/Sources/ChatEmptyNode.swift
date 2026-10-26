@@ -61,6 +61,8 @@ private final class ChatEmptyNodeRegularChatContent: ASDisplayNode, ChatEmptyNod
                 case .peer, .replyThread, .customChatContents:
                     if case .scheduledMessages = interfaceState.subject {
                         text = interfaceState.strings.ScheduledMessages_EmptyPlaceholder
+                    } else if case let .customChatContents(customChatContents) = interfaceState.subject, case .channelDrafts = customChatContents.kind {
+                        text = interfaceState.strings.ChannelDrafts_EmptyPlaceholder
                     } else {
                         text = interfaceState.strings.Conversation_EmptyPlaceholder
                     }
@@ -610,7 +612,7 @@ private final class ChatEmptyNodeCloudChatContent: ASDisplayNode, ChatEmptyNodeC
                 insets.top = -9.0
                 imageSpacing = 4.0
                 titleSpacing = 5.0
-            case .hashTagSearch:
+            case .hashTagSearch, .channelDrafts:
                 break
             }
         }
@@ -671,7 +673,7 @@ private final class ChatEmptyNodeCloudChatContent: ASDisplayNode, ChatEmptyNodeC
                     }
                     
                     self.businessLink = link
-                case .hashTagSearch:
+                case .hashTagSearch, .channelDrafts:
                     titleString = ""
                     strings = []
                 case .welcomeMessages:
@@ -1663,6 +1665,8 @@ public final class ChatEmptyNode: ASDisplayNode {
         case let .emptyChat(emptyType):
             if case .customGreeting = emptyType {
                 contentType = .greeting
+            } else if case let .customChatContents(customChatContents) = interfaceState.subject, case .channelDrafts = customChatContents.kind {
+                contentType = .regular
             } else if case .customChatContents = interfaceState.subject {
                 contentType = .cloud
             } else if case .replyThread = interfaceState.chatLocation {

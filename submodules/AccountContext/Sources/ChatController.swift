@@ -1340,6 +1340,8 @@ public enum ChatCustomContentsKind: Equatable {
     case businessLinkSetup(link: TelegramBusinessChatLinks.Link)
     case hashTagSearch(publicPosts: Bool)
     case welcomeMessages
+    /// Channel Drafts: the drafts of a broadcast channel (`ChannelDraftsChatContents`).
+    case channelDrafts(peerId: EnginePeer.Id)
 }
 
 public protocol ChatCustomContentsProtocol: AnyObject {

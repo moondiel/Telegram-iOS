@@ -198,6 +198,8 @@ final class ChatBusinessLinkTitlePanelNode: ChatTitleAccessoryPanelNode {
                 break
             case .welcomeMessages:
                 break
+            case .channelDrafts:
+                break
             }
         default:
             break

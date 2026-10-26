@@ -1151,7 +1151,7 @@ extension ChatControllerImpl {
                 switch customChatContents.kind {
                 case .hashTagSearch:
                     break
-                case .quickReplyMessageInput, .welcomeMessages:
+                case .quickReplyMessageInput, .welcomeMessages, .channelDrafts:
                     customChatContents.enqueueMessages(messages: messages)
                     strongSelf.chatDisplayNode.historyNode.scrollToEndOfHistory()
                 case let .businessLinkSetup(link):

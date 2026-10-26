@@ -55,6 +55,8 @@ func inputContextQueriesForChatPresentationIntefaceState(_ chatPresentationInter
             break
         case .welcomeMessages:
             break
+        case .channelDrafts:
+            break
         case .businessLinkSetup:
             return []
         }
@@ -247,7 +249,7 @@ func inputTextPanelStateForChatPresentationInterfaceState(_ chatPresentationInte
                         break
                     case .welcomeMessages:
                         break
-                    case .businessLinkSetup:
+                    case .businessLinkSetup, .channelDrafts:
                         stickersEnabled = false
                     }
                 }

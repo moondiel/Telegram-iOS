@@ -1885,7 +1885,7 @@ public final class ChatEntityKeyboardInputNode: ChatInputNode {
                 break
             case .hashTagSearch:
                 break
-            case .businessLinkSetup:
+            case .businessLinkSetup, .channelDrafts:
                 stickerContent = nil
                 gifContent = nil
             }

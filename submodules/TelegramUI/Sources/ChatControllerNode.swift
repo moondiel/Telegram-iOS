@@ -5371,6 +5371,8 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     break
                 case .welcomeMessages:
                     break
+                case .channelDrafts:
+                    break
                 case .businessLinkSetup:
                     postEmptyMessages = true
                 }

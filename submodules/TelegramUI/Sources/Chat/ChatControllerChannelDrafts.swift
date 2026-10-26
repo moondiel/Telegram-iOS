@@ -124,7 +124,15 @@ extension ChatControllerImpl {
         })
     }
 
-    /// The Drafts button in the input field. The Drafts screen arrives in stage 3.
+    /// The Drafts button in the input field: opens the Drafts screen, a chat controller over
+    /// `ChannelDraftsChatContents`, presented like Scheduled Messages.
     func openChannelDrafts() {
+        guard let peerId = self.channelDraftsPeerId, let navigationController = self.effectiveNavigationController, navigationController.topViewController == self else {
+            return
+        }
+        let contents = ChannelDraftsChatContents(context: self.context, peerId: peerId)
+        let controller = ChatControllerImpl(context: self.context, chatLocation: .customChatContents, subject: .customChatContents(contents: contents))
+        controller.navigationPresentation = .modal
+        navigationController.pushViewController(controller)
     }
 }

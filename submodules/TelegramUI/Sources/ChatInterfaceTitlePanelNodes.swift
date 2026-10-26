@@ -63,6 +63,8 @@ func titlePanelForChatPresentationInterfaceState(_ chatPresentationInterfaceStat
             break
         case .welcomeMessages:
             break
+        case .channelDrafts:
+            break
         case .businessLinkSetup:
             if let currentPanel = currentPanel as? ChatBusinessLinkTitlePanelNode {
                 return currentPanel

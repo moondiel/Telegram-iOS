@@ -735,6 +735,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 break
             case .welcomeMessages:
                 break
+            case .channelDrafts:
+                break
             }
         }
         
@@ -815,6 +817,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 case .hashTagSearch:
                     return true
                 case .welcomeMessages:
+                    return true
+                case .channelDrafts:
                     return true
                 case let .quickReplyMessageInput(_, shortcutType):
                     if let historyView = strongSelf.chatDisplayNode.historyNode.originalHistoryView, historyView.entries.isEmpty {
@@ -3838,7 +3842,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 }
                 if case let .customChatContents(customChatContents) = strongSelf.presentationInterfaceState.subject {
                     switch customChatContents.kind {
-                    case .quickReplyMessageInput, .welcomeMessages:
+                    case .quickReplyMessageInput, .welcomeMessages, .channelDrafts:
                         return .none
                     case .businessLinkSetup, .hashTagSearch:
                         break

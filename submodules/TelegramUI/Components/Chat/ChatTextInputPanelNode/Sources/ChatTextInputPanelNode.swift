@@ -1721,7 +1721,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                 break
             case .quickReplyMessageInput, .welcomeMessages:
                 break
-            case .businessLinkSetup:
+            case .businessLinkSetup, .channelDrafts:
                 displayMediaButton = false
             }
         }
@@ -2144,6 +2144,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                         placeholder = interfaceState.strings.Chat_Placeholder_WelcomeMessage
                     case .businessLinkSetup:
                         placeholder = interfaceState.strings.Chat_Placeholder_BusinessLinkPreset
+                    case .channelDrafts:
+                        placeholder = interfaceState.strings.Conversation_InputTextBroadcastPlaceholder
                     }
                 }
 
@@ -2171,7 +2173,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                     switch customChatContents.kind {
                     case .hashTagSearch:
                         break
-                    case .quickReplyMessageInput, .welcomeMessages:
+                    case .quickReplyMessageInput, .welcomeMessages, .channelDrafts:
                         break
                     case .businessLinkSetup:
                         sendButtonHasApplyIcon = true
@@ -4593,7 +4595,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                 switch customChatContents.kind {
                 case .hashTagSearch:
                     break
-                case .quickReplyMessageInput, .welcomeMessages:
+                case .quickReplyMessageInput, .welcomeMessages, .channelDrafts:
                     break
                 case .businessLinkSetup:
                     keepSendButtonEnabled = true
@@ -4704,7 +4706,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                     break
                 case .quickReplyMessageInput, .welcomeMessages:
                     break
-                case .businessLinkSetup:
+                case .businessLinkSetup, .channelDrafts:
                     hideMicButton = true
                 }
             }
@@ -4846,7 +4848,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                 switch customChatContents.kind {
                 case .hashTagSearch:
                     break
-                case .quickReplyMessageInput, .welcomeMessages:
+                case .quickReplyMessageInput, .welcomeMessages, .channelDrafts:
                     break
                 case .businessLinkSetup:
                     sendButtonHasApplyIcon = true

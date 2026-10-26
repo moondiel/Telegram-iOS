@@ -2427,6 +2427,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 }
             case .businessLinkSetup:
                 actions.removeAll()
+            case .channelDrafts:
+                actions.removeAll()
             }
         }
         
