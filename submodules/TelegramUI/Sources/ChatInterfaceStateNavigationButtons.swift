@@ -197,7 +197,7 @@ func rightNavigationButtonForChatInterfaceState(context: AccountContext, present
         case .welcomeMessages:
             return nil
         case .channelDrafts:
-            return nil
+            return chatInfoNavigationButton
         }
     }
     

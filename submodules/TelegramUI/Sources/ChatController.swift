@@ -6425,7 +6425,15 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             chatInfoButtonItem = UIBarButtonItem(customDisplayNode: avatarNode)!
             self.avatarNode = avatarNode
         case .customChatContents:
-            chatInfoButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
+            if case let .customChatContents(customChatContents) = subject, case .channelDrafts = customChatContents.kind {
+                // Channel Drafts: the channel's avatar on the right, as in Scheduled Messages.
+                let avatarNode = ChatAvatarNavigationNode()
+                avatarNode.contextActionIsEnabled = false
+                chatInfoButtonItem = UIBarButtonItem(customDisplayNode: avatarNode)!
+                self.avatarNode = avatarNode
+            } else {
+                chatInfoButtonItem = UIBarButtonItem(title: "", style: .plain, target: nil, action: nil)
+            }
         }
         chatInfoButtonItem.target = self
         chatInfoButtonItem.action = #selector(self.rightNavigationButtonAction)

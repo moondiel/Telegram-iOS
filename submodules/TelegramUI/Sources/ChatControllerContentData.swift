@@ -1858,7 +1858,15 @@ extension ChatControllerImpl {
                 self.titleDisposable = nil
                 self.isPeerInfoReady.set(true)
                 
-                let peerView: Signal<PeerView?, NoError> = .single(nil)
+                var peerView: Signal<PeerView?, NoError> = .single(nil)
+                // Channel Drafts: the screen is the channel's, like Scheduled Messages — its avatar on
+                // the right, its input panel, and a "Drafts" title in the same title view.
+                var channelDraftsTitle: String?
+                if case let .customChatContents(customChatContents) = initialSubject, case let .channelDrafts(channelId) = customChatContents.kind {
+                    peerView = context.account.viewTracker.peerView(channelId)
+                    |> map(Optional.init)
+                    channelDraftsTitle = strings.ChannelDrafts_Title
+                }
                 
                 if case let .customChatContents(customChatContents) = initialSubject {
                     switch customChatContents.kind {
@@ -1923,6 +1931,9 @@ extension ChatControllerImpl {
                 
                     self.state.peerView = peerView
                     self.state.renderedPeer = renderedPeer
+                    if let channelDraftsTitle, let peerView {
+                        self.state.chatTitleContent = .peer(peerView: ChatTitleContent.PeerData(peerView: peerView), customTitle: channelDraftsTitle, customSubtitle: "", onlineMemberCount: (nil, nil), isScheduledMessages: false, isMuted: nil, customMessageCount: nil, hidePeerStatus: false, isEnabled: false)
+                    }
                     
                     self.isChatLocationInfoReady.set(true)
                     self.onUpdated?(previousState)
