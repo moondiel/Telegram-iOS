@@ -230,6 +230,7 @@ public enum PresentationResourceKey: Int32 {
     case chatInputPanelApplyIconImage
     case chatInputPanelApplyButtonImage
     case chatInputPanelScheduleIconImage
+    case chatInputPanelSaveDraftIconImage
     case chatInputPanelScheduleButtonImage
     case chatInputPanelVoiceButtonImage
     case chatInputPanelVideoButtonImage

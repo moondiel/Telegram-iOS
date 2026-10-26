@@ -213,7 +213,8 @@ func inputTextPanelStateForChatPresentationInterfaceState(_ chatPresentationInte
                     accessoryItems.append(.scheduledMessages)
                 }
                 if isTextEmpty && chatPresentationInterfaceState.channelDrafts.isAvailable && chatPresentationInterfaceState.channelDrafts.hasDrafts && !hasForward {
-                    accessoryItems.append(.channelDrafts)
+                    // Leftmost of the input field's buttons (they are laid out in this order).
+                    accessoryItems.insert(.channelDrafts, at: 0)
                 }
                     
                 var stickersEnabled = true

@@ -1861,11 +1861,22 @@ extension ChatControllerImpl {
                 var peerView: Signal<PeerView?, NoError> = .single(nil)
                 // Channel Drafts: the screen is the channel's, like Scheduled Messages — its avatar on
                 // the right, its input panel, and a "Drafts" title in the same title view.
-                var channelDraftsTitle: String?
                 if case let .customChatContents(customChatContents) = initialSubject, case let .channelDrafts(channelId) = customChatContents.kind {
                     peerView = context.account.viewTracker.peerView(channelId)
                     |> map(Optional.init)
-                    channelDraftsTitle = strings.ChannelDrafts_Title
+                    
+                    // The title follows selection ("N Selected"), as in Scheduled Messages.
+                    self.titleDisposable = (configuration
+                    |> map { $0.selectionState }
+                    |> distinctUntilChanged
+                    |> deliverOnMainQueue).startStrict(next: { [weak self] selectionState in
+                        guard let self else {
+                            return
+                        }
+                        let previousState = self.state
+                        self.state.chatTitleContent = channelDraftsTitleContent(selectionState: selectionState, strings: strings)
+                        self.onUpdated?(previousState)
+                    })
                 }
                 
                 if case let .customChatContents(customChatContents) = initialSubject {
@@ -1893,7 +1904,7 @@ extension ChatControllerImpl {
                     case .welcomeMessages:
                         self.state.chatTitleContent = .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(strings.WelcomeMessages_Title))], subtitle: nil, isEnabled: false)
                     case .channelDrafts:
-                        self.state.chatTitleContent = .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(strings.ChannelDrafts_Title))], subtitle: nil, isEnabled: false)
+                        self.state.chatTitleContent = channelDraftsTitleContent(selectionState: nil, strings: strings)
                     }
                 } else {
                     self.state.chatTitleContent = .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(" "))], subtitle: nil, isEnabled: false)
@@ -1931,9 +1942,6 @@ extension ChatControllerImpl {
                 
                     self.state.peerView = peerView
                     self.state.renderedPeer = renderedPeer
-                    if let channelDraftsTitle, let peerView {
-                        self.state.chatTitleContent = .peer(peerView: ChatTitleContent.PeerData(peerView: peerView), customTitle: channelDraftsTitle, customSubtitle: "", onlineMemberCount: (nil, nil), isScheduledMessages: false, isMuted: nil, customMessageCount: nil, hidePeerStatus: false, isEnabled: false)
-                    }
                     
                     self.isChatLocationInfoReady.set(true)
                     self.onUpdated?(previousState)

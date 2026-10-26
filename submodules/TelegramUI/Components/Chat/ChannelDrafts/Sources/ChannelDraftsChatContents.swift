@@ -25,6 +25,19 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     private var disposable: Disposable?
     private var didEmitInitialView = false
 
+    /// The chat clears its input field, and animates the bubble out of it, when the sent message
+    /// appears in the list carrying the send's correlation id (`OutgoingMessageInfoAttribute`), as
+    /// every real sent message does. Drafts are not real messages, so the id is kept here, in
+    /// memory, for the draft each send created.
+    private var correlationIds: [ChannelDraft.Id: Int64] = [:]
+    /// One entry per draft being saved, in save order: the correlation id of its send, if any.
+    private var pendingCorrelationIds: [Int64?] = []
+
+    /// Writes run one after another, so a second send never reads the state before the first one
+    /// is stored.
+    private var pendingWrites: [Signal<Never, NoError>] = []
+    private var isWriting = false
+
     public init(context: AccountContext, peerId: EnginePeer.Id) {
         self.context = context
         self.peerId = peerId
@@ -42,10 +55,17 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
             guard let self, let channel = peers.0, let account = peers.1 else {
                 return
             }
+            let knownIds = Set(self.drafts.map(\.id))
+            // New drafts appear in the order they were saved.
+            for draft in drafts where !knownIds.contains(draft.id) && self.didEmitInitialView && !self.pendingCorrelationIds.isEmpty {
+                if let correlationId = self.pendingCorrelationIds.removeFirst() {
+                    self.correlationIds[draft.id] = correlationId
+                }
+            }
             self.drafts = drafts
             let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
             let signature = account.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)
-            let view = ChannelDraftsChatContents.historyView(drafts: drafts, channel: channel, account: account, signature: signature)
+            let view = ChannelDraftsChatContents.historyView(drafts: drafts, channel: channel, account: account, signature: signature, correlationIds: self.correlationIds)
             let updateType: EngineViewUpdateType = self.didEmitInitialView ? .Generic : .Initial
             self.didEmitInitialView = true
             self.historyViewPromise.set(.single((view, updateType)))
@@ -94,7 +114,7 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     /// edited after an edit. Messages live in the scheduled-local namespace, so the bubbles behave
     /// like Scheduled Messages posts (no share button, comments or reactions). Nothing is stored in
     /// the message history.
-    private static func historyView(drafts: [ChannelDraft], channel: EnginePeer, account: EnginePeer, signature: String) -> EngineRawMessageHistoryView {
+    private static func historyView(drafts: [ChannelDraft], channel: EnginePeer, account: EnginePeer, signature: String, correlationIds: [ChannelDraft.Id: Int64]) -> EngineRawMessageHistoryView {
         let channelPeer = channel._asPeer()
         var peers = EngineSimpleDictionary<EnginePeer.Id, EngineRawPeer>()
         peers[channel.id] = channelPeer
@@ -115,6 +135,10 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
                 attributes.append(AuthorSignatureMessageAttribute(signature: signature))
                 if let editDate = draft.editDate {
                     attributes.append(EditedMessageAttribute(date: editDate, isHidden: false))
+                }
+                // The send carries its correlation id on its last message (the last album item).
+                if index == itemCount - 1, let correlationId = correlationIds[draft.id] {
+                    attributes.append(OutgoingMessageInfoAttribute(uniqueId: 0, flags: [], acknowledged: true, correlationId: correlationId, bubbleUpEmojiOrStickersets: [], partialReference: nil))
                 }
                 let id = ChannelDraftsChatContents.messageId(channelId: channel.id, draftId: draft.id, index: index)
                 let message = EngineRawMessage(
@@ -149,31 +173,24 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
         return EngineRawMessageHistoryView(tag: nil, namespaces: .all, entries: entries, holeEarlier: false, holeLater: false, isLoading: false)
     }
 
-    // MARK: Publishing
+    // MARK: Writes
 
-    /// Send Now in the menu of a draft with media: posts it to the channel as it is (album, caption
-    /// and entities), then removes it from Drafts.
-    public func publish(_ draft: ChannelDraft) {
-        let media = draft.decodedMedia
-        var captionAttributes: [EngineMessage.Attribute] = []
-        if !draft.entities.isEmpty {
-            captionAttributes.append(TextEntitiesMessageAttribute(entities: draft.entities))
+    private func write(_ signal: Signal<Never, NoError>) {
+        self.pendingWrites.append(signal)
+        self.runNextWrite()
+    }
+
+    private func runNextWrite() {
+        guard !self.isWriting, !self.pendingWrites.isEmpty else {
+            return
         }
-        var messages: [EnqueueMessage] = []
-        if media.isEmpty {
-            messages.append(.message(text: draft.text, attributes: captionAttributes, inlineStickers: [:], mediaReference: nil, threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: []))
-        } else {
-            let groupingKey: Int64? = media.count > 1 ? Int64.random(in: 1 ..< Int64.max) : nil
-            for (index, item) in media.enumerated() {
-                messages.append(.message(text: index == 0 ? draft.text : "", attributes: index == 0 ? captionAttributes : [], inlineStickers: [:], mediaReference: .standalone(media: item), threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: groupingKey, correlationId: nil, bubbleUpEmojiOrStickersets: []))
-            }
-        }
-        let engine = self.context.engine
-        let peerId = self.peerId
-        let _ = (TelegramCore.enqueueMessages(account: self.context.account, peerId: peerId, messages: messages)
-        |> mapToSignal { _ -> Signal<Never, NoError> in
-            return ChannelDraftsStore.delete(engine: engine, peerId: peerId, ids: Set([draft.id]))
-        }).startStandalone()
+        self.isWriting = true
+        let signal = self.pendingWrites.removeFirst()
+        // Holds the contents until the write is stored, even if the screen closes meanwhile.
+        let _ = (signal |> deliverOnMainQueue).startStandalone(completed: {
+            self.isWriting = false
+            self.runNextWrite()
+        })
     }
 
     // MARK: ChatCustomContentsProtocol
@@ -189,9 +206,9 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     /// Send on the Drafts screen saves a new draft: text, media, or an album with a caption
     /// (messages sharing a grouping key become one draft).
     public func enqueueMessages(messages: [EnqueueMessage]) {
-        var groups: [(key: Int64?, items: [(text: String, entities: [MessageTextEntity], media: EngineRawMedia?)])] = []
+        var groups: [(key: Int64?, correlationId: Int64?, items: [(text: String, entities: [MessageTextEntity], media: EngineRawMedia?)])] = []
         for message in messages {
-            guard case let .message(text, attributes, _, mediaReference, _, _, _, localGroupingKey, _, _) = message else {
+            guard case let .message(text, attributes, _, mediaReference, _, _, _, localGroupingKey, correlationId, _) = message else {
                 continue
             }
             var entities: [MessageTextEntity] = []
@@ -203,10 +220,14 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
             let item = (text: text, entities: entities, media: mediaReference?.media)
             if let localGroupingKey, let index = groups.firstIndex(where: { $0.key == localGroupingKey }) {
                 groups[index].items.append(item)
+                if let correlationId {
+                    groups[index].correlationId = correlationId
+                }
             } else {
-                groups.append((key: localGroupingKey, items: [item]))
+                groups.append((key: localGroupingKey, correlationId: correlationId, items: [item]))
             }
         }
+        var newDrafts: [ChannelDraftsStore.NewDraft] = []
         for group in groups {
             let caption = group.items.first(where: { !$0.text.isEmpty })
             let media = group.items.compactMap(\.media).map(ChannelDraft.encodeMedia)
@@ -214,8 +235,22 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
             if text.isEmpty && media.isEmpty {
                 continue
             }
-            let _ = ChannelDraftsStore.add(engine: self.context.engine, peerId: self.peerId, text: text, entities: caption?.entities ?? [], media: media).startStandalone()
+            newDrafts.append(ChannelDraftsStore.NewDraft(text: text, entities: caption?.entities ?? [], media: media))
+            self.pendingCorrelationIds.append(group.correlationId)
         }
+        if newDrafts.isEmpty {
+            return
+        }
+        self.write(ChannelDraftsStore.add(engine: self.context.engine, peerId: self.peerId, drafts: newDrafts) |> ignoreValues)
+    }
+
+    /// Clear All in the selection header.
+    public func deleteAllDrafts() {
+        let ids = Set(self.drafts.map(\.id))
+        if ids.isEmpty {
+            return
+        }
+        self.write(ChannelDraftsStore.delete(engine: self.context.engine, peerId: self.peerId, ids: ids))
     }
 
     public func deleteMessages(ids: [EngineMessage.Id]) {
@@ -223,7 +258,7 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
         if draftIds.isEmpty {
             return
         }
-        let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: self.peerId, ids: draftIds).startStandalone()
+        self.write(ChannelDraftsStore.delete(engine: self.context.engine, peerId: self.peerId, ids: draftIds))
     }
 
     /// ✓ in the "Edit Draft" header. Saving an empty text deletes a text-only draft; a draft with
@@ -233,9 +268,9 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
             return
         }
         if text.isEmpty && draft.media.isEmpty {
-            let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: self.peerId, ids: Set([draft.id])).startStandalone()
+            self.write(ChannelDraftsStore.delete(engine: self.context.engine, peerId: self.peerId, ids: Set([draft.id])))
         } else {
-            let _ = ChannelDraftsStore.update(engine: self.context.engine, peerId: self.peerId, id: draft.id, text: text, entities: entities?.entities ?? []).startStandalone()
+            self.write(ChannelDraftsStore.update(engine: self.context.engine, peerId: self.peerId, id: draft.id, text: text, entities: entities?.entities ?? []))
         }
     }
 

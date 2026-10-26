@@ -130,6 +130,9 @@ extension ChatControllerImpl {
             guard !self.presentAccountFrozenInfoIfNeeded() else {
                 return
             }
+            if self.presentClearChannelDrafts() {
+                return
+            }
             
             if case let .peer(peerId) = self.chatLocation {
                 let beginClear: (InteractiveHistoryClearingType) -> Void = { [weak self] type in
@@ -492,7 +495,7 @@ extension ChatControllerImpl {
                         }
                     }
                 case .customChatContents:
-                    break
+                    self.openChannelDraftsChannelInfo()
                 }
             })
         case .search:

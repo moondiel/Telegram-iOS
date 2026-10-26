@@ -10,13 +10,17 @@ Channel admins can keep several drafts per broadcast channel:
   clears the composer.
 - A **Drafts** button in the input field (next to the Scheduled Messages clock) opens the Drafts
   screen. It is shown while the channel has at least one draft and the text field is empty.
-- The **Drafts screen** looks like Scheduled Messages: drafts are channel posts signed by the admin,
-  with the same input panel (attachments, stickers, voice). Sending there creates a new draft:
-  text, media, or an album with a caption.
-- Long-press a draft: **Send Now · Use Draft · Copy · Edit · Delete · Select**, in the order of
-  Scheduled Messages. Use Draft is offered for text drafts only (media cannot go into the
-  composer). Delete, from the menu or the selection bar, confirms the way Scheduled Messages does
-  (one destructive "Delete Draft(s)" item in the menu); Select takes the whole draft.
+- The **Drafts screen** is Scheduled Messages with drafts in it: the same back button, a "Drafts"
+  title in a pill that fits it ("N Selected" during selection), the channel's avatar on the right
+  (opens the channel profile), the same input panel. Sending there saves a draft (text, media, or an
+  album with a caption); the send button shows the Save Draft glyph, has no send options, and the
+  input clears and the bubble flies up exactly as for a scheduled message.
+- Long-press a draft: **Use Draft · Copy · Edit · Delete · Select**, in the order of Scheduled
+  Messages. Use Draft is offered for text drafts only (media cannot go into the composer). Delete,
+  from the menu or the selection bar, confirms the way Scheduled Messages does (one destructive
+  "Delete Draft(s)" item in the menu); Select takes the whole draft. **Clear All** in the
+  selection header shows Scheduled Messages' sheet and warning and deletes every draft.
+- The Drafts button is the leftmost button in the channel's input field.
 - **Use Draft** closes the screen and puts the text into the channel composer with a **Draft**
   header (like "Edit Message"). Save Draft then updates that draft; Send publishes the post and
   removes the draft; × in the header clears the composer and leaves the draft untouched.

@@ -2160,7 +2160,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                 
                 updatedPlaceholder = placeholder
                 
-                self.sendActionButtons.sendButtonLongPressEnabled = !isScheduledMessages
+                // Like Scheduled Messages, the Drafts screen has no send options.
+                self.sendActionButtons.sendButtonLongPressEnabled = !isScheduledMessages && !isChannelDraftsScreen(interfaceState)
             }
             
             if let customPlaceholder = self.customPlaceholder {
@@ -2203,6 +2204,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                     } else {
                         if isScheduledMessages {
                             self.sendActionButtons.sendButton.setImage(PresentationResourcesChat.chatInputPanelScheduleButtonImage(interfaceState.theme), for: [])
+                        } else if isChannelDraftsScreen(interfaceState) {
+                            self.sendActionButtons.sendButton.setImage(PresentationResourcesChat.chatInputPanelSaveDraftIconImage(interfaceState.theme), for: [])
                         } else {
                             self.sendActionButtons.sendButton.setImage(PresentationResourcesChat.chatInputPanelSendIconImage(interfaceState.theme), for: [])
                         }
@@ -4862,6 +4865,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                 } else {
                     if case .scheduledMessages = interfaceState.subject {
                         self.sendActionButtons.sendButton.setImage(PresentationResourcesChat.chatInputPanelScheduleIconImage(interfaceState.theme), for: [])
+                    } else if isChannelDraftsScreen(interfaceState) {
+                        self.sendActionButtons.sendButton.setImage(PresentationResourcesChat.chatInputPanelSaveDraftIconImage(interfaceState.theme), for: [])
                     } else {
                         self.sendActionButtons.sendButton.setImage(PresentationResourcesChat.chatInputPanelSendIconImage(interfaceState.theme), for: [])
                     }
@@ -5981,4 +5986,12 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
     public func makeAttachmentMenuTransition(accessoryPanelNode: ASDisplayNode?) -> AttachmentInputPanelTransition {
         return AttachmentInputPanelTransition(inputNode: self, accessoryPanelNode: accessoryPanelNode, menuButtonNode: self.menuButton, menuButtonBackgroundView: self.menuButtonBackgroundView, menuIconNode: self.menuButtonIconNode, menuTextNode: self.menuButtonTextNode, prepareForDismiss: { self.menuButtonIconNode.enqueueState(.app, animated: false) })
     }
+}
+
+/// The Channel Drafts screen, where Send saves a draft.
+private func isChannelDraftsScreen(_ interfaceState: ChatPresentationInterfaceState) -> Bool {
+    if case let .customChatContents(customChatContents) = interfaceState.subject, case .channelDrafts = customChatContents.kind {
+        return true
+    }
+    return false
 }

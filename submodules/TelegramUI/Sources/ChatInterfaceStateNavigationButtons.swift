@@ -26,6 +26,9 @@ func leftNavigationButtonForChatInterfaceState(_ presentationInterfaceState: Cha
             if case .scheduledMessages = presentationInterfaceState.subject {
                 canClear = true
                 title = strings.ScheduledMessages_ClearAll
+            } else if case let .customChatContents(customChatContents) = presentationInterfaceState.subject, case .channelDrafts = customChatContents.kind {
+                canClear = true
+                title = strings.ScheduledMessages_ClearAll
             } else {
                 if peer is TelegramUser || peer is TelegramGroup || peer is TelegramSecretChat {
                     canClear = true
@@ -60,9 +63,10 @@ func leftNavigationButtonForChatInterfaceState(_ presentationInterfaceState: Cha
     
     if case let .customChatContents(customChatContents) = presentationInterfaceState.subject {
         switch customChatContents.kind {
-        case .hashTagSearch:
+        case .hashTagSearch, .channelDrafts:
+            // Channel Drafts keeps the back button, as Scheduled Messages does.
             break
-        case .quickReplyMessageInput, .businessLinkSetup, .welcomeMessages, .channelDrafts:
+        case .quickReplyMessageInput, .businessLinkSetup, .welcomeMessages:
             if let currentButton = currentButton, currentButton.action == .dismiss {
                 return currentButton
             } else {

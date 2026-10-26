@@ -17116,3 +17116,4 @@ Error: %8$@";
 "ChannelDrafts.AttachedPanelTitle" = "Draft";
 "ChannelDrafts.Delete" = "Delete Draft";
 "ChannelDrafts.DeleteMany" = "Delete Drafts";
+"ChannelDrafts.ClearAllConfirmation" = "Clear Drafts";

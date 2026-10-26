@@ -458,6 +458,31 @@ public struct PresentationResourcesChat {
         })
     }
     
+    /// The send button on the Channel Drafts screen: the Save Draft glyph, drawn like the send and
+    /// schedule icons.
+    public static func chatInputPanelSaveDraftIconImage(_ theme: PresentationTheme) -> UIImage? {
+        return theme.image(PresentationResourceKey.chatInputPanelSaveDraftIconImage.rawValue, { theme in
+            return generateImage(CGSize(width: 33.0, height: 33.0), rotatedContext: { size, context in
+                UIGraphicsPushContext(context)
+                defer {
+                    UIGraphicsPopContext()
+                }
+                
+                context.clear(CGRect(origin: CGPoint(), size: size))
+                let color: UIColor
+                if [.day, .night].contains(theme.referenceTheme.baseTheme) && !theme.chat.message.outgoing.bubble.withWallpaper.hasSingleFillColor {
+                    color = .white
+                } else {
+                    color = theme.chat.inputPanel.actionControlForegroundColor
+                }
+                
+                if let image = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/SaveDraft"), color: color) {
+                    image.draw(in: CGRect(origin: CGPoint(x: floorToScreenPixels((size.width - image.size.width) * 0.5), y: floorToScreenPixels((size.height - image.size.height) * 0.5)), size: image.size))
+                }
+            })
+        })
+    }
+    
     public static func chatInputPanelScheduleIconImage(_ theme: PresentationTheme) -> UIImage? {
         return theme.image(PresentationResourceKey.chatInputPanelScheduleIconImage.rawValue, { theme in
             return generateImage(CGSize(width: 33.0, height: 33.0), rotatedContext: { size, context in

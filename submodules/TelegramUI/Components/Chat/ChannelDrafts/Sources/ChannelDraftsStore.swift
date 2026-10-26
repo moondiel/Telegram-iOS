@@ -122,14 +122,38 @@ public enum ChannelDraftsStore {
         }
     }
 
+    public struct NewDraft {
+        public var text: String
+        public var entities: [MessageTextEntity]
+        public var media: [Data]
+
+        public init(text: String, entities: [MessageTextEntity], media: [Data] = []) {
+            self.text = text
+            self.entities = entities
+            self.media = media
+        }
+    }
+
     /// Saves a new draft at the end of the list and returns it.
     public static func add(engine: TelegramEngine, peerId: EnginePeer.Id, text: String, entities: [MessageTextEntity], media: [Data] = []) -> Signal<ChannelDraft, NoError> {
+        return self.add(engine: engine, peerId: peerId, drafts: [NewDraft(text: text, entities: entities, media: media)])
+        |> map { drafts -> ChannelDraft in
+            return drafts[0]
+        }
+    }
+
+    /// Saves several new drafts in one write, in order, and returns them.
+    public static func add(engine: TelegramEngine, peerId: EnginePeer.Id, drafts: [NewDraft]) -> Signal<[ChannelDraft], NoError> {
         let timestamp = self.currentTimestamp()
-        return self.modify(engine: engine, peerId: peerId, { state -> ChannelDraft in
-            state.lastId += 1
-            let draft = ChannelDraft(id: state.lastId, text: text, entities: entities, media: media, date: timestamp, editDate: nil)
-            state.drafts.append(draft)
-            return draft
+        return self.modify(engine: engine, peerId: peerId, { state -> [ChannelDraft] in
+            var result: [ChannelDraft] = []
+            for item in drafts {
+                state.lastId += 1
+                let draft = ChannelDraft(id: state.lastId, text: item.text, entities: item.entities, media: item.media, date: timestamp, editDate: nil)
+                state.drafts.append(draft)
+                result.append(draft)
+            }
+            return result
         })
     }
 
