@@ -5459,6 +5459,9 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                         })
                         self.ignoreUpdateHeight = false
                     }, usedCorrelationId)
+                    // Before `completion`: schedule and Send When Online clear the composer there,
+                    // which would unlink a channel draft taken into it before it is published.
+                    self.controller?.channelDraftsDidSendMessages(messages)
                     completion()
                     
                     self.sendMessages(messages, silentPosting, scheduleTime, repeatPeriod, messages.count > 1, postpone)

@@ -120,7 +120,9 @@ extension ChatControllerImpl {
         })
     }
 
-    /// A post sent (or scheduled) from a linked draft publishes that draft: it leaves the Drafts list.
+    /// A post sent or scheduled from a linked draft publishes that draft: it leaves the Drafts list.
+    /// Called from the composer's send (before scheduling clears the composer, which would unlink the
+    /// draft first) and from every send of the chat; the second call finds the draft unlinked.
     func channelDraftsDidSendMessages(_ messages: [EnqueueMessage]) {
         guard !messages.isEmpty, let peerId = self.channelDraftsPeerId, let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft else {
             return
