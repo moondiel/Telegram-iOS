@@ -11,7 +11,7 @@ Channel admins can keep several drafts per broadcast channel:
 - A **Drafts** button in the input field (next to the Scheduled Messages clock) opens the Drafts
   screen. It is shown while the channel has at least one draft and the text field is empty.
 - The **Drafts screen** is Scheduled Messages with drafts in it: the same back button, a "Drafts"
-  title in a pill that fits it ("N Selected" during selection), the channel's avatar on the right
+  title ("N Selected" during selection), the channel's avatar on the right
   (opens the channel profile), the same input panel. Sending there saves a draft (text, media, or an
   album with a caption); the send button shows the Save Draft glyph, has no send options, and the
   input clears and the bubble flies up exactly as for a scheduled message.

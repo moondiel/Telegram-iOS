@@ -111,9 +111,7 @@ public enum ChatTitleContent: Equatable {
     
     case peer(peerView: PeerData, customTitle: String?, customSubtitle: String?, onlineMemberCount: (total: Int32?, recent: Int32?), isScheduledMessages: Bool, isMuted: Bool?, customMessageCount: Int?, hidePeerStatus: Bool, isEnabled: Bool)
     case replyThread(type: ReplyThreadType, count: Int)
-    /// `hugsTitle`: the pill fits the title instead of keeping room for a subtitle or activity
-    /// (screens that never show one, such as Channel Drafts).
-    case custom(title: [TitleTextItem], subtitle: String?, isEnabled: Bool, hugsTitle: Bool = false)
+    case custom(title: [TitleTextItem], subtitle: String?, isEnabled: Bool)
     
     public static func ==(lhs: ChatTitleContent, rhs: ChatTitleContent) -> Bool {
         switch lhs {
@@ -156,8 +154,8 @@ public enum ChatTitleContent: Equatable {
             } else {
                 return false
             }
-        case let .custom(title, status, active, hugsTitle):
-            if case .custom(title, status, active, hugsTitle) = rhs {
+        case let .custom(title, status, active):
+            if case .custom(title, status, active) = rhs {
                 return true
             } else {
                 return false
@@ -418,7 +416,7 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                         }
                         
                         isEnabled = false
-                    case let .custom(textItems, _, enabled, _):
+                    case let .custom(textItems, _, enabled):
                         var nextId = -1
                         segments = textItems.map { item -> AnimatedCountLabelNode.Segment in
                             nextId += 1
@@ -726,7 +724,7 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                                     }
                                 }
                             }
-                        case let .custom(_, subtitle?, _, _):
+                        case let .custom(_, subtitle?, _):
                             let string = NSAttributedString(string: subtitle, font: subtitleFont, textColor: titleTheme.rootController.navigationBar.secondaryTextColor)
                             state = .info(string, .generic)
                         default:

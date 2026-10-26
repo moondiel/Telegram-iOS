@@ -578,7 +578,7 @@ public final class ChatTitleComponent: Component {
                 }
                 
                 isEnabled = false
-            case let .custom(textItems, _, enabled, _):
+            case let .custom(textItems, _, enabled):
                 titleSegments = textItems.map { item -> AnimatedTextComponent.Item in
                     let mappedContent: AnimatedTextComponent.Item.Content
                     switch item.content {
@@ -826,7 +826,7 @@ public final class ChatTitleComponent: Component {
                                 }
                             }
                         }
-                    case let .custom(_, subtitle?, _, _):
+                    case let .custom(_, subtitle?, _):
                         let string = NSAttributedString(string: subtitle, font: subtitleFont, textColor: component.theme.chat.inputPanel.inputControlColor)
                         state = .info(string, .generic)
                     default:
@@ -1072,21 +1072,13 @@ public final class ChatTitleComponent: Component {
             let activityMeasureSubtitleSize = activityMeasureSubtitleNode.updateLayout(CGSize(width: availableSize.width - containerSideInset * 2.0, height: 100.0), alignment: .center)
             minSubtitleWidth = activityMeasureSubtitleSize.width
             
-            var hugsTitle = false
-            if case .custom(_, nil, _, true) = component.content {
-                hugsTitle = true
-                minSubtitleWidth = nil
-            }
-            
             var contentSize = titleSize
             contentSize.width += titleLeftIconsWidth + titleRightIconsWidth
             contentSize.width = max(contentSize.width, subtitleSize.width)
             if let minSubtitleWidth {
                 contentSize.width = max(contentSize.width, minSubtitleWidth)
             }
-            if !hugsTitle {
-                contentSize.width = max(min(150.0, availableSize.width - containerSideInset * 2.0), contentSize.width)
-            }
+            contentSize.width = max(min(150.0, availableSize.width - containerSideInset * 2.0), contentSize.width)
             contentSize.height += subtitleSize.height
             
             let containerSize = CGSize(width: contentSize.width + containerSideInset * 2.0, height: 44.0)
