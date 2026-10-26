@@ -17106,3 +17106,13 @@ Error: %8$@";
 "Notification.GramTransfer.UnknownUser" = "UNKNOWN USER";
 
 "Chat.ViewStyle" = "VIEW STYLE";
+
+"Conversation.SendMessage.SaveDraft" = "Save Draft";
+"VoiceOver.ChannelDrafts" = "Drafts";
+"ChannelDrafts.Title" = "Drafts";
+"ChannelDrafts.EmptyPlaceholder" = "No drafts here yet...";
+"ChannelDrafts.UseDraft" = "Use Draft";
+"ChannelDrafts.EditPanelTitle" = "Edit Draft";
+"ChannelDrafts.AttachedPanelTitle" = "Draft";
+"ChannelDrafts.DeleteDrafts_1" = "Delete Draft";
+"ChannelDrafts.DeleteDrafts_any" = "Delete %@ Drafts";
