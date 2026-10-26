@@ -16,14 +16,16 @@ Channel admins can keep several drafts per broadcast channel:
   album with a caption); the send button shows the Save Draft glyph, has no send options, and the
   input clears and the bubble flies up exactly as for a scheduled message.
 - Long-press a draft: **Use Draft · Copy · Edit · Delete · Select**, in the order of Scheduled
-  Messages. Use Draft is offered for text drafts only (media cannot go into the composer). Delete,
-  from the menu or the selection bar, confirms the way Scheduled Messages does (one destructive
-  "Delete Draft(s)" item in the menu); Select takes the whole draft. **Clear All** in the
-  selection header shows Scheduled Messages' sheet and warning and deletes every draft.
+  Messages. Delete, from the menu or the selection bar, confirms the way Scheduled Messages does
+  (one destructive "Delete Draft(s)" item in the menu); Select takes the whole draft. **Clear All**
+  in the selection header shows Scheduled Messages' sheet and warning and deletes every draft.
 - The Drafts button is the leftmost button in the channel's input field.
-- **Use Draft** closes the screen and puts the text into the channel composer with a **Draft**
-  header (like "Edit Message"). Save Draft then updates that draft; Send publishes the post and
-  removes the draft; × in the header clears the composer and leaves the draft untouched.
+- **Use Draft** closes the screen and puts the text (or caption) into the channel composer with a
+  **Draft** header, as editing a post does. A draft's photos, videos, files or audio stay out of
+  the text field, like the media of a post being edited, and the header reads "Photo", "Video"...
+  when there is no caption. Send or Schedule publishes a normal post (an album for several items,
+  the composer text as the caption) and removes the draft; Save Draft updates it; × in the header
+  unlinks it and leaves it untouched.
 - **Edit** edits the draft in place with the usual edit header and ✓.
 
 The working prototype (UIKit, outside this repo) is the reference for behaviour, not for code.

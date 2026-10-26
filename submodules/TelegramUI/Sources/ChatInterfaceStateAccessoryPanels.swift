@@ -20,6 +20,7 @@ import TextFormat
 import TelegramPresentationData
 import AlertComponent
 import ChannelDrafts
+import TelegramStringFormatting
 
 func textInputAccessoryPanel(
     context: AccountContext,
@@ -45,19 +46,25 @@ func textInputAccessoryPanel(
     }
     
     if chatPresentationInterfaceState.interfaceState.editMessage == nil, let attachedDraft = chatPresentationInterfaceState.channelDrafts.attachedDraft {
-        // Channel Drafts: the composer holds a draft taken with Use Draft. × clears the composer,
-        // which unlinks the draft and leaves it as it was.
+        // Channel Drafts: the composer holds a draft taken with Use Draft. × clears the composer
+        // and unlinks the draft, which stays as it was. A draft with media and no caption reads
+        // "Photo", "Video"... as the Edit header does.
+        var text = attachedDraft.text
+        if text.isEmpty, let media = attachedDraft.media.first, let kind = mediaContentKind(EngineMedia(media), strings: chatPresentationInterfaceState.strings) {
+            text = stringForMediaKind(kind, strings: chatPresentationInterfaceState.strings).0.string
+        }
         return AnyComponentWithIdentity(id: "channelDraft", component: AnyComponent(ChatInputMessageAccessoryPanel(
             context: context,
             contents: .custom(ChatInputMessageAccessoryPanel.Contents.Custom(
                 id: AnyHashable(attachedDraft.id),
                 title: chatPresentationInterfaceState.strings.ChannelDrafts_AttachedPanelTitle,
-                text: attachedDraft.text
+                text: text
             )),
             chatPeerId: chatPresentationInterfaceState.chatLocation.peerId,
             action: { _ in
             },
             dismiss: { _ in
+                interfaceInteraction?.unlinkChannelDraft()
                 interfaceInteraction?.updateTextInputStateAndMode { _, inputMode in
                     return (ChatTextInputState(inputText: NSAttributedString(string: "")), inputMode)
                 }

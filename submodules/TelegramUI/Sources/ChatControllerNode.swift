@@ -5377,6 +5377,10 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     postEmptyMessages = true
                 }
             }
+            // A channel draft with media is posted even without a caption.
+            if self.chatPresentationInterfaceState.channelDrafts.attachedDraft?.media.isEmpty == false {
+                postEmptyMessages = true
+            }
             
             if !messages.isEmpty, let messageEffect {
                 messages[0] = messages[0].withUpdatedAttributes { attributes in
@@ -5411,6 +5415,12 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                         messages = messages.map { message in
                             return message.withUpdatedThreadId(overrideThreadId)
                         }
+                    }
+                    // A channel draft taken into the composer is published by this send (its media
+                    // added). Before `completion`: schedule and Send When Online clear the composer
+                    // there, which would unlink the draft first.
+                    if let controller = self.controller {
+                        messages = controller.publishChannelDraft(composerMessages: messages)
                     }
                     
                     var usedCorrelationId: Int64?
@@ -5459,9 +5469,6 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                         })
                         self.ignoreUpdateHeight = false
                     }, usedCorrelationId)
-                    // Before `completion`: schedule and Send When Online clear the composer there,
-                    // which would unlink a channel draft taken into it before it is published.
-                    self.controller?.channelDraftsDidSendMessages(messages)
                     completion()
                     
                     self.sendMessages(messages, silentPosting, scheduleTime, repeatPeriod, messages.count > 1, postpone)

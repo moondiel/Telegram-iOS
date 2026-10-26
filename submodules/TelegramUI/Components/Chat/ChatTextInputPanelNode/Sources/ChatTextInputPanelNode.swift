@@ -1694,7 +1694,9 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         }
         hasMediaDraft = interfaceState.interfaceState.mediaDraftState != nil
         
-        let hasForward = interfaceState.interfaceState.forwardMessageIds != nil
+        // A channel draft with media taken into the composer is sent like a forward: the send button
+        // stays, even without text.
+        let hasForward = interfaceState.interfaceState.forwardMessageIds != nil || interfaceState.channelDrafts.attachedDraft?.media.isEmpty == false
         
         var isRecording = false
         if let _ = interfaceState.inputTextPanelState.mediaRecordingState {
@@ -3410,7 +3412,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         }
         
         var mediaActionButtonsFrame = CGRect(origin: CGPoint(x: textInputContainerBackgroundFrame.maxX + 6.0, y: textInputContainerBackgroundFrame.maxY - mediaActionButtonsSize.height), size: mediaActionButtonsSize)
-        if inputHasText || self.extendedSearchLayout || hasMediaDraft || interfaceState.interfaceState.forwardMessageIds != nil || hasSlowmodeButton || isEditingMedia {
+        if inputHasText || self.extendedSearchLayout || hasMediaDraft || hasForward || hasSlowmodeButton || isEditingMedia {
             mediaActionButtonsFrame.origin.x = width + 8.0
         }
         transition.updateFrame(node: self.mediaActionButtons, frame: mediaActionButtonsFrame)
@@ -4613,7 +4615,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                     keepSendButtonEnabled = true
                 }
             }
-            hasForward = presentationInterfaceState.interfaceState.forwardMessageIds != nil
+            hasForward = presentationInterfaceState.interfaceState.forwardMessageIds != nil || presentationInterfaceState.channelDrafts.attachedDraft?.media.isEmpty == false
             
             hideMicButtonBackground = presentationInterfaceState.inputTextPanelState.mediaRecordingState != nil
         }

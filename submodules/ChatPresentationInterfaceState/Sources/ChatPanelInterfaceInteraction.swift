@@ -153,6 +153,7 @@ public final class ChatPanelInterfaceInteraction {
     public let displaySendMessageOptions: (ASDisplayNode, ContextGesture) -> Void
     public let openScheduledMessages: () -> Void
     public let openChannelDrafts: () -> Void
+    public let unlinkChannelDraft: () -> Void
     public let displaySearchResultsTooltip: (ASDisplayNode, CGRect) -> Void
     public let unarchivePeer: () -> Void
     public let scrollToTop: () -> Void
@@ -288,6 +289,7 @@ public final class ChatPanelInterfaceInteraction {
         displaySendMessageOptions: @escaping (ASDisplayNode, ContextGesture) -> Void,
         openScheduledMessages: @escaping () -> Void,
         openChannelDrafts: @escaping () -> Void = {},
+        unlinkChannelDraft: @escaping () -> Void = {},
         displaySearchResultsTooltip: @escaping (ASDisplayNode, CGRect) -> Void,
         unarchivePeer: @escaping () -> Void,
         scrollToTop: @escaping () -> Void,
@@ -422,6 +424,7 @@ public final class ChatPanelInterfaceInteraction {
         self.displaySendMessageOptions = displaySendMessageOptions
         self.openScheduledMessages = openScheduledMessages
         self.openChannelDrafts = openChannelDrafts
+        self.unlinkChannelDraft = unlinkChannelDraft
         self.displaySearchResultsTooltip = displaySearchResultsTooltip
         self.unarchivePeer = unarchivePeer
         self.scrollToTop = scrollToTop

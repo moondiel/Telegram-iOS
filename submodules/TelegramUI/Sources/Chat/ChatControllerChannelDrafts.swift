@@ -34,9 +34,13 @@ func channelDraftsAreAvailable(_ state: ChatPresentationInterfaceState) -> Bool 
 func updatedChannelDraftsState(_ state: ChatPresentationInterfaceState) -> ChatPresentationInterfaceState {
     var channelDrafts = state.channelDrafts
     channelDrafts.isAvailable = channelDraftsAreAvailable(state)
-    // Clearing the composer unlinks the draft it was taken from; the draft itself stays.
-    if channelDrafts.attachedDraft != nil && (state.interfaceState.composeInputState.isEmpty || !channelDrafts.isAvailable) {
-        channelDrafts.attachedDraft = nil
+    // Clearing the composer unlinks the draft it was taken from; the draft itself stays. A draft
+    // with media keeps its link with an empty caption (× in its header unlinks it).
+    if let attachedDraft = channelDrafts.attachedDraft {
+        let clearedText = state.interfaceState.composeInputState.isEmpty && attachedDraft.media.isEmpty
+        if clearedText || !channelDrafts.isAvailable {
+            channelDrafts.attachedDraft = nil
+        }
     }
     if channelDrafts == state.channelDrafts {
         return state
@@ -95,17 +99,26 @@ extension ChatControllerImpl {
         if state.interfaceState.forwardMessageIds != nil || state.interfaceState.mediaDraftState != nil || state.interfaceState.editMessage != nil {
             return false
         }
+        if state.channelDrafts.attachedDraft?.media.isEmpty == false {
+            // A draft with media can be saved with an empty caption.
+            return true
+        }
         return !state.interfaceState.composeInputState.isEmpty
     }
 
     /// Send menu → Save Draft. Updates the linked draft if the text came from one, otherwise adds a
     /// new draft; then clears the composer.
     func saveChannelDraftFromComposer() {
-        guard let peerId = self.channelDraftsPeerId, let content = self.channelDraftContentFromComposer() else {
+        guard let peerId = self.channelDraftsPeerId else {
+            return
+        }
+        let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft
+        // A draft with media may be saved with an empty caption; it keeps its media either way.
+        guard let content = self.channelDraftContentFromComposer() ?? (attachedDraft?.media.isEmpty == false ? (text: "", entities: []) : nil) else {
             return
         }
         let engine = self.context.engine
-        if let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft {
+        if let attachedDraft {
             let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: attachedDraft.id, text: content.text, entities: content.entities).startStandalone()
         } else {
             let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, text: content.text, entities: content.entities).startStandalone()
@@ -120,9 +133,34 @@ extension ChatControllerImpl {
         })
     }
 
+    /// × in the "Draft" header: the composer lets go of the draft, which stays as it was.
+    func unlinkChannelDraft() {
+        self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
+            var channelDrafts = state.channelDrafts
+            channelDrafts.attachedDraft = nil
+            return state.updatedChannelDrafts(channelDrafts)
+        })
+    }
+
+    /// The composer's Send or Schedule with a linked draft publishes it: the draft's media is
+    /// posted with the composer text as its caption (an album for several items), and the draft
+    /// leaves the Drafts list. Called before the send's completion, which clears the composer (and
+    /// with it the link) when scheduling.
+    func publishChannelDraft(composerMessages messages: [EnqueueMessage]) -> [EnqueueMessage] {
+        guard let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft else {
+            return messages
+        }
+        var result = messages
+        if !attachedDraft.media.isEmpty {
+            result = channelDraftMessagesAttachingMedia(attachedDraft.media, to: messages, threadId: self.chatLocation.threadId)
+        }
+        self.channelDraftsDidSendMessages(result)
+        return result
+    }
+
     /// A post sent or scheduled from a linked draft publishes that draft: it leaves the Drafts list.
-    /// Called from the composer's send (before scheduling clears the composer, which would unlink the
-    /// draft first) and from every send of the chat; the second call finds the draft unlinked.
+    /// Called from the composer's send (`publishChannelDraft`) and from every send of the chat; the
+    /// second call finds the draft unlinked.
     func channelDraftsDidSendMessages(_ messages: [EnqueueMessage]) {
         guard !messages.isEmpty, let peerId = self.channelDraftsPeerId, let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft else {
             return
@@ -151,13 +189,15 @@ extension ChatControllerImpl {
         navigationController.pushViewController(controller)
     }
 
-    /// Use Draft: the draft's text goes into the composer, linked to the draft ("Draft" header).
-    /// The draft stays in the list until the post is sent.
+    /// Use Draft: the draft's text (or caption) goes into the composer, linked to the draft ("Draft"
+    /// header); its media goes with the link and is posted by Send or Schedule, as editing a post
+    /// with media keeps the media out of the text field. The draft stays in the list until then.
     func useChannelDraft(_ draft: ChannelDraft) {
         let inputText = chatInputStateStringWithAppliedEntities(draft.text, entities: draft.entities)
+        let media = draft.decodedMedia
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
             var channelDrafts = state.channelDrafts
-            channelDrafts.attachedDraft = ChatChannelDraftsState.AttachedDraft(id: draft.id, text: draft.text)
+            channelDrafts.attachedDraft = ChatChannelDraftsState.AttachedDraft(id: draft.id, text: draft.text, media: media)
             return state.updatedInterfaceState { interfaceState in
                 return interfaceState.withUpdatedComposeInputState(ChatTextInputState(inputText: inputText))
             }.updatedInputMode { _ in
@@ -299,8 +339,8 @@ private func channelDraftsDeleteConfirmationItem(messageIds: Set<EngineMessage.I
 }
 
 /// Long-press menu of a draft on the Drafts screen, in the order of Scheduled Messages
-/// (Use Draft in the place of Send Now / Edit Time): Use Draft (text) · Copy · Edit · Delete ·
-/// Select. Telegram's own menu items, strings and icons.
+/// (Use Draft in the place of Send Now / Edit Time): Use Draft · Copy · Edit · Delete · Select.
+/// Telegram's own menu items, strings and icons.
 func channelDraftContextMenuItems(message: EngineRawMessage, contents: ChatCustomContentsProtocol, strings: PresentationStrings, interfaceInteraction: ChatPanelInterfaceInteraction, controllerInteraction: ChatControllerInteraction) -> [ContextMenuItem] {
     guard let contents = contents as? ChannelDraftsChatContents, let draft = contents.draft(messageId: message.id) else {
         return []
@@ -308,15 +348,13 @@ func channelDraftContextMenuItems(message: EngineRawMessage, contents: ChatCusto
     let draftMessageIds = contents.messageIds(draft: draft)
     var items: [ContextMenuItem] = []
 
-    if draft.media.isEmpty {
-        // Text: continue it in the channel composer. Media cannot go into the composer.
-        items.append(.action(ContextMenuActionItem(text: strings.ChannelDrafts_UseDraft, icon: { theme in
-            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/UseDraft"), color: theme.actionSheet.primaryTextColor)
-        }, action: { [weak contents] _, f in
-            f(.dismissWithoutContent)
-            contents?.useDraft?(draft)
-        })))
-    }
+    // Continue it in the channel composer (its media goes with it and is posted on Send).
+    items.append(.action(ContextMenuActionItem(text: strings.ChannelDrafts_UseDraft, icon: { theme in
+        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/UseDraft"), color: theme.actionSheet.primaryTextColor)
+    }, action: { [weak contents] _, f in
+        f(.dismissWithoutContent)
+        contents?.useDraft?(draft)
+    })))
 
     if !draft.text.isEmpty {
         items.append(.action(ContextMenuActionItem(text: strings.Conversation_ContextMenuCopy, icon: { theme in
@@ -362,4 +400,39 @@ func channelDraftContextMenuItems(message: EngineRawMessage, contents: ChatCusto
     })))
 
     return items
+}
+
+/// The composer's messages with a draft's media added: the first text message becomes the caption
+/// of the first item (an album for several items), any further text follows as it was. Without
+/// text the media is posted alone.
+private func channelDraftMessagesAttachingMedia(_ media: [EngineRawMedia], to messages: [EnqueueMessage], threadId: Int64?) -> [EnqueueMessage] {
+    var caption: (text: String, attributes: [EngineMessage.Attribute], inlineStickers: [EngineMedia.Id: EngineRawMedia], replyToMessageId: EngineMessageReplySubject?, bubbleUpEmojiOrStickersets: [EngineItemCollectionId])?
+    var rest: [EnqueueMessage] = []
+    for message in messages {
+        if caption == nil, case let .message(text, attributes, inlineStickers, _, _, replyToMessageId, _, _, _, bubbleUpEmojiOrStickersets) = message, !text.isEmpty {
+            // A link preview does not go with a caption.
+            caption = (text, attributes.filter { !($0 is WebpagePreviewMessageAttribute) }, inlineStickers, replyToMessageId, bubbleUpEmojiOrStickersets)
+        } else {
+            rest.append(message)
+        }
+    }
+    let groupingKey: Int64? = media.count > 1 ? Int64.random(in: 1 ..< Int64.max) : nil
+    var result: [EnqueueMessage] = []
+    for (index, item) in media.enumerated() {
+        let isCaptionItem = index == 0
+        result.append(.message(
+            text: isCaptionItem ? (caption?.text ?? "") : "",
+            attributes: isCaptionItem ? (caption?.attributes ?? []) : [],
+            inlineStickers: isCaptionItem ? (caption?.inlineStickers ?? [:]) : [:],
+            mediaReference: .standalone(media: item),
+            threadId: threadId,
+            replyToMessageId: isCaptionItem ? caption?.replyToMessageId : nil,
+            replyToStoryId: nil,
+            localGroupingKey: groupingKey,
+            correlationId: nil,
+            bubbleUpEmojiOrStickersets: isCaptionItem ? (caption?.bubbleUpEmojiOrStickersets ?? []) : []
+        ))
+    }
+    result.append(contentsOf: rest)
+    return result
 }
