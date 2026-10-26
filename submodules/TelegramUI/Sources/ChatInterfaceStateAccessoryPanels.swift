@@ -44,6 +44,27 @@ func textInputAccessoryPanel(
         break
     }
     
+    if chatPresentationInterfaceState.interfaceState.editMessage == nil, let attachedDraft = chatPresentationInterfaceState.channelDrafts.attachedDraft {
+        // Channel Drafts: the composer holds a draft taken with Use Draft. × clears the composer,
+        // which unlinks the draft and leaves it as it was.
+        return AnyComponentWithIdentity(id: "channelDraft", component: AnyComponent(ChatInputMessageAccessoryPanel(
+            context: context,
+            contents: .custom(ChatInputMessageAccessoryPanel.Contents.Custom(
+                id: AnyHashable(attachedDraft.id),
+                title: chatPresentationInterfaceState.strings.ChannelDrafts_AttachedPanelTitle,
+                text: attachedDraft.text
+            )),
+            chatPeerId: chatPresentationInterfaceState.chatLocation.peerId,
+            action: { _ in
+            },
+            dismiss: { _ in
+                interfaceInteraction?.updateTextInputStateAndMode { _, inputMode in
+                    return (ChatTextInputState(inputText: NSAttributedString(string: "")), inputMode)
+                }
+            }
+        )))
+    }
+    
     if let editMessage = chatPresentationInterfaceState.interfaceState.editMessage, chatPresentationInterfaceState.interfaceState.postSuggestionState == nil {
         if let editingUrlPreview = chatPresentationInterfaceState.editingUrlPreview, !editMessage.disableUrlPreviews.contains(editingUrlPreview.url) {
             var previousTapTimestamp: Double?
