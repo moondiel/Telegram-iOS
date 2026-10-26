@@ -19,6 +19,7 @@ import Markdown
 import TextFormat
 import TelegramPresentationData
 import AlertComponent
+import ChannelDrafts
 
 func textInputAccessoryPanel(
     context: AccountContext,
@@ -63,6 +64,24 @@ func textInputAccessoryPanel(
                 },
                 dismiss: { _ in
                     interfaceInteraction?.dismissUrlPreview()
+                }
+            )))
+        }
+        
+        if case let .customChatContents(customChatContents) = chatPresentationInterfaceState.subject, let draftsContents = customChatContents as? ChannelDraftsChatContents {
+            // Channel Drafts: the edited draft is not a stored message, so the header shows its text directly.
+            return AnyComponentWithIdentity(id: "edit", component: AnyComponent(ChatInputMessageAccessoryPanel(
+                context: context,
+                contents: .custom(ChatInputMessageAccessoryPanel.Contents.Custom(
+                    id: AnyHashable(editMessage.messageId),
+                    title: chatPresentationInterfaceState.strings.ChannelDrafts_EditPanelTitle,
+                    text: draftsContents.draft(messageId: editMessage.messageId)?.text ?? ""
+                )),
+                chatPeerId: nil,
+                action: { _ in
+                },
+                dismiss: { _ in
+                    interfaceInteraction?.setupEditMessage(nil, { _ in })
                 }
             )))
         }

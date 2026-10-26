@@ -1863,6 +1863,9 @@ extension ChatControllerImpl {
             self.updateChatPresentationInterfaceState(transition: transition, interactive: true, { $0.updatedInterfaceState { $0.withoutSelectionState() } })
         }, deleteSelectedMessages: { [weak self] sourceView in
             if let strongSelf = self {
+                if case let .customChatContents(customChatContents) = strongSelf.presentationInterfaceState.subject, strongSelf.deleteSelectedChannelDrafts(contents: customChatContents) {
+                    return
+                }
                 if let messageIds = strongSelf.presentationInterfaceState.interfaceState.selectionState?.selectedIds, !messageIds.isEmpty {
                     strongSelf.messageContextDisposable.set((strongSelf.context.sharedContext.chatAvailableMessageActions(engine: strongSelf.context.engine, accountPeerId: strongSelf.context.account.peerId, messageIds: messageIds, keepUpdated: false)
                     |> deliverOnMainQueue).startStrict(next: { actions in
@@ -2192,6 +2195,9 @@ extension ChatControllerImpl {
             strongSelf.mediaRecordingModeTooltipController?.dismissImmediately()
         }, editMessage: { [weak self] in
             guard let strongSelf = self, let editMessage = strongSelf.presentationInterfaceState.interfaceState.editMessage else {
+                return
+            }
+            if case let .customChatContents(customChatContents) = strongSelf.presentationInterfaceState.subject, strongSelf.commitChannelDraftEdit(contents: customChatContents) {
                 return
             }
             

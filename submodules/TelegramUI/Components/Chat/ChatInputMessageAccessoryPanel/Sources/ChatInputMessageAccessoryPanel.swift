@@ -214,11 +214,30 @@ public final class ChatInputMessageAccessoryPanel: Component {
             }
         }
 
+        /// A header with a fixed title and text that is not backed by a stored message
+        /// (Channel Drafts: "Edit Draft" and the linked "Draft").
+        public final class Custom: Equatable {
+            public let id: AnyHashable
+            public let title: String
+            public let text: String
+            
+            public init(id: AnyHashable, title: String, text: String) {
+                self.id = id
+                self.title = title
+                self.text = text
+            }
+            
+            public static func ==(lhs: Custom, rhs: Custom) -> Bool {
+                return lhs.id == rhs.id && lhs.title == rhs.title && lhs.text == rhs.text
+            }
+        }
+
         case reply(Reply)
         case edit(Edit)
         case forward(Forward)
         case linkPreview(LinkPreview)
         case suggestPost(SuggestPost)
+        case custom(Custom)
     }
     
     let context: AccountContext
@@ -379,7 +398,7 @@ public final class ChatInputMessageAccessoryPanel: Component {
                     messageIds = [reply.id]
                 case let .forward(forward):
                     messageIds = forward.messageIds
-                case .linkPreview, .suggestPost:
+                case .linkPreview, .suggestPost, .custom:
                     messageIds = []
                 }
                 return messageIds
@@ -768,6 +787,9 @@ public final class ChatInputMessageAccessoryPanel: Component {
                 
                 titleText = [.text(NSAttributedString(string: authorName, font: Font.medium(14.0), textColor: environment.theme.chat.inputPanel.panelControlAccentColor))]
                 textString = NSAttributedString(string: text, font: Font.regular(14.0), textColor: environment.theme.chat.inputPanel.primaryTextColor)
+            case let .custom(custom):
+                titleText = [.text(NSAttributedString(string: custom.title, font: Font.medium(14.0), textColor: environment.theme.chat.inputPanel.panelControlAccentColor))]
+                textString = NSAttributedString(string: custom.text, font: Font.regular(14.0), textColor: environment.theme.chat.inputPanel.primaryTextColor)
             case let .suggestPost(suggestPost):
                 if suggestPost.state.editingOriginalMessageId != nil {
                     titleText.append(.text(NSAttributedString(string: environment.strings.Chat_PostSuggestion_Suggest_InputEditTitle, font: Font.medium(14.0), textColor: environment.theme.chat.inputPanel.panelControlAccentColor)))
