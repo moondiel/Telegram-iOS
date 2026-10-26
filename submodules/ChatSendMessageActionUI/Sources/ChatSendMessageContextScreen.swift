@@ -558,7 +558,7 @@ final class ChatSendMessageContextScreenComponent: Component {
                         id: AnyHashable("saveDraft"),
                         text: environment.strings.Conversation_SendMessage_SaveDraft,
                         icon: { theme in
-                            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/File"), color: theme.contextMenu.primaryColor)
+                            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/SaveDraft"), color: theme.contextMenu.primaryColor)
                         }, action: { [weak self] _, _ in
                             guard let self else {
                                 return
