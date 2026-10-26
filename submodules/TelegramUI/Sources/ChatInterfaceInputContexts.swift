@@ -210,6 +210,9 @@ func inputTextPanelStateForChatPresentationInterfaceState(_ chatPresentationInte
                 if isTextEmpty && chatPresentationInterfaceState.hasScheduledMessages && !hasForward {
                     accessoryItems.append(.scheduledMessages)
                 }
+                if isTextEmpty && chatPresentationInterfaceState.channelDrafts.isAvailable && chatPresentationInterfaceState.channelDrafts.hasDrafts && !hasForward {
+                    accessoryItems.append(.channelDrafts)
+                }
                     
                 var stickersEnabled = true
                 var stickersAreEmoji = !isTextEmpty

@@ -5800,6 +5800,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                     self.interfaceInteraction?.setupMessageAutoremoveTimeout()
                 case .scheduledMessages:
                     self.interfaceInteraction?.openScheduledMessages()
+                case .channelDrafts:
+                    self.interfaceInteraction?.openChannelDrafts()
                 case .gift:
                     self.interfaceInteraction?.openPremiumGift()
                 case .suggestPost:

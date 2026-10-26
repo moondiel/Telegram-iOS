@@ -170,6 +170,8 @@ final class AccessoryItemIconButton: HighlightTrackingButton, GlassBackgroundVie
                 }
             case .scheduledMessages:
                 return (PresentationResourcesChat.chatInputTextFieldScheduleImage(theme), nil, strings.VoiceOver_ScheduledMessages, 1.0, UIEdgeInsets())
+            case .channelDrafts:
+                return (PresentationResourcesChat.chatInputTextFieldChannelDraftsImage(theme), nil, strings.VoiceOver_ChannelDrafts, 1.0, UIEdgeInsets())
             case .gift:
                 return (PresentationResourcesChat.chatInputTextFieldGiftImage(theme), nil, strings.VoiceOver_GiftPremium, 1.0, UIEdgeInsets())
         }
@@ -177,7 +179,7 @@ final class AccessoryItemIconButton: HighlightTrackingButton, GlassBackgroundVie
     
     private static func calculateWidth(item: ChatTextInputAccessoryItem, image: UIImage?, text: String?, strings: PresentationStrings) -> CGFloat {
         switch item {
-        case .input, .botInput, .silentPost, .commands, .scheduledMessages, .gift, .suggestPost:
+        case .input, .botInput, .silentPost, .commands, .scheduledMessages, .channelDrafts, .gift, .suggestPost:
             return 32.0
         case let .messageAutoremoveTimeout(timeout):
             var imageWidth = (image?.size.width ?? 0.0) + CGFloat(8.0)

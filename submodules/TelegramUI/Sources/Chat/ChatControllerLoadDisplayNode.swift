@@ -997,6 +997,8 @@ extension ChatControllerImpl {
             }, messageCorrelationId)
         }
         
+        self.startChannelDraftsObservation()
+        
         self.chatDisplayNode.sendMessages = { [weak self] messages, silentPosting, scheduleTime, repeatPeriod, isAnyMessageTextPartitioned, postpone in
             guard let strongSelf = self else {
                 return
@@ -1055,6 +1057,7 @@ extension ChatControllerImpl {
                 
                 let effectiveSilentPosting = silentPosting ?? strongSelf.presentationInterfaceState.interfaceState.silentPosting
                 let transformedMessages = strongSelf.transformEnqueueMessages(messages, silentPosting: effectiveSilentPosting, scheduleTime: scheduleTime, repeatPeriod: repeatPeriod, postpone: postpone)
+                strongSelf.channelDraftsDidSendMessages(transformedMessages)
                 
                 var forwardedMessages: [[EnqueueMessage]] = []
                 var forwardSourcePeerIds = Set<PeerId>()
@@ -4012,6 +4015,8 @@ extension ChatControllerImpl {
             if let strongSelf = self {
                 strongSelf.openScheduledMessages()
             }
+        }, openChannelDrafts: { [weak self] in
+            self?.openChannelDrafts()
         }, displaySearchResultsTooltip: { [weak self] node, nodeRect in
             if let strongSelf = self {
                 strongSelf.searchResultsTooltipController?.dismiss()

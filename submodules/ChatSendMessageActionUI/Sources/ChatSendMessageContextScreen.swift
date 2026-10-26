@@ -553,6 +553,22 @@ final class ChatSendMessageContextScreenComponent: Component {
             }
             switch component.params {
             case let.sendMessage(sendMessage):
+                if let saveDraft = sendMessage.saveDraft {
+                    items.append(.action(ContextMenuActionItem(
+                        id: AnyHashable("saveDraft"),
+                        text: environment.strings.Conversation_SendMessage_SaveDraft,
+                        icon: { theme in
+                            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/File"), color: theme.contextMenu.primaryColor)
+                        }, action: { [weak self] _, _ in
+                            guard let self else {
+                                return
+                            }
+                            self.animateOutToEmpty = true
+                            saveDraft()
+                            self.environment?.controller()?.dismiss()
+                        }
+                    )))
+                }
                 if !reminders {
                     items.append(.action(ContextMenuActionItem(
                         id: AnyHashable("silent"),

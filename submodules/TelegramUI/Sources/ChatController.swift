@@ -332,6 +332,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     let messageActionCallbackDisposable = MetaDisposable()
     let messageActionUrlAuthDisposable = MetaDisposable()
     let editMessageDisposable = MetaDisposable()
+    let channelDraftsDisposable = MetaDisposable()
     let editMessageErrorsDisposable = MetaDisposable()
     let enqueueMediaMessageDisposable = MetaDisposable()
     var resolvePeerByNameDisposable: MetaDisposable?
@@ -7098,6 +7099,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         self.messageActionCallbackDisposable.dispose()
         self.messageActionUrlAuthDisposable.dispose()
         self.editMessageDisposable.dispose()
+        self.channelDraftsDisposable.dispose()
         self.editMessageErrorsDisposable.dispose()
         self.enqueueMediaMessageDisposable.dispose()
         self.resolvePeerByNameDisposable?.dispose()

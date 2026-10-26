@@ -597,6 +597,12 @@ public struct PresentationResourcesChat {
         })
     }
     
+    public static func chatInputTextFieldChannelDraftsImage(_ theme: PresentationTheme) -> UIImage? {
+        return theme.image(PresentationResourceKey.chatInputTextFieldChannelDraftsImage.rawValue, { theme in
+            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Input/Text/AccessoryIconDrafts"), color: .white)?.withRenderingMode(.alwaysTemplate)
+        })
+    }
+    
     public static func chatInputTextFieldGiftImage(_ theme: PresentationTheme) -> UIImage? {
         return theme.image(PresentationResourceKey.chatInputTextFieldGiftImage.rawValue, { theme in
             return generateTintedImage(image: UIImage(bundleImageName: "Chat/Input/Text/AccessoryIconGift"), color: .white)?.withRenderingMode(.alwaysTemplate)

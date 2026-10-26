@@ -129,6 +129,8 @@ func updateChatPresentationInterfaceStateImpl(
         }
     }
     
+    temporaryChatPresentationInterfaceState = updatedChannelDraftsState(temporaryChatPresentationInterfaceState)
+    
     let inputTextPanelState = inputTextPanelStateForChatPresentationInterfaceState(temporaryChatPresentationInterfaceState, context: selfController.context, controller: selfController)
     var updatedChatPresentationInterfaceState = temporaryChatPresentationInterfaceState.updatedInputTextPanelState({ _ in return inputTextPanelState })
     

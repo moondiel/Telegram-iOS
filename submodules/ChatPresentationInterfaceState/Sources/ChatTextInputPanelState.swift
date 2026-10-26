@@ -10,6 +10,7 @@ public enum ChatTextInputAccessoryItem: Equatable {
         case silentPost
         case messageAutoremoveTimeout
         case scheduledMessages
+        case channelDrafts
         case gift
         case suggestPost
     }
@@ -27,6 +28,7 @@ public enum ChatTextInputAccessoryItem: Equatable {
     case silentPost(Bool)
     case messageAutoremoveTimeout(Int32?)
     case scheduledMessages
+    case channelDrafts
     case gift
     case suggestPost
     
@@ -44,6 +46,8 @@ public enum ChatTextInputAccessoryItem: Equatable {
             return .messageAutoremoveTimeout
         case .scheduledMessages:
             return .scheduledMessages
+        case .channelDrafts:
+            return .channelDrafts
         case .gift:
             return .gift
         case .suggestPost:
