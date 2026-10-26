@@ -177,62 +177,68 @@ extension ChatControllerImpl {
         return true
     }
 
-    /// Delete in the selection bar of the Drafts screen: confirms with an action sheet, then
-    /// deletes the selected drafts.
-    func deleteSelectedChannelDrafts(contents: ChatCustomContentsProtocol) -> Bool {
+    /// Delete in the selection bar of the Drafts screen. Like Scheduled Messages: a menu over the
+    /// button with one destructive "Delete Drafts" item.
+    func deleteSelectedChannelDrafts(contents: ChatCustomContentsProtocol, sourceView: UIView?) -> Bool {
         guard case .channelDrafts = contents.kind else {
             return false
         }
-        guard let selectedIds = self.presentationInterfaceState.interfaceState.selectionState?.selectedIds, !selectedIds.isEmpty else {
+        guard let selectedIds = self.presentationInterfaceState.interfaceState.selectionState?.selectedIds, !selectedIds.isEmpty, let sourceView else {
             return true
         }
-        let presentationData = self.presentationData
-        let actionSheet = ActionSheetController(presentationData: presentationData)
-        actionSheet.setItemGroups([
-            ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: presentationData.strings.ChannelDrafts_DeleteDrafts(Int32(selectedIds.count)), color: .destructive, action: { [weak self, weak actionSheet, weak contents] in
-                    actionSheet?.dismissAnimated()
-                    contents?.deleteMessages(ids: Array(selectedIds))
-                    self?.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
-                        return state.updatedInterfaceState { $0.withoutSelectionState() }
-                    })
-                })
-            ]),
-            ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
-                    actionSheet?.dismissAnimated()
-                })
-            ])
-        ])
+        let item = channelDraftsDeleteConfirmationItem(messageIds: selectedIds, contents: contents, strings: self.presentationData.strings, completed: { [weak self] in
+            self?.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
+                return state.updatedInterfaceState { $0.withoutSelectionState() }
+            })
+        })
+        let contextController = makeContextController(
+            presentationData: self.presentationData,
+            source: .reference(ChatControllerContextReferenceContentSource(controller: self, sourceView: sourceView, insets: .zero, actionsOnTop: true)),
+            items: .single(ContextController.Items(content: .list([item]))),
+            gesture: nil
+        )
         self.chatDisplayNode.dismissInput()
-        self.present(actionSheet, in: .window(.root))
+        self.presentInGlobalOverlay(contextController)
         return true
     }
 }
 
-/// Long-press menu of a draft on the Drafts screen: Use Draft (text) or Send Now (media) · Copy ·
-/// Edit · Delete · Select. Telegram's own menu items, strings and icons.
+/// The confirmation Scheduled Messages shows for Delete ("Delete Scheduled Message(s)"), with the
+/// Drafts strings. Drafts are deleted at once, without an undo toast, as scheduled messages are.
+private func channelDraftsDeleteConfirmationItem(messageIds: Set<EngineMessage.Id>, contents: ChatCustomContentsProtocol, strings: PresentationStrings, completed: @escaping () -> Void) -> ContextMenuItem {
+    let title = ChannelDraftsChatContents.draftCount(messageIds: messageIds) > 1 ? strings.ChannelDrafts_DeleteMany : strings.ChannelDrafts_Delete
+    return .action(ContextMenuActionItem(text: title, textColor: .destructive, icon: { _ in nil }, action: { [weak contents] _, f in
+        f(.dismissWithoutContent)
+        completed()
+        contents?.deleteMessages(ids: Array(messageIds))
+    }))
+}
+
+/// Long-press menu of a draft on the Drafts screen, in the order of Scheduled Messages:
+/// Send Now · Use Draft (text) · Copy · Edit · Delete · Select. Telegram's own menu items, strings
+/// and icons.
 func channelDraftContextMenuItems(message: EngineRawMessage, contents: ChatCustomContentsProtocol, strings: PresentationStrings, interfaceInteraction: ChatPanelInterfaceInteraction, controllerInteraction: ChatControllerInteraction) -> [ContextMenuItem] {
     guard let contents = contents as? ChannelDraftsChatContents, let draft = contents.draft(messageId: message.id) else {
         return []
     }
+    let draftMessageIds = contents.messageIds(draft: draft)
     var items: [ContextMenuItem] = []
 
+    // Post it now, as it is (album, caption, entities), like Send Now in Scheduled Messages.
+    items.append(.action(ContextMenuActionItem(text: strings.ScheduledMessages_SendNow, icon: { theme in
+        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Resend"), color: theme.actionSheet.primaryTextColor)
+    }, action: { [weak contents] _, f in
+        f(.dismissWithoutContent)
+        contents?.publish(draft)
+    })))
+
     if draft.media.isEmpty {
-        // Text: continue it in the channel composer.
+        // Text: continue it in the channel composer. Media cannot go into the composer.
         items.append(.action(ContextMenuActionItem(text: strings.ChannelDrafts_UseDraft, icon: { theme in
-            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Check"), color: theme.actionSheet.primaryTextColor)
+            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/UseDraft"), color: theme.actionSheet.primaryTextColor)
         }, action: { [weak contents] _, f in
             f(.dismissWithoutContent)
             contents?.useDraft?(draft)
-        })))
-    } else {
-        // Media cannot go into the composer: post it as it is, like Send Now in Scheduled Messages.
-        items.append(.action(ContextMenuActionItem(text: strings.ScheduledMessages_SendNow, icon: { theme in
-            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Resend"), color: theme.actionSheet.primaryTextColor)
-        }, action: { [weak contents] _, f in
-            f(.dismissWithoutContent)
-            contents?.publish(draft)
         })))
     }
 
@@ -251,24 +257,30 @@ func channelDraftContextMenuItems(message: EngineRawMessage, contents: ChatCusto
     items.append(.action(ContextMenuActionItem(text: strings.Conversation_MessageDialogEdit, icon: { theme in
         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
     }, action: { _, f in
-        interfaceInteraction.setupEditMessage(message.id, { transition in
+        interfaceInteraction.setupEditMessage(draftMessageIds.first ?? message.id, { transition in
             f(.custom(transition))
         })
     })))
 
+    // Delete swaps the menu for its confirmation, as in Scheduled Messages.
     items.append(.action(ContextMenuActionItem(text: strings.Conversation_ContextMenuDelete, textColor: .destructive, icon: { theme in
         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.actionSheet.destructiveActionTextColor)
-    }, action: { [weak contents] _, f in
-        f(.dismissWithoutContent)
-        contents?.deleteMessages(ids: [message.id])
+    }, action: { [weak contents] c, f in
+        guard let contents, let c else {
+            f(.dismissWithoutContent)
+            return
+        }
+        let item = channelDraftsDeleteConfirmationItem(messageIds: Set(draftMessageIds), contents: contents, strings: strings, completed: {})
+        c.setItems(.single(ContextController.Items(content: .list([item]))), minHeight: nil, animated: true)
     })))
 
     items.append(.separator)
 
+    // A draft is one post: Select takes all of its messages (every item of an album).
     items.append(.action(ContextMenuActionItem(text: strings.Conversation_ContextMenuSelect, icon: { theme in
         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Select"), color: theme.actionSheet.primaryTextColor)
     }, action: { _, f in
-        interfaceInteraction.beginMessageSelection([message.id], { transition in
+        interfaceInteraction.beginMessageSelection(draftMessageIds, { transition in
             f(.custom(transition))
         })
     })))

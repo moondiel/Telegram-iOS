@@ -13,8 +13,10 @@ Channel admins can keep several drafts per broadcast channel:
 - The **Drafts screen** looks like Scheduled Messages: drafts are channel posts signed by the admin,
   with the same input panel (attachments, stickers, voice). Sending there creates a new draft:
   text, media, or an album with a caption.
-- Long-press a draft: **Use Draft · Copy · Edit · Delete · Select**. A draft with media offers
-  **Send Now** instead of Use Draft (media cannot go into the composer), like Scheduled Messages.
+- Long-press a draft: **Send Now · Use Draft · Copy · Edit · Delete · Select**, in the order of
+  Scheduled Messages. Use Draft is offered for text drafts only (media cannot go into the
+  composer). Delete, from the menu or the selection bar, confirms the way Scheduled Messages does
+  (one destructive "Delete Draft(s)" item in the menu); Select takes the whole draft.
 - **Use Draft** closes the screen and puts the text into the channel composer with a **Draft**
   header (like "Edit Message"). Save Draft then updates that draft; Send publishes the post and
   removes the draft; × in the header clears the composer and leaves the draft untouched.

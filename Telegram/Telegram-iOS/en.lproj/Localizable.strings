@@ -17114,5 +17114,5 @@ Error: %8$@";
 "ChannelDrafts.UseDraft" = "Use Draft";
 "ChannelDrafts.EditPanelTitle" = "Edit Draft";
 "ChannelDrafts.AttachedPanelTitle" = "Draft";
-"ChannelDrafts.DeleteDrafts_1" = "Delete Draft";
-"ChannelDrafts.DeleteDrafts_any" = "Delete %@ Drafts";
+"ChannelDrafts.Delete" = "Delete Draft";
+"ChannelDrafts.DeleteMany" = "Delete Drafts";

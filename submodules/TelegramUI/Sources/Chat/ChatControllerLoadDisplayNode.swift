@@ -1863,7 +1863,7 @@ extension ChatControllerImpl {
             self.updateChatPresentationInterfaceState(transition: transition, interactive: true, { $0.updatedInterfaceState { $0.withoutSelectionState() } })
         }, deleteSelectedMessages: { [weak self] sourceView in
             if let strongSelf = self {
-                if case let .customChatContents(customChatContents) = strongSelf.presentationInterfaceState.subject, strongSelf.deleteSelectedChannelDrafts(contents: customChatContents) {
+                if case let .customChatContents(customChatContents) = strongSelf.presentationInterfaceState.subject, strongSelf.deleteSelectedChannelDrafts(contents: customChatContents, sourceView: sourceView) {
                     return
                 }
                 if let messageIds = strongSelf.presentationInterfaceState.interfaceState.selectionState?.selectedIds, !messageIds.isEmpty {

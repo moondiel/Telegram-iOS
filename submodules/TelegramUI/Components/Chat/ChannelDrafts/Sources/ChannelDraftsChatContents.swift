@@ -75,6 +75,19 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
         return self.drafts.first(where: { $0.id == draftId })
     }
 
+    /// Every message a draft is shown as: one, or one per album item. A draft is selected and
+    /// deleted as a whole.
+    public func messageIds(draft: ChannelDraft) -> [EngineMessage.Id] {
+        return (0 ..< max(1, draft.media.count)).map { index in
+            return ChannelDraftsChatContents.messageId(channelId: self.peerId, draftId: draft.id, index: index)
+        }
+    }
+
+    /// The number of drafts the given messages belong to.
+    public static func draftCount(messageIds: Set<EngineMessage.Id>) -> Int {
+        return Set(messageIds.map(ChannelDraftsChatContents.draftId(messageId:))).count
+    }
+
     // MARK: History
 
     /// Drafts as channel posts: authored by the channel, signed with the admin's name, marked
