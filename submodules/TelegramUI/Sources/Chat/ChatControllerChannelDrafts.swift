@@ -117,11 +117,17 @@ extension ChatControllerImpl {
         guard let content = self.channelDraftContentFromComposer() ?? (attachedDraft?.media.isEmpty == false ? (text: "", entities: []) : nil) else {
             return
         }
+        // Content the entities cannot express (headings, lists, tables...) is kept rich, as sending
+        // it would be.
+        let composeContent = (self.chatDisplayNode.textInputPanelNode?.inputTextState ?? self.presentationInterfaceState.interfaceState.composeInputState).content
+        let richText: Data? = composeContent.isEntityExpressible() ? nil : ChannelDraft.encodeRichText(RichTextMessageAttribute(instantPage: instantPage(from: composeContent), fullInstantPage: nil))
+        let text = richText == nil ? content.text : ""
+        let entities = richText == nil ? content.entities : []
         let engine = self.context.engine
         if let attachedDraft {
-            let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: attachedDraft.id, text: content.text, entities: content.entities).startStandalone()
+            let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: attachedDraft.id, text: text, entities: entities, richText: richText).startStandalone()
         } else {
-            let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, text: content.text, entities: content.entities).startStandalone()
+            let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, drafts: [ChannelDraftsStore.NewDraft(text: text, entities: entities, richText: richText)]).startStandalone()
         }
 
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
@@ -193,13 +199,21 @@ extension ChatControllerImpl {
     /// header); its media goes with the link and is posted by Send or Schedule, as editing a post
     /// with media keeps the media out of the text field. The draft stays in the list until then.
     func useChannelDraft(_ draft: ChannelDraft) {
-        let inputText = chatInputStateStringWithAppliedEntities(draft.text, entities: draft.entities)
+        // Rich content goes in with its structure, the same InstantPage → composer hop editing a
+        // rich message uses.
+        let inputState: ChatTextInputState
+        if let richText = draft.decodedRichText {
+            let content = chatInputContent(fromInstantPage: richText.instantPage)
+            inputState = ChatTextInputState(content: content, selectionRange: content.length ..< content.length)
+        } else {
+            inputState = ChatTextInputState(inputText: chatInputStateStringWithAppliedEntities(draft.text, entities: draft.entities))
+        }
         let media = draft.decodedMedia
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
             var channelDrafts = state.channelDrafts
-            channelDrafts.attachedDraft = ChatChannelDraftsState.AttachedDraft(id: draft.id, text: draft.text, media: media)
+            channelDrafts.attachedDraft = ChatChannelDraftsState.AttachedDraft(id: draft.id, text: draft.decodedRichText == nil ? draft.text : inputState.inputText.string, media: media)
             return state.updatedInterfaceState { interfaceState in
-                return interfaceState.withUpdatedComposeInputState(ChatTextInputState(inputText: inputText))
+                return interfaceState.withUpdatedComposeInputState(inputState)
             }.updatedInputMode { _ in
                 return .text
             }.updatedChannelDrafts(channelDrafts)
@@ -207,15 +221,30 @@ extension ChatControllerImpl {
         self.chatDisplayNode.ensureInputViewFocused()
     }
 
-    /// ✓ in the "Edit Draft" header on the Drafts screen. The draft is not a stored message, so the
-    /// regular edit path (which looks the message up in the database) is not used.
+    /// ✓ in the "Edit Draft" header on the Drafts screen, and a replacement photo or video picked
+    /// with the attachment button while editing (Telegram's own replace-media flow commits the edit
+    /// with the picked media in `editMessageState.mediaReference`). The draft is not a stored
+    /// message, so the regular edit path (which edits it on the server) is not used.
     func commitChannelDraftEdit(contents: ChatCustomContentsProtocol) -> Bool {
         guard case .channelDrafts = contents.kind, let editMessage = self.presentationInterfaceState.interfaceState.editMessage else {
             return false
         }
         let text = trimChatInputText(convertMarkdownToAttributes(expandedInputStateAttributedString(editMessage.inputState.inputText)))
         let entities = generateTextEntities(text.string, enabledTypes: .all, currentEntities: generateChatInputTextEntities(text))
-        contents.editMessage(id: editMessage.messageId, text: text.string, media: .keep, entities: entities.isEmpty ? nil : TextEntitiesMessageAttribute(entities: entities), webpagePreviewAttribute: nil, disableUrlPreview: true)
+        let media: RequestEditMessageMedia
+        if let mediaReference = self.presentationInterfaceState.editMessageState?.mediaReference {
+            media = .update(mediaReference)
+        } else {
+            media = .keep
+        }
+        // As the regular edit: content the entities cannot express stays rich.
+        let content = editMessage.inputState.content
+        let richText: RichTextMessageAttribute? = content.isEntityExpressible() ? nil : RichTextMessageAttribute(instantPage: instantPage(from: content), fullInstantPage: nil)
+        if let contents = contents as? ChannelDraftsChatContents {
+            contents.editMessage(id: editMessage.messageId, text: text.string, media: media, entities: entities.isEmpty ? nil : TextEntitiesMessageAttribute(entities: entities), richText: richText)
+        } else {
+            contents.editMessage(id: editMessage.messageId, text: text.string, media: media, entities: entities.isEmpty ? nil : TextEntitiesMessageAttribute(entities: entities), webpagePreviewAttribute: nil, disableUrlPreview: true)
+        }
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
             return state.updatedInterfaceState { $0.withUpdatedEditMessage(nil) }.updatedEditMessageState(nil)
         })

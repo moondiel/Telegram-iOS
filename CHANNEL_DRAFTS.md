@@ -26,7 +26,12 @@ Channel admins can keep several drafts per broadcast channel:
   when there is no caption. Send or Schedule publishes a normal post (an album for several items,
   the composer text as the caption) and removes the draft; Save Draft updates it; × in the header
   unlinks it and leaves it untouched.
-- **Edit** edits the draft in place with the usual edit header and ✓.
+- **Edit** edits the draft in place with the usual edit header and ✓; while editing, the
+  attachment button replaces the photo or video, through Telegram's own replace-media flow.
+- Everything the chat can send is a draft on the Drafts screen: text, rich text (headings, lists,
+  tables, the article editor), photos, videos, albums, files, voice messages (also after review),
+  round videos, stickers, polls, locations, contacts. The attach screen's send button shows the
+  Save Draft glyph, as the input's does.
 
 The working prototype (UIKit, outside this repo) is the reference for behaviour, not for code.
 

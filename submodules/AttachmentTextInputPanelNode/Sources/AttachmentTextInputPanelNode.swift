@@ -275,6 +275,8 @@ public class AttachmentTextInputPanelNode: ASDisplayNode, TGCaptionPanelView, AS
     let textInputBackgroundImageNode: ASImageNode
     private var transparentTextInputBackgroundImage: UIImage?
     private let actionButtons: AttachmentTextInputActionButtonsNode
+    /// Channel Drafts: Send saves a draft (Save Draft glyph, no send options).
+    private let isChannelDrafts: Bool
     private let counterTextNode: ImmediateTextNode
 
     private var aiButton: (button: HighlightTrackingButton, icon: UIImageView)?
@@ -419,7 +421,7 @@ public class AttachmentTextInputPanelNode: ASDisplayNode, TGCaptionPanelView, AS
 
     private var maxCaptionLength: Int32?
 
-    public init(context: AccountContext, presentationInterfaceState: ChatPresentationInterfaceState, glass: Bool = false, isCaption: Bool = false, isAttachment: Bool = false, isScheduledMessages: Bool = false, customEmojiAvailable: Bool, presentController: @escaping (ViewController) -> Void, presentInGlobalOverlay: @escaping (ViewController) -> Void, getNavigationController: @escaping () -> NavigationController?, inputPanelBottomSpacing: CGFloat? = nil) {
+    public init(context: AccountContext, presentationInterfaceState: ChatPresentationInterfaceState, glass: Bool = false, isCaption: Bool = false, isAttachment: Bool = false, isScheduledMessages: Bool = false, isChannelDrafts: Bool = false, customEmojiAvailable: Bool, presentController: @escaping (ViewController) -> Void, presentInGlobalOverlay: @escaping (ViewController) -> Void, getNavigationController: @escaping () -> NavigationController?, inputPanelBottomSpacing: CGFloat? = nil) {
         self.context = context
         self.presentationInterfaceState = presentationInterfaceState
         self.glass = glass
@@ -468,9 +470,11 @@ public class AttachmentTextInputPanelNode: ASDisplayNode, TGCaptionPanelView, AS
         self.counterTextNode = ImmediateTextNode()
         self.counterTextNode.textAlignment = .center
 
+        self.isChannelDrafts = isChannelDrafts
+
         super.init()
 
-        if !isScheduledMessages {
+        if !isScheduledMessages && !isChannelDrafts {
             self.actionButtons.sendButtonLongPressed = { [weak self] node, gesture in
                 self?.interfaceInteraction?.displaySendMessageOptions(node, gesture)
             }
@@ -1007,6 +1011,8 @@ public class AttachmentTextInputPanelNode: ASDisplayNode, TGCaptionPanelView, AS
                 self.actionButtons.sendButtonHasApplyIcon = sendButtonHasApplyIcon
                 if self.actionButtons.sendButtonHasApplyIcon {
                     self.actionButtons.setImage(PresentationResourcesChat.chatInputPanelApplyIconImage(interfaceState.theme))
+                } else if self.isChannelDrafts {
+                    self.actionButtons.setImage(PresentationResourcesChat.chatInputPanelSaveDraftIconImage(interfaceState.theme))
                 } else {
                     self.actionButtons.setImage(PresentationResourcesChat.chatInputPanelSendIconImage(interfaceState.theme))
                 }
@@ -1939,6 +1945,8 @@ public class AttachmentTextInputPanelNode: ASDisplayNode, TGCaptionPanelView, AS
                 } else {
                     if case .scheduledMessages = interfaceState.subject {
                         self.actionButtons.setImage(PresentationResourcesChat.chatInputPanelScheduleButtonImage(interfaceState.theme))
+                    } else if self.isChannelDrafts {
+                        self.actionButtons.setImage(PresentationResourcesChat.chatInputPanelSaveDraftIconImage(interfaceState.theme))
                     } else {
                         self.actionButtons.setImage(PresentationResourcesChat.chatInputPanelSendIconImage(interfaceState.theme))
                     }

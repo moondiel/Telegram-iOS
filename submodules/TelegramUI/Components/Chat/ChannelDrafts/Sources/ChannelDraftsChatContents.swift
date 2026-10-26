@@ -132,6 +132,9 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
                 if isCaptionItem && !draft.entities.isEmpty {
                     attributes.append(TextEntitiesMessageAttribute(entities: draft.entities))
                 }
+                if isCaptionItem, let richText = draft.decodedRichText {
+                    attributes.append(richText)
+                }
                 attributes.append(AuthorSignatureMessageAttribute(signature: signature))
                 if let editDate = draft.editDate {
                     attributes.append(EditedMessageAttribute(date: editDate, isHidden: false))
@@ -206,18 +209,21 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     /// Send on the Drafts screen saves a new draft: text, media, or an album with a caption
     /// (messages sharing a grouping key become one draft).
     public func enqueueMessages(messages: [EnqueueMessage]) {
-        var groups: [(key: Int64?, correlationId: Int64?, items: [(text: String, entities: [MessageTextEntity], media: EngineRawMedia?)])] = []
+        var groups: [(key: Int64?, correlationId: Int64?, items: [(text: String, entities: [MessageTextEntity], richText: RichTextMessageAttribute?, media: EngineRawMedia?)])] = []
         for message in messages {
             guard case let .message(text, attributes, _, mediaReference, _, _, _, localGroupingKey, correlationId, _) = message else {
                 continue
             }
             var entities: [MessageTextEntity] = []
+            var richText: RichTextMessageAttribute?
             for attribute in attributes {
                 if let attribute = attribute as? TextEntitiesMessageAttribute {
                     entities = attribute.entities
+                } else if let attribute = attribute as? RichTextMessageAttribute {
+                    richText = attribute
                 }
             }
-            let item = (text: text, entities: entities, media: mediaReference?.media)
+            let item = (text: text, entities: entities, richText: richText, media: mediaReference?.media)
             if let localGroupingKey, let index = groups.firstIndex(where: { $0.key == localGroupingKey }) {
                 groups[index].items.append(item)
                 if let correlationId {
@@ -231,11 +237,12 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
         for group in groups {
             let caption = group.items.first(where: { !$0.text.isEmpty })
             let media = group.items.compactMap(\.media).map(ChannelDraft.encodeMedia)
+            let richText = group.items.compactMap(\.richText).first.map(ChannelDraft.encodeRichText)
             let text = caption?.text ?? ""
-            if text.isEmpty && media.isEmpty {
+            if text.isEmpty && media.isEmpty && richText == nil {
                 continue
             }
-            newDrafts.append(ChannelDraftsStore.NewDraft(text: text, entities: caption?.entities ?? [], media: media))
+            newDrafts.append(ChannelDraftsStore.NewDraft(text: text, entities: caption?.entities ?? [], media: media, richText: richText))
             self.pendingCorrelationIds.append(group.correlationId)
         }
         if newDrafts.isEmpty {
@@ -261,16 +268,29 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
         self.write(ChannelDraftsStore.delete(engine: self.context.engine, peerId: self.peerId, ids: draftIds))
     }
 
-    /// ✓ in the "Edit Draft" header. Saving an empty text deletes a text-only draft; a draft with
-    /// media keeps its media and loses its caption.
+    /// ✓ in the "Edit Draft" header, or a photo or video picked to replace the one being edited.
+    /// Saving an empty text deletes a text-only draft; a draft with media keeps its media and
+    /// loses its caption.
     public func editMessage(id: EngineMessage.Id, text: String, media: RequestEditMessageMedia, entities: TextEntitiesMessageAttribute?, webpagePreviewAttribute: WebpagePreviewMessageAttribute?, disableUrlPreview: Bool) {
+        self.editMessage(id: id, text: text, media: media, entities: entities, richText: nil)
+    }
+
+    /// Edit with rich content: `richText` is the edited content when the composer cannot express it
+    /// as text and entities (it then replaces the text), `nil` when it can.
+    public func editMessage(id: EngineMessage.Id, text: String, media: RequestEditMessageMedia, entities: TextEntitiesMessageAttribute?, richText: RichTextMessageAttribute?) {
         guard id.peerId == self.peerId, let draft = self.draft(messageId: id) else {
             return
         }
-        if text.isEmpty && draft.media.isEmpty {
+        var replacingMedia: (index: Int, media: Data)?
+        if case let .update(mediaReference) = media {
+            // The item of the album this message shows.
+            let index = Int(id.id - draft.id * ChannelDraftsChatContents.messagesPerDraft)
+            replacingMedia = (index, ChannelDraft.encodeMedia(mediaReference.media))
+        }
+        if text.isEmpty && richText == nil && draft.media.isEmpty && replacingMedia == nil {
             self.write(ChannelDraftsStore.delete(engine: self.context.engine, peerId: self.peerId, ids: Set([draft.id])))
         } else {
-            self.write(ChannelDraftsStore.update(engine: self.context.engine, peerId: self.peerId, id: draft.id, text: text, entities: entities?.entities ?? []))
+            self.write(ChannelDraftsStore.update(engine: self.context.engine, peerId: self.peerId, id: draft.id, text: richText == nil ? text : "", entities: richText == nil ? (entities?.entities ?? []) : [], richText: richText.map(ChannelDraft.encodeRichText), replacingMedia: replacingMedia))
         }
     }
 

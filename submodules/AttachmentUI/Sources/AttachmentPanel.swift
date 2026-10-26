@@ -1039,6 +1039,7 @@ final class AttachmentPanel: ASDisplayNode, ASScrollViewDelegate, ASGestureRecog
     private weak var controller: AttachmentController?
     private let context: AccountContext
     private let isScheduledMessages: Bool
+    private let isChannelDrafts: Bool
     // While a message is being edited the result replaces that message's media, so the long-press
     // send options (schedule, silent, effects) do not apply and the sheet is never offered.
     private let isEditingMessage: Bool
@@ -1149,13 +1150,14 @@ final class AttachmentPanel: ASDisplayNode, ASScrollViewDelegate, ASGestureRecog
     var onMainButtonPressed: () -> Void = { }
     var onSecondaryButtonPressed: () -> Void = { }
 
-    init(controller: AttachmentController, style: Style, context: AccountContext, chatLocation: ChatLocation?, isScheduledMessages: Bool, isEditingMessage: Bool = false, customEmojiAvailable: Bool, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?) {
+    init(controller: AttachmentController, style: Style, context: AccountContext, chatLocation: ChatLocation?, isScheduledMessages: Bool, isChannelDrafts: Bool = false, isEditingMessage: Bool = false, customEmojiAvailable: Bool, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?) {
         self.controller = controller
         self.context = context
         self.panelStyle = style
         self.updatedPresentationData = updatedPresentationData
         self.presentationData = updatedPresentationData?.initial ?? context.sharedContext.currentPresentationData.with { $0 }
         self.isScheduledMessages = isScheduledMessages
+        self.isChannelDrafts = isChannelDrafts
         self.isEditingMessage = isEditingMessage
         self.customEmojiAvailable = customEmojiAvailable
 
@@ -2326,7 +2328,7 @@ final class AttachmentPanel: ASDisplayNode, ASScrollViewDelegate, ASGestureRecog
     private func loadTextNodeIfNeeded() {
         if let _ = self.textInputPanelNode {
         } else {
-            let textInputPanelNode = AttachmentTextInputPanelNode(context: self.context, presentationInterfaceState: self.presentationInterfaceState, glass: self.panelStyle == .glass, isAttachment: true, isScheduledMessages: self.isScheduledMessages, customEmojiAvailable: self.customEmojiAvailable, presentController: { [weak self] c in
+            let textInputPanelNode = AttachmentTextInputPanelNode(context: self.context, presentationInterfaceState: self.presentationInterfaceState, glass: self.panelStyle == .glass, isAttachment: true, isScheduledMessages: self.isScheduledMessages, isChannelDrafts: self.isChannelDrafts, customEmojiAvailable: self.customEmojiAvailable, presentController: { [weak self] c in
                 if let strongSelf = self {
                     strongSelf.present(c)
                 }

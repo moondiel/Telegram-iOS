@@ -751,6 +751,11 @@ extension ChatControllerImpl {
             let transformedMessages = self.transformEnqueueMessages(messages, silentPosting: effectiveSilentPosting, scheduleTime: scheduleTime, repeatPeriod: repeatPeriod, postpone: postpone)
             
             guard let peerId = self.chatLocation.peerId else {
+                // Custom chat contents (Channel Drafts): a reviewed voice message goes to the
+                // contents, as every other send on that screen does.
+                if case .customChatContents = self.subject {
+                    self.sendMessages(transformedMessages)
+                }
                 return
             }
             

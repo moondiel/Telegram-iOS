@@ -16,16 +16,20 @@ public struct ChannelDraft: Codable, Equatable {
     /// Attached media (photos, videos, files, voice, a sticker), PostboxCoding-encoded. Several
     /// items form an album. Read with `ChannelDraft.decodedMedia`.
     public var media: [Data]
+    /// Rich content (headings, lists, tables...: what the composer sends as a rich message), as an
+    /// encoded `RichTextMessageAttribute`. `text` is empty then. Read with `decodedRichText`.
+    public var richText: Data?
     /// Creation time; drafts are listed in creation order, oldest first, like chat history.
     public let date: Int32
     /// Last edit time, `nil` until the draft is edited.
     public var editDate: Int32?
 
-    public init(id: Id, text: String, entities: [MessageTextEntity], media: [Data] = [], date: Int32, editDate: Int32?) {
+    public init(id: Id, text: String, entities: [MessageTextEntity], media: [Data] = [], richText: Data? = nil, date: Int32, editDate: Int32?) {
         self.id = id
         self.text = text
         self.entities = entities
         self.media = media
+        self.richText = richText
         self.date = date
         self.editDate = editDate
     }
@@ -35,6 +39,7 @@ public struct ChannelDraft: Codable, Equatable {
         case text
         case entities
         case media
+        case richText
         case date
         case editDate
     }
@@ -46,6 +51,7 @@ public struct ChannelDraft: Codable, Equatable {
         self.entities = try container.decode([MessageTextEntity].self, forKey: .entities)
         // Drafts saved before media support have no media.
         self.media = try container.decodeIfPresent([Data].self, forKey: .media) ?? []
+        self.richText = try container.decodeIfPresent(Data.self, forKey: .richText)
         self.date = try container.decode(Int32.self, forKey: .date)
         self.editDate = try container.decodeIfPresent(Int32.self, forKey: .editDate)
     }
@@ -62,6 +68,20 @@ public struct ChannelDraft: Codable, Equatable {
 
     public static func decodeMedia(_ data: Data) -> EngineRawMedia? {
         return EnginePostboxDecoder(buffer: EngineMemoryBuffer(data: data)).decodeRootObject() as? EngineRawMedia
+    }
+
+    public var decodedRichText: RichTextMessageAttribute? {
+        return self.richText.flatMap(ChannelDraft.decodeRichText)
+    }
+
+    public static func encodeRichText(_ richText: RichTextMessageAttribute) -> Data {
+        let encoder = EnginePostboxEncoder()
+        encoder.encodeRootObject(richText)
+        return encoder.makeData()
+    }
+
+    public static func decodeRichText(_ data: Data) -> RichTextMessageAttribute? {
+        return EnginePostboxDecoder(buffer: EngineMemoryBuffer(data: data)).decodeRootObject() as? RichTextMessageAttribute
     }
 }
 
@@ -126,11 +146,13 @@ public enum ChannelDraftsStore {
         public var text: String
         public var entities: [MessageTextEntity]
         public var media: [Data]
+        public var richText: Data?
 
-        public init(text: String, entities: [MessageTextEntity], media: [Data] = []) {
+        public init(text: String, entities: [MessageTextEntity], media: [Data] = [], richText: Data? = nil) {
             self.text = text
             self.entities = entities
             self.media = media
+            self.richText = richText
         }
     }
 
@@ -149,7 +171,7 @@ public enum ChannelDraftsStore {
             var result: [ChannelDraft] = []
             for item in drafts {
                 state.lastId += 1
-                let draft = ChannelDraft(id: state.lastId, text: item.text, entities: item.entities, media: item.media, date: timestamp, editDate: nil)
+                let draft = ChannelDraft(id: state.lastId, text: item.text, entities: item.entities, media: item.media, richText: item.richText, date: timestamp, editDate: nil)
                 state.drafts.append(draft)
                 result.append(draft)
             }
@@ -157,9 +179,10 @@ public enum ChannelDraftsStore {
         })
     }
 
-    /// Rewrites a draft's text in place: same id, same position, same media. Does nothing if the
+    /// Rewrites a draft in place: same id, same position. `replacingMedia` swaps one media item
+    /// (a photo or video replaced while editing); without it the media stays. Does nothing if the
     /// draft has been deleted meanwhile.
-    public static func update(engine: TelegramEngine, peerId: EnginePeer.Id, id: ChannelDraft.Id, text: String, entities: [MessageTextEntity]) -> Signal<Never, NoError> {
+    public static func update(engine: TelegramEngine, peerId: EnginePeer.Id, id: ChannelDraft.Id, text: String, entities: [MessageTextEntity], richText: Data? = nil, replacingMedia: (index: Int, media: Data)? = nil) -> Signal<Never, NoError> {
         let timestamp = self.currentTimestamp()
         return self.modify(engine: engine, peerId: peerId, { state -> Void in
             guard let index = state.drafts.firstIndex(where: { $0.id == id }) else {
@@ -167,6 +190,14 @@ public enum ChannelDraftsStore {
             }
             state.drafts[index].text = text
             state.drafts[index].entities = entities
+            state.drafts[index].richText = richText
+            if let replacingMedia {
+                if replacingMedia.index < state.drafts[index].media.count {
+                    state.drafts[index].media[replacingMedia.index] = replacingMedia.media
+                } else {
+                    state.drafts[index].media.append(replacingMedia.media)
+                }
+            }
             state.drafts[index].editDate = timestamp
         })
         |> ignoreValues

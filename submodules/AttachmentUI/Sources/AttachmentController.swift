@@ -445,6 +445,7 @@ public class AttachmentController: ViewController, MinimizableController {
     private let style: Style
     private let chatLocation: ChatLocation?
     private let isScheduledMessages: Bool
+    private let isChannelDrafts: Bool
     private let isEditingMessage: Bool
     private var buttons: [AttachmentButtonType]
     private let initialButton: AttachmentButtonType
@@ -628,7 +629,7 @@ public class AttachmentController: ViewController, MinimizableController {
                 panelStyle = .legacy
             }
 
-            self.panel = AttachmentPanel(controller: controller, style: panelStyle, context: controller.context, chatLocation: controller.chatLocation, isScheduledMessages: controller.isScheduledMessages, isEditingMessage: controller.isEditingMessage, customEmojiAvailable: controller.customEmojiAvailable, updatedPresentationData: controller.updatedPresentationData)
+            self.panel = AttachmentPanel(controller: controller, style: panelStyle, context: controller.context, chatLocation: controller.chatLocation, isScheduledMessages: controller.isScheduledMessages, isChannelDrafts: controller.isChannelDrafts, isEditingMessage: controller.isEditingMessage, customEmojiAvailable: controller.customEmojiAvailable, updatedPresentationData: controller.updatedPresentationData)
             self.panel.fromMenu = controller.fromMenu
             self.panel.isStandalone = controller.isStandalone
 
@@ -1598,6 +1599,9 @@ public class AttachmentController: ViewController, MinimizableController {
         style: Style = .legacy,
         chatLocation: ChatLocation?,
         isScheduledMessages: Bool = false,
+        /// Channel Drafts: sending saves a draft, so the send button shows the Save Draft glyph and
+        /// has no send options, as on the Drafts screen itself.
+        isChannelDrafts: Bool = false,
         /// The result replaces the media of a message being edited rather than sending a new message, so
         /// send options (schedule, silent, effects) are never offered.
         isEditingMessage: Bool = false,
@@ -1615,6 +1619,7 @@ public class AttachmentController: ViewController, MinimizableController {
         self.style = style
         self.chatLocation = chatLocation
         self.isScheduledMessages = isScheduledMessages
+        self.isChannelDrafts = isChannelDrafts
         self.isEditingMessage = isEditingMessage
         self.buttons = buttons
         self.initialButton = initialButton
