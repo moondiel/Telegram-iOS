@@ -61,8 +61,9 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     }
 
     /// Drafts as channel posts: authored by the channel, signed with the admin's name, marked
-    /// edited after an edit. Message ids are the draft ids in the local namespace; nothing is stored
-    /// in the message history.
+    /// edited after an edit. Message ids are the draft ids in the scheduled-local namespace, so the
+    /// bubbles behave like Scheduled Messages posts (no share button, comments or reactions);
+    /// nothing is stored in the message history.
     private static func historyView(drafts: [ChannelDraft], channel: EnginePeer, account: EnginePeer, signature: String) -> EngineRawMessageHistoryView {
         let channelPeer = channel._asPeer()
         var peers = EngineSimpleDictionary<EnginePeer.Id, EngineRawPeer>()
@@ -81,7 +82,7 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
             let message = EngineRawMessage(
                 stableId: UInt32(bitPattern: draft.id),
                 stableVersion: UInt32(bitPattern: draft.editDate ?? 0),
-                id: EngineMessage.Id(peerId: channel.id, namespace: Namespaces.Message.Local, id: draft.id),
+                id: EngineMessage.Id(peerId: channel.id, namespace: Namespaces.Message.ScheduledLocal, id: draft.id),
                 globallyUniqueId: nil,
                 groupingKey: nil,
                 groupInfo: nil,
