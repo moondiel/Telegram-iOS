@@ -1881,11 +1881,11 @@ public final class ChatEntityKeyboardInputNode: ChatInputNode {
         }
         if case let .customChatContents(customChatContents) = interfaceState.subject {
             switch customChatContents.kind {
-            case .quickReplyMessageInput, .welcomeMessages:
+            case .quickReplyMessageInput, .welcomeMessages, .channelDrafts:
                 break
             case .hashTagSearch:
                 break
-            case .businessLinkSetup, .channelDrafts:
+            case .businessLinkSetup:
                 stickerContent = nil
                 gifContent = nil
             }

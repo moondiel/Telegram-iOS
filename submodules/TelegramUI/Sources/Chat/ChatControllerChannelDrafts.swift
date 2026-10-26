@@ -210,30 +210,43 @@ extension ChatControllerImpl {
     }
 }
 
-/// Long-press menu of a draft on the Drafts screen:
-/// Use Draft · Copy · Edit · Delete · Select. Telegram's own menu items and icons.
+/// Long-press menu of a draft on the Drafts screen: Use Draft (text) or Send Now (media) · Copy ·
+/// Edit · Delete · Select. Telegram's own menu items, strings and icons.
 func channelDraftContextMenuItems(message: EngineRawMessage, contents: ChatCustomContentsProtocol, strings: PresentationStrings, interfaceInteraction: ChatPanelInterfaceInteraction, controllerInteraction: ChatControllerInteraction) -> [ContextMenuItem] {
     guard let contents = contents as? ChannelDraftsChatContents, let draft = contents.draft(messageId: message.id) else {
         return []
     }
     var items: [ContextMenuItem] = []
 
-    items.append(.action(ContextMenuActionItem(text: strings.ChannelDrafts_UseDraft, icon: { theme in
-        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Check"), color: theme.actionSheet.primaryTextColor)
-    }, action: { [weak contents] _, f in
-        f(.dismissWithoutContent)
-        contents?.useDraft?(draft)
-    })))
+    if draft.media.isEmpty {
+        // Text: continue it in the channel composer.
+        items.append(.action(ContextMenuActionItem(text: strings.ChannelDrafts_UseDraft, icon: { theme in
+            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Check"), color: theme.actionSheet.primaryTextColor)
+        }, action: { [weak contents] _, f in
+            f(.dismissWithoutContent)
+            contents?.useDraft?(draft)
+        })))
+    } else {
+        // Media cannot go into the composer: post it as it is, like Send Now in Scheduled Messages.
+        items.append(.action(ContextMenuActionItem(text: strings.ScheduledMessages_SendNow, icon: { theme in
+            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Resend"), color: theme.actionSheet.primaryTextColor)
+        }, action: { [weak contents] _, f in
+            f(.dismissWithoutContent)
+            contents?.publish(draft)
+        })))
+    }
 
-    items.append(.action(ContextMenuActionItem(text: strings.Conversation_ContextMenuCopy, icon: { theme in
-        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.actionSheet.primaryTextColor)
-    }, action: { _, f in
-        storeMessageTextInPasteboard(draft.text, entities: draft.entities)
-        Queue.mainQueue().after(0.2, {
-            controllerInteraction.displayUndo(.copy(text: strings.Conversation_MessageCopied))
-        })
-        f(.default)
-    })))
+    if !draft.text.isEmpty {
+        items.append(.action(ContextMenuActionItem(text: strings.Conversation_ContextMenuCopy, icon: { theme in
+            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.actionSheet.primaryTextColor)
+        }, action: { _, f in
+            storeMessageTextInPasteboard(draft.text, entities: draft.entities)
+            Queue.mainQueue().after(0.2, {
+                controllerInteraction.displayUndo(.copy(text: strings.Conversation_MessageCopied))
+            })
+            f(.default)
+        })))
+    }
 
     items.append(.action(ContextMenuActionItem(text: strings.Conversation_MessageDialogEdit, icon: { theme in
         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)

@@ -247,9 +247,9 @@ func inputTextPanelStateForChatPresentationInterfaceState(_ chatPresentationInte
                         break
                     case .quickReplyMessageInput:
                         break
-                    case .welcomeMessages:
+                    case .welcomeMessages, .channelDrafts:
                         break
-                    case .businessLinkSetup, .channelDrafts:
+                    case .businessLinkSetup:
                         stickersEnabled = false
                     }
                 }

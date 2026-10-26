@@ -10,19 +10,58 @@ public struct ChannelDraft: Codable, Equatable {
     /// Unique within the channel and never reused, so a stale reference (the composer's linked
     /// draft, a row on the Drafts screen) can never point at a different draft.
     public let id: Id
+    /// The post text, or the caption when the draft has media.
     public var text: String
     public var entities: [MessageTextEntity]
+    /// Attached media (photos, videos, files, voice, a sticker), PostboxCoding-encoded. Several
+    /// items form an album. Read with `ChannelDraft.decodedMedia`.
+    public var media: [Data]
     /// Creation time; drafts are listed in creation order, oldest first, like chat history.
     public let date: Int32
     /// Last edit time, `nil` until the draft is edited.
     public var editDate: Int32?
 
-    public init(id: Id, text: String, entities: [MessageTextEntity], date: Int32, editDate: Int32?) {
+    public init(id: Id, text: String, entities: [MessageTextEntity], media: [Data] = [], date: Int32, editDate: Int32?) {
         self.id = id
         self.text = text
         self.entities = entities
+        self.media = media
         self.date = date
         self.editDate = editDate
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case text
+        case entities
+        case media
+        case date
+        case editDate
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(Id.self, forKey: .id)
+        self.text = try container.decode(String.self, forKey: .text)
+        self.entities = try container.decode([MessageTextEntity].self, forKey: .entities)
+        // Drafts saved before media support have no media.
+        self.media = try container.decodeIfPresent([Data].self, forKey: .media) ?? []
+        self.date = try container.decode(Int32.self, forKey: .date)
+        self.editDate = try container.decodeIfPresent(Int32.self, forKey: .editDate)
+    }
+
+    public var decodedMedia: [EngineRawMedia] {
+        return self.media.compactMap(ChannelDraft.decodeMedia)
+    }
+
+    public static func encodeMedia(_ media: EngineRawMedia) -> Data {
+        let encoder = EnginePostboxEncoder()
+        encoder.encodeRootObject(media)
+        return encoder.makeData()
+    }
+
+    public static func decodeMedia(_ data: Data) -> EngineRawMedia? {
+        return EnginePostboxDecoder(buffer: EngineMemoryBuffer(data: data)).decodeRootObject() as? EngineRawMedia
     }
 }
 
@@ -84,18 +123,18 @@ public enum ChannelDraftsStore {
     }
 
     /// Saves a new draft at the end of the list and returns it.
-    public static func add(engine: TelegramEngine, peerId: EnginePeer.Id, text: String, entities: [MessageTextEntity]) -> Signal<ChannelDraft, NoError> {
+    public static func add(engine: TelegramEngine, peerId: EnginePeer.Id, text: String, entities: [MessageTextEntity], media: [Data] = []) -> Signal<ChannelDraft, NoError> {
         let timestamp = self.currentTimestamp()
         return self.modify(engine: engine, peerId: peerId, { state -> ChannelDraft in
             state.lastId += 1
-            let draft = ChannelDraft(id: state.lastId, text: text, entities: entities, date: timestamp, editDate: nil)
+            let draft = ChannelDraft(id: state.lastId, text: text, entities: entities, media: media, date: timestamp, editDate: nil)
             state.drafts.append(draft)
             return draft
         })
     }
 
-    /// Rewrites a draft in place: same id, same position in the list. Does nothing if the draft
-    /// has been deleted meanwhile.
+    /// Rewrites a draft's text in place: same id, same position, same media. Does nothing if the
+    /// draft has been deleted meanwhile.
     public static func update(engine: TelegramEngine, peerId: EnginePeer.Id, id: ChannelDraft.Id, text: String, entities: [MessageTextEntity]) -> Signal<Never, NoError> {
         let timestamp = self.currentTimestamp()
         return self.modify(engine: engine, peerId: peerId, { state -> Void in

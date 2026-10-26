@@ -1719,9 +1719,9 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
             switch customChatContents.kind {
             case .hashTagSearch:
                 break
-            case .quickReplyMessageInput, .welcomeMessages:
+            case .quickReplyMessageInput, .welcomeMessages, .channelDrafts:
                 break
-            case .businessLinkSetup, .channelDrafts:
+            case .businessLinkSetup:
                 displayMediaButton = false
             }
         }
@@ -4704,9 +4704,9 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                 switch customChatContents.kind {
                 case .hashTagSearch:
                     break
-                case .quickReplyMessageInput, .welcomeMessages:
+                case .quickReplyMessageInput, .welcomeMessages, .channelDrafts:
                     break
-                case .businessLinkSetup, .channelDrafts:
+                case .businessLinkSetup:
                     hideMicButton = true
                 }
             }
