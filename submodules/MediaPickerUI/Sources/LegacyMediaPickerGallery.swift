@@ -116,6 +116,7 @@ func presentLegacyMediaPickerGallery(
     threadTitle: String?,
     chatLocation: ChatLocation?,
     isScheduledMessages: Bool,
+    isChannelDrafts: Bool = false,
     isActionButtonDone: Bool = false,
     presentationData: PresentationData,
     source: LegacyMediaPickerGallerySource,
@@ -303,6 +304,10 @@ func presentLegacyMediaPickerGallery(
         legacyController?.dismiss()
     }
 
+    if isChannelDrafts {
+        // Channel Drafts: done saves a draft, shown like the schedule button of Scheduled Messages.
+        model.interfaceView.setDoneButtonType(TGPhotoEditorDoneButtonSaveDraft)
+    }
     model.interfaceView.donePressed = { [weak controller] item in
         if let item = item as? TGMediaPickerGalleryItem {
             completed(item.asset, false, nil, {
@@ -311,7 +316,7 @@ func presentLegacyMediaPickerGallery(
             })
         }
     }
-    if !isScheduledMessages && peer != nil {
+    if !isScheduledMessages && !isChannelDrafts && peer != nil {
         model.interfaceView.doneLongPressed = { [weak selectionContext, weak editingContext, weak legacyController, weak model, weak paintStickersContext] item, sourceView in
             if let legacyController = legacyController, let item = item as? TGMediaPickerGalleryItem, let model = model, let selectionContext = selectionContext {
                 var effectiveHasSchedule = hasSchedule

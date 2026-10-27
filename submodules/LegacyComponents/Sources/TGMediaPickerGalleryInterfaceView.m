@@ -680,6 +680,12 @@ static TGMediaLivePhotoMode TGMediaPickerGalleryResolvedLivePhotoMode(NSNumber *
         return [_landscapeToolbarView viewForTab:TGPhotoEditorQualityTab];
 }
 
+- (void)setDoneButtonType:(TGPhotoEditorDoneButton)doneButtonType
+{
+    _portraitToolbarView.doneButtonType = doneButtonType;
+    _landscapeToolbarView.doneButtonType = doneButtonType;
+}
+
 - (void)setSelectedItemsModel:(TGMediaPickerGallerySelectedItemsModel *)selectedItemsModel
 {
     _selectedPhotosView.selectedItemsModel = selectedItemsModel;

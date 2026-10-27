@@ -1537,6 +1537,7 @@ extension ChatControllerImpl {
             threadTitle: self.contentData?.state.threadInfo?.title,
             chatLocation: self.chatLocation,
             isScheduledMessages: isScheduledMessages,
+            isChannelDrafts: self.channelDraftsScreenPeerId != nil && !isEditingMessage,
             isActionButtonDone: isEditingMessage,
             bannedSendPhotos: bannedSendPhotos,
             bannedSendVideos: bannedSendVideos,

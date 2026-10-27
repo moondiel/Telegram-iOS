@@ -476,6 +476,9 @@ private final class MediaPickerPhotoToolbarComponent: Component {
             case TGPhotoEditorDoneButtonSchedule:
                 doneIconName = "Chat/Input/ScheduleIcon"
                 doneWidth = 46.0
+            case TGPhotoEditorDoneButtonSaveDraft:
+                doneIconName = "Chat/Input/SaveDraftIcon"
+                doneWidth = 46.0
             case TGPhotoEditorDoneButtonDone:
                 doneIconName = "Navigation/Done"
             default:

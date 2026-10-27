@@ -30,7 +30,8 @@ typedef enum
     TGPhotoEditorDoneButtonSend,
     TGPhotoEditorDoneButtonCheck,
     TGPhotoEditorDoneButtonDone,
-    TGPhotoEditorDoneButtonSchedule
+    TGPhotoEditorDoneButtonSchedule,
+    TGPhotoEditorDoneButtonSaveDraft
 } TGPhotoEditorDoneButton;
 
 @protocol TGPhotoToolbarViewProtocol <NSObject>
