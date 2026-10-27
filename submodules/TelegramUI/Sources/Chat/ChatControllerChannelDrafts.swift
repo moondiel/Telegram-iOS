@@ -19,7 +19,7 @@ import LegacyMediaPickerUI
 import ChatMessageItemCommon
 
 // Channel Drafts: every hook the feature needs in `ChatControllerImpl` lives in this file.
-// See CHANNEL_DRAFTS.md.
+// See docs/channel-drafts/spec.md.
 
 /// Drafts can be saved in a plain broadcast-channel chat the user can post in.
 func channelDraftsAreAvailable(_ state: ChatPresentationInterfaceState) -> Bool {
