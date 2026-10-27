@@ -35,13 +35,10 @@ func channelDraftsAreAvailable(_ state: ChatPresentationInterfaceState) -> Bool 
 func updatedChannelDraftsState(_ state: ChatPresentationInterfaceState) -> ChatPresentationInterfaceState {
     var channelDrafts = state.channelDrafts
     channelDrafts.isAvailable = channelDraftsAreAvailable(state)
-    // Clearing the composer unlinks the draft it was taken from; the draft itself stays. A draft
-    // with media keeps its link with an empty caption (× in its header unlinks it).
-    if let attachedDraft = channelDrafts.attachedDraft {
-        let clearedText = state.interfaceState.composeInputState.isEmpty && attachedDraft.media.isEmpty
-        if clearedText || !channelDrafts.isAvailable {
-            channelDrafts.attachedDraft = nil
-        }
+    // Like the Edit header, the Draft header stays when the text is erased: only ×, sending,
+    // scheduling or saving the draft unlinks it. It goes with the chat's ability to keep drafts.
+    if channelDrafts.attachedDraft != nil && !channelDrafts.isAvailable {
+        channelDrafts.attachedDraft = nil
     }
     if channelDrafts == state.channelDrafts {
         return state

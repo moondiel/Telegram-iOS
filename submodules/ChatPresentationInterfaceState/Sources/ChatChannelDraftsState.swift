@@ -4,7 +4,7 @@ import TelegramCore
 /// Channel Drafts state of a broadcast channel's chat, as the input panels need it.
 public struct ChatChannelDraftsState: Equatable {
     /// The draft taken into the composer with Use Draft. Save Draft updates it, Send publishes
-    /// and deletes it, × in its header (or clearing the composer) unlinks it.
+    /// and deletes it, × in its header unlinks it. Erasing the text keeps it, as with Edit.
     public struct AttachedDraft: Equatable {
         public let id: Int32
         /// The draft's text, or its caption when it has media.

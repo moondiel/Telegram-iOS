@@ -26,7 +26,8 @@ Channel admins can keep several drafts per broadcast channel:
   draft's photos, videos, files or audio stay out of the text field, like the media of a post
   being edited, and the header reads "Photo", "Video"... when there is no caption. Send or Schedule
   publishes a normal post (an album for several items, the composer text as the caption) and
-  removes the draft; Save Draft updates it; × unlinks it and leaves it untouched.
+  removes the draft; Save Draft updates it; × unlinks it and leaves it untouched. As with Edit,
+  erasing the text keeps the header.
 - **Save Draft for everything the channel can send**, wherever it offers send options: the text
   composer, a voice message under review, a round video being recorded, the attach screen's send
   menu (photos, videos, files, music, contacts), the photo editor's, and the long-press menus of

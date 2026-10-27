@@ -333,8 +333,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     let messageActionUrlAuthDisposable = MetaDisposable()
     let editMessageDisposable = MetaDisposable()
     let channelDraftsDisposable = MetaDisposable()
-    /// The channel draft whose text the attach flow took over as a caption (clearing the composer,
-    /// which unlinks the draft). The next send or Save Draft of that flow publishes or updates it.
+    /// The channel draft whose text the attach flow took over as a caption (clearing the
+    /// composer). The next send or Save Draft of that flow publishes or updates it.
     var channelDraftTakenByCaption: ChatChannelDraftsState.AttachedDraft?
     let editMessageErrorsDisposable = MetaDisposable()
     let enqueueMediaMessageDisposable = MetaDisposable()
@@ -10654,7 +10654,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     func clearInputText() {
         if let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft {
             // The attach flow took the composer text over as a caption: remember the draft it came
-            // from, as clearing the composer unlinks it before the media is sent.
+            // from, so the media's send or Save Draft reaches it.
             self.channelDraftTakenByCaption = attachedDraft
         }
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
