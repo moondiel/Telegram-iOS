@@ -472,10 +472,12 @@ extension ChatControllerImpl {
 
 /// The Drafts screen title. Like "Scheduled Messages": text only, without the channel's badges,
 /// in a pill that fits it; during selection the same "N Selected" / "Select Messages" title as
-/// any chat.
-func channelDraftsTitleContent(selectionState: ChatInterfaceSelectionState?, strings: PresentationStrings) -> ChatTitleContent {
+/// any chat. The preview of a single draft is titled "Draft", as its header in the composer.
+func channelDraftsTitleContent(contents: ChatCustomContentsProtocol, selectionState: ChatInterfaceSelectionState?, strings: PresentationStrings) -> ChatTitleContent {
     guard let selectionState else {
-        return .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(strings.ChannelDrafts_Title))], subtitle: nil, isEnabled: false, hugsTitle: true)
+        let isSingleDraft = (contents as? ChannelDraftsChatContents)?.showsSingleDraft ?? false
+        let title = isSingleDraft ? strings.ChannelDrafts_AttachedPanelTitle : strings.ChannelDrafts_Title
+        return .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(title))], subtitle: nil, isEnabled: false, hugsTitle: true)
     }
     if selectionState.selectedIds.isEmpty {
         return .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(2), content: .text(strings.Conversation_SelectMessages))], subtitle: nil, isEnabled: false)

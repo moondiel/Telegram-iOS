@@ -17,6 +17,9 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     /// Use Draft in the message menu (text drafts). Set by the channel chat that opened the screen.
     public var useDraft: ((ChannelDraft) -> Void)?
 
+    /// The preview of one draft (the one taken into the channel composer), not the Drafts screen.
+    public let showsSingleDraft: Bool
+
     /// The drafts currently shown, oldest first. Main queue.
     public private(set) var drafts: [ChannelDraft] = []
 
@@ -42,6 +45,7 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     public init(context: AccountContext, peerId: EnginePeer.Id, onlyDraftId: ChannelDraft.Id? = nil) {
         self.context = context
         self.peerId = peerId
+        self.showsSingleDraft = onlyDraftId != nil
         self.kind = .channelDrafts(peerId: peerId)
 
         let peers = context.engine.data.subscribe(

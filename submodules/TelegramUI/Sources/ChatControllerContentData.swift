@@ -1874,7 +1874,7 @@ extension ChatControllerImpl {
                             return
                         }
                         let previousState = self.state
-                        self.state.chatTitleContent = channelDraftsTitleContent(selectionState: selectionState, strings: strings)
+                        self.state.chatTitleContent = channelDraftsTitleContent(contents: customChatContents, selectionState: selectionState, strings: strings)
                         self.onUpdated?(previousState)
                     })
                 }
@@ -1904,7 +1904,7 @@ extension ChatControllerImpl {
                     case .welcomeMessages:
                         self.state.chatTitleContent = .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(strings.WelcomeMessages_Title))], subtitle: nil, isEnabled: false)
                     case .channelDrafts:
-                        self.state.chatTitleContent = channelDraftsTitleContent(selectionState: nil, strings: strings)
+                        self.state.chatTitleContent = channelDraftsTitleContent(contents: customChatContents, selectionState: nil, strings: strings)
                     }
                 } else {
                     self.state.chatTitleContent = .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(" "))], subtitle: nil, isEnabled: false)
