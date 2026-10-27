@@ -18,7 +18,9 @@ Channel admins can keep several drafts per broadcast channel:
 - Long-press a draft: **Use Draft · Copy · Edit · Delete · Select**, in the order of Scheduled
   Messages. Delete, from the menu or the selection bar, confirms the way Scheduled Messages does
   (one destructive "Delete Draft(s)" item in the menu); Select takes the whole draft. **Clear All**
-  in the selection header shows Scheduled Messages' sheet and warning and deletes every draft.
+  in the selection header shows Scheduled Messages' sheet and warning, then, as Scheduled
+  Messages' `beginClearHistory` does, the list looks cleared at once with a "Drafts cleared" undo
+  toast above the input, and every draft is deleted when the toast commits.
 - The Drafts button is the leftmost button in the channel's input field.
 - **Use Draft** closes the screen and puts the text (or caption) into the channel composer with a
   **Draft** header, as editing a post does (no preview: the Edit header has none either). A

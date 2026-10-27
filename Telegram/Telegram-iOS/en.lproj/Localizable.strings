@@ -17117,3 +17117,4 @@ Error: %8$@";
 "ChannelDrafts.Delete" = "Delete Draft";
 "ChannelDrafts.DeleteMany" = "Delete Drafts";
 "ChannelDrafts.ClearAllConfirmation" = "Clear Drafts";
+"ChannelDrafts.Cleared" = "Drafts cleared";

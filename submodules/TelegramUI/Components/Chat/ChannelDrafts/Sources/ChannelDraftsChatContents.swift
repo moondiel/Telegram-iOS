@@ -210,13 +210,17 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
         self.write(ChannelDraftsStore.add(engine: self.context.engine, peerId: self.peerId, drafts: newDrafts.map { $0.draft }) |> ignoreValues)
     }
 
-    /// Clear All in the selection header.
-    public func deleteAllDrafts() {
+    /// Clear All in the selection header. `completion` runs on the main queue once the drafts are gone.
+    public func deleteAllDrafts(completion: @escaping () -> Void = {}) {
         let ids = Set(self.drafts.map(\.id))
         if ids.isEmpty {
+            completion()
             return
         }
-        self.write(ChannelDraftsStore.delete(engine: self.context.engine, peerId: self.peerId, ids: ids))
+        self.write(ChannelDraftsStore.delete(engine: self.context.engine, peerId: self.peerId, ids: ids)
+        |> afterCompleted {
+            Queue.mainQueue().async(completion)
+        })
     }
 
     public func deleteMessages(ids: [EngineMessage.Id]) {

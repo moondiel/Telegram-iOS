@@ -534,10 +534,7 @@ extension ChatControllerImpl {
                             TextAlertAction(type: .genericAction, title: presentationData.strings.Common_Cancel, action: {
                             }),
                             TextAlertAction(type: .destructiveAction, title: presentationData.strings.ChatList_DeleteSavedMessagesConfirmationAction, action: { [weak self, weak contents] in
-                                self?.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
-                                    return state.updatedInterfaceState { $0.withoutSelectionState() }
-                                })
-                                contents?.deleteAllDrafts()
+                                self?.beginClearChannelDrafts(contents: contents)
                             })
                         ]
                     )
@@ -553,6 +550,33 @@ extension ChatControllerImpl {
         self.chatDisplayNode.dismissInput()
         self.present(actionSheet, in: .window(.root))
         return true
+    }
+
+    /// Scheduled Messages' `beginClearHistory`: the list looks cleared at once and an undo toast
+    /// ("Drafts cleared") sits above the input; the drafts are deleted when it commits.
+    private func beginClearChannelDrafts(contents: ChannelDraftsChatContents?) {
+        self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
+            return state.updatedInterfaceState { $0.withoutSelectionState() }
+        })
+        self.chatDisplayNode.historyNode.historyAppearsCleared = true
+        let title = NSAttributedString(string: self.presentationData.strings.ChannelDrafts_Cleared)
+        // The toast holds the contents, so the drafts are deleted even if the screen closes first.
+        self.present(UndoOverlayController(presentationData: self.context.sharedContext.currentPresentationData.with { $0 }, content: .removedChat(context: self.context, title: title, text: nil), elevatedLayout: false, action: { [weak self] value in
+            if value == .commit {
+                if let contents {
+                    contents.deleteAllDrafts(completion: { [weak self] in
+                        self?.chatDisplayNode.historyNode.historyAppearsCleared = false
+                    })
+                } else {
+                    self?.chatDisplayNode.historyNode.historyAppearsCleared = false
+                }
+                return true
+            } else if value == .undo {
+                self?.chatDisplayNode.historyNode.historyAppearsCleared = false
+                return true
+            }
+            return false
+        }), in: .current)
     }
 
     /// Delete in the selection bar of the Drafts screen. Like Scheduled Messages: a menu over the
