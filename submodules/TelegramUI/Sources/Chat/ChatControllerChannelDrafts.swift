@@ -242,63 +242,11 @@ extension ChatControllerImpl {
             return
         }
         self.channelDraftTakenByCaption = nil
-        // Only the draft's text went out (with media pasted or dropped in): a draft with media of
-        // its own keeps it and stays in Drafts.
-        if takenDraft.media.isEmpty {
-            let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: peerId, ids: Set([takenDraft.id])).startStandalone()
-        }
+        // The picked media is the post's media, in place of the draft's own, as a replacement is.
+        let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: peerId, ids: Set([takenDraft.id])).startStandalone()
         if self.channelDraftReplacedComposer != nil {
             self.restoreComposerReplacedByChannelDraft()
         }
-    }
-
-    /// A photo, video or file picked from Edit's attachment menu while a draft is in the composer
-    /// (`editMessageMediaWithMessages`). Done in Edit's picker commits the edit at once; for a
-    /// draft that is publishing it: the picked media replaces the draft's (the first item of an
-    /// album) or becomes its media, the picker's caption (which started as the composer text) is
-    /// the caption, and the post is sent as the composer's Send sends it. True if the pick was
-    /// for a draft.
-    func replaceChannelDraftMedia(with messages: [EnqueueMessage]) -> Bool {
-        guard self.presentationInterfaceState.interfaceState.editMessage == nil, self.channelDraftsPeerId != nil else {
-            return false
-        }
-        // The picker took the composer text over as its caption, which unlinked the draft.
-        guard let linkedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft ?? self.channelDraftTakenByCaption else {
-            return false
-        }
-        self.channelDraftTakenByCaption = nil
-        guard let message = messages.first, case let .message(text, attributes, _, maybeMediaReference, _, _, _, _, _, _) = message, let mediaReference = maybeMediaReference else {
-            return true
-        }
-        var media = linkedDraft.media
-        if media.isEmpty {
-            media = [mediaReference.media]
-        } else {
-            media[0] = mediaReference.media
-        }
-        let updatedDraft = self.channelDraftInComposer(id: linkedDraft.id, text: text, media: media)
-        self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
-            var channelDrafts = state.channelDrafts
-            channelDrafts.attachedDraft = updatedDraft
-            return state.updatedChannelDrafts(channelDrafts)
-        })
-
-        var captionMessages: [EnqueueMessage] = []
-        if !text.isEmpty {
-            captionMessages.append(.message(text: text, attributes: attributes.filter { $0 is TextEntitiesMessageAttribute }, inlineStickers: [:], mediaReference: nil, threadId: self.chatLocation.threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: []))
-        } else if let composer = self.channelDraftContentFromComposer() {
-            // A picker without a caption field (iCloud files) leaves the composer as it is; as Edit
-            // keeps the edited text then, the composer text is the caption.
-            captionMessages.append(.message(text: composer.text, attributes: composer.entities.isEmpty ? [] : [TextEntitiesMessageAttribute(entities: composer.entities)], inlineStickers: [:], mediaReference: nil, threadId: self.chatLocation.threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: []))
-        }
-        let postMessages = self.publishChannelDraft(composerMessages: captionMessages)
-        if self.channelDraftReplacedComposer == nil {
-            // Sent: the composer empties, as after the composer's own Send.
-            self.restoreComposerReplacedByChannelDraft()
-        }
-        let silentPosting = self.presentationInterfaceState.interfaceState.silentPosting
-        self.sendMessages(self.transformEnqueueMessages(postMessages, silentPosting: silentPosting), media: true)
-        return true
     }
 
     /// A draft as the composer holds it, with what Edit derives from a post's media: what the
@@ -837,31 +785,6 @@ func channelDraftContentIsEditable(context: AccountContext, media: [EngineRawMed
         associatedStories: [:]
     )
     return canEditMessage(accountPeerId: context.account.peerId, limitsConfiguration: context.currentLimitsConfiguration.with { EngineConfiguration.Limits($0) }, message: message)
-}
-
-/// The media options Edit's attachment menu gets for a draft in the composer: `nil` (add media)
-/// for text, as for a text post.
-func channelDraftEditMediaOptions(_ editMessageState: ChatEditInterfaceMessageState) -> MessageMediaEditingOptions? {
-    switch editMessageState.content {
-    case .plaintext:
-        return nil
-    case let .media(mediaOptions):
-        return mediaOptions
-    }
-}
-
-/// The draft's photo or video, which Edit's media picker offers to edit in place, as it offers
-/// the post's (`displayAttachmentMenu`).
-func channelDraftOriginalMediaReference(_ attachedDraft: ChatChannelDraftsState.AttachedDraft) -> AnyMediaReference? {
-    var result: AnyMediaReference?
-    for media in attachedDraft.media {
-        if let image = media as? TelegramMediaImage {
-            result = .standalone(media: image)
-        } else if let file = media as? TelegramMediaFile, file.isVideo || file.isAnimated {
-            result = .standalone(media: file)
-        }
-    }
-    return result
 }
 
 /// The text the "Draft" header shows: the draft's text, or the plain text of its rich content.

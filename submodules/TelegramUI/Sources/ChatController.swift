@@ -8660,9 +8660,6 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     
     func editMessageMediaWithMessages(_ messages: [EnqueueMessage]) {
-        if self.replaceChannelDraftMedia(with: messages) {
-            return
-        }
         if let message = messages.first, case let .message(text, attributes, _, maybeMediaReference, _, _, _, _, _, _) = message, let mediaReference = maybeMediaReference {
             self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
                 var entities: [MessageTextEntity] = []

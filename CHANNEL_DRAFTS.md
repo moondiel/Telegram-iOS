@@ -48,11 +48,12 @@ Channel admins can keep several drafts per broadcast channel:
   `updatedChannelDraftsState` sets the chat's `editMessageState` exactly as Edit sets it for a
   post (`.plaintext`, or `.media(messageMediaEditingOptions)`), so every component that follows
   an edit follows the draft with no code of its own: the attachment button shows the replace
-  icon and opens Edit's menu (adding media to a text draft, replacing a photo, video or file, the
-  current photo offered for editing), is disabled for a voice message, round video, sticker or
-  music album; the send button stays; send-as and inline-bot queries hide. Done in the picker
-  publishes the post at once (picked media, picker caption), as Done in Edit's picker commits
-  the edit. Then:
+  icon with a photo, video or file and is disabled for a voice message, round video, sticker or
+  music album; the send button stays; send-as and inline-bot queries hide. The attachment button
+  opens the regular attach menu, with its send options (Send, Schedule, Save Draft...): the
+  picker takes the composer text as its caption (`clearInputText` hands it the draft), and the
+  picked media replaces the draft's: sending or scheduling publishes the post and removes the
+  draft, Save Draft stores the picked media and caption in that draft. Then:
   - a sticker, round video, poll... carries no caption: the composer text is posted (or saved as
     a draft of its own) before it, as Forward sends its comment first;
   - a sticker, GIF or voice message sent while a draft is in the composer is a separate message
@@ -62,8 +63,8 @@ Channel admins can keep several drafts per broadcast channel:
   - the link is kept with the channel's drafts (`linkedId`), so a reopened chat has the draft in
     its composer again, as an edit in progress survives leaving the chat; deleting that draft on
     the Drafts screen takes it out of the composer, as deleting a post ends its edit;
-  - media pasted or dropped in goes out with the draft's text as its caption; a text draft is then
-    published, a draft with media of its own stays in Drafts.
+  - media pasted or dropped in goes out with the draft's text as its caption, in place of the
+    draft's media, as from the attach menu.
 - **Store writes are serialized** (`ChannelDraftsWriter`): every write is a read-modify-write of
   the channel's entry, so two started together would otherwise lose one change.
 - Drafts show only the time they were saved, as Scheduled Messages shows only the post time
