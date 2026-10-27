@@ -100,29 +100,9 @@ Log in and open a channel you admin.
 Type a post, long-press Send, then **Save Draft**. Tap the **Drafts** button that appears in the
 input field. From there, the flow above applies.
 
-## How drafts are stored
+## What is real and what is limited
 
-Telegram's API has one cloud draft per chat (`messages.saveDraft`). It is the composer's own text,
-and it is shared by every admin of a channel. Several drafts per channel have no server
-counterpart, so they are kept on the device:
-
-- All drafts of a channel are one entry in the account's item cache
-  (`ApplicationSpecificItemCacheCollectionId.channelDrafts`, keyed by the channel id).
-  - `ChannelDraft` holds the text and entities, the media (PostboxCoding-encoded `Media`), rich
-    content (an encoded `RichTextMessageAttribute`) and the dates.
-  - Ids are never reused, so a stale reference cannot point at another draft.
-- The entry also records which draft is in the composer (`linkedId`). A reopened chat has it under
-  the Draft header again, as an edit in progress survives leaving the chat.
-- Every write is a read-modify-write of that entry. `ChannelDraftsWriter` runs them one at a time,
-  so two writes started together cannot lose a change.
-
-In production, drafts would need a server API for multiple drafts per peer, synced between
-devices and shared between a channel's admins. `ChannelDraftsStore` is the only place that would
-change.
-
-## What works and what is limited
-
-**Works**
+**Works for real**
 
 - Saving everything the channel can send:
   - text and rich text (headings, lists, tables);
@@ -147,12 +127,36 @@ change.
 - Drafts never leave the device. They are not synced to other devices or to other admins of the
   channel.
 - Drafts belong to the account's local storage. Logging out removes them.
-- A draft's media that was picked from the device but never sent stays in the local media cache
-  until it is published. Clearing the cache in Storage Usage can remove it (not verified).
 - A sticker, round video, poll, location, contact or dice cannot carry a caption. The composer
   text is posted before it, as a separate message, as Forward posts its comment first.
 - Media picked for a draft that has an album replaces the whole album, not one item of it.
 - There are no automated tests. The feature was checked by hand in a test channel.
+
+**Not verified**
+
+- Clearing the cache in Storage Usage with drafts that hold media picked from the device but never
+  sent. That media lives only in the local media cache, so clearing it may break those drafts.
+- The build steps above on a clean machine. They are Telegram's own steps for a development
+  build; the feature was built with the author's configuration.
+
+## How drafts are stored
+
+Telegram's API has one cloud draft per chat (`messages.saveDraft`): the composer's own text, kept
+per user. Several drafts per channel have no server counterpart, so they are kept on the device:
+
+- All drafts of a channel are one entry in the account's item cache
+  (`ApplicationSpecificItemCacheCollectionId.channelDrafts`, keyed by the channel id).
+  - `ChannelDraft` holds the text and entities, the media (PostboxCoding-encoded `Media`), rich
+    content (an encoded `RichTextMessageAttribute`) and the dates.
+  - Ids are never reused, so a stale reference cannot point at another draft.
+- The entry also records which draft is in the composer (`linkedId`). A reopened chat has it under
+  the Draft header again, as an edit in progress survives leaving the chat.
+- Every write is a read-modify-write of that entry. `ChannelDraftsWriter` runs them one at a time,
+  so two writes started together cannot lose a change.
+
+In production, drafts would need a server API for multiple drafts per peer, synced between
+devices and shared between a channel's admins. `ChannelDraftsStore` is the only place that would
+change.
 
 ## Where the code is
 

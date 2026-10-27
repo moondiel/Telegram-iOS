@@ -1,4 +1,4 @@
-This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) with the **Channel Drafts** feature on the `feature/channel-drafts` branch.
+This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) with the **Channel Drafts** feature on the `feature/channel-drafts` branch. For compiling Telegram in general, see Telegram's [original guide](https://github.com/TelegramMessenger/Telegram-iOS/blob/master/README.md).
 
 # Channel Drafts for Telegram iOS
 
