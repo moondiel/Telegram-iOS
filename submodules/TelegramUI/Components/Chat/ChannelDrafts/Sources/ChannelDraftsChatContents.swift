@@ -38,7 +38,8 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     private var pendingWrites: [Signal<Never, NoError>] = []
     private var isWriting = false
 
-    public init(context: AccountContext, peerId: EnginePeer.Id) {
+    /// `onlyDraftId` shows a single draft: the preview of the draft taken into the channel composer.
+    public init(context: AccountContext, peerId: EnginePeer.Id, onlyDraftId: ChannelDraft.Id? = nil) {
         self.context = context
         self.peerId = peerId
         self.kind = .channelDrafts(peerId: peerId)
@@ -47,8 +48,15 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
             TelegramEngine.EngineData.Item.Peer.Peer(id: peerId),
             TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId)
         )
+        let drafts = ChannelDraftsStore.drafts(engine: context.engine, peerId: peerId)
+        |> map { drafts -> [ChannelDraft] in
+            if let onlyDraftId {
+                return drafts.filter { $0.id == onlyDraftId }
+            }
+            return drafts
+        }
         self.disposable = (combineLatest(queue: Queue.mainQueue(),
-            ChannelDraftsStore.drafts(engine: context.engine, peerId: peerId),
+            drafts,
             peers
         )
         |> deliverOnMainQueue).startStrict(next: { [weak self] drafts, peers in
@@ -209,46 +217,12 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     /// Send on the Drafts screen saves a new draft: text, media, or an album with a caption
     /// (messages sharing a grouping key become one draft).
     public func enqueueMessages(messages: [EnqueueMessage]) {
-        var groups: [(key: Int64?, correlationId: Int64?, items: [(text: String, entities: [MessageTextEntity], richText: RichTextMessageAttribute?, media: EngineRawMedia?)])] = []
-        for message in messages {
-            guard case let .message(text, attributes, _, mediaReference, _, _, _, localGroupingKey, correlationId, _) = message else {
-                continue
-            }
-            var entities: [MessageTextEntity] = []
-            var richText: RichTextMessageAttribute?
-            for attribute in attributes {
-                if let attribute = attribute as? TextEntitiesMessageAttribute {
-                    entities = attribute.entities
-                } else if let attribute = attribute as? RichTextMessageAttribute {
-                    richText = attribute
-                }
-            }
-            let item = (text: text, entities: entities, richText: richText, media: mediaReference?.media)
-            if let localGroupingKey, let index = groups.firstIndex(where: { $0.key == localGroupingKey }) {
-                groups[index].items.append(item)
-                if let correlationId {
-                    groups[index].correlationId = correlationId
-                }
-            } else {
-                groups.append((key: localGroupingKey, correlationId: correlationId, items: [item]))
-            }
-        }
-        var newDrafts: [ChannelDraftsStore.NewDraft] = []
-        for group in groups {
-            let caption = group.items.first(where: { !$0.text.isEmpty })
-            let media = group.items.compactMap(\.media).map(ChannelDraft.encodeMedia)
-            let richText = group.items.compactMap(\.richText).first.map(ChannelDraft.encodeRichText)
-            let text = caption?.text ?? ""
-            if text.isEmpty && media.isEmpty && richText == nil {
-                continue
-            }
-            newDrafts.append(ChannelDraftsStore.NewDraft(text: text, entities: caption?.entities ?? [], media: media, richText: richText))
-            self.pendingCorrelationIds.append(group.correlationId)
-        }
+        let newDrafts = ChannelDraftsStore.newDrafts(from: messages)
         if newDrafts.isEmpty {
             return
         }
-        self.write(ChannelDraftsStore.add(engine: self.context.engine, peerId: self.peerId, drafts: newDrafts) |> ignoreValues)
+        self.pendingCorrelationIds.append(contentsOf: newDrafts.map { $0.correlationId })
+        self.write(ChannelDraftsStore.add(engine: self.context.engine, peerId: self.peerId, drafts: newDrafts.map { $0.draft }) |> ignoreValues)
     }
 
     /// Clear All in the selection header.

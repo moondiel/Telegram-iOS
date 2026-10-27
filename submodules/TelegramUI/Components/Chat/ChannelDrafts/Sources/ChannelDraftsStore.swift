@@ -156,6 +156,48 @@ public enum ChannelDraftsStore {
         }
     }
 
+    /// Messages as the chat sends them, as drafts: one per message, or one per album (messages that
+    /// share a grouping key) with the caption and media of its items. With the correlation id of
+    /// each send, if any.
+    public static func newDrafts(from messages: [EnqueueMessage]) -> [(draft: NewDraft, correlationId: Int64?)] {
+        var groups: [(key: Int64?, correlationId: Int64?, items: [(text: String, entities: [MessageTextEntity], richText: RichTextMessageAttribute?, media: EngineRawMedia?)])] = []
+        for message in messages {
+            guard case let .message(text, attributes, _, mediaReference, _, _, _, localGroupingKey, correlationId, _) = message else {
+                continue
+            }
+            var entities: [MessageTextEntity] = []
+            var richText: RichTextMessageAttribute?
+            for attribute in attributes {
+                if let attribute = attribute as? TextEntitiesMessageAttribute {
+                    entities = attribute.entities
+                } else if let attribute = attribute as? RichTextMessageAttribute {
+                    richText = attribute
+                }
+            }
+            let item = (text: text, entities: entities, richText: richText, media: mediaReference?.media)
+            if let localGroupingKey, let index = groups.firstIndex(where: { $0.key == localGroupingKey }) {
+                groups[index].items.append(item)
+                if let correlationId {
+                    groups[index].correlationId = correlationId
+                }
+            } else {
+                groups.append((key: localGroupingKey, correlationId: correlationId, items: [item]))
+            }
+        }
+        var result: [(draft: NewDraft, correlationId: Int64?)] = []
+        for group in groups {
+            let caption = group.items.first(where: { !$0.text.isEmpty })
+            let media = group.items.compactMap(\.media).map(ChannelDraft.encodeMedia)
+            let richText = group.items.compactMap(\.richText).first.map(ChannelDraft.encodeRichText)
+            let text = caption?.text ?? ""
+            if text.isEmpty && media.isEmpty && richText == nil {
+                continue
+            }
+            result.append((NewDraft(text: text, entities: caption?.entities ?? [], media: media, richText: richText), group.correlationId))
+        }
+        return result
+    }
+
     /// Saves a new draft at the end of the list and returns it.
     public static func add(engine: TelegramEngine, peerId: EnginePeer.Id, text: String, entities: [MessageTextEntity], media: [Data] = []) -> Signal<ChannelDraft, NoError> {
         return self.add(engine: engine, peerId: peerId, drafts: [NewDraft(text: text, entities: entities, media: media)])
@@ -179,10 +221,11 @@ public enum ChannelDraftsStore {
         })
     }
 
-    /// Rewrites a draft in place: same id, same position. `replacingMedia` swaps one media item
-    /// (a photo or video replaced while editing); without it the media stays. Does nothing if the
+    /// Rewrites a draft in place: same id, same position. `media` replaces all of its media (photos
+    /// saved to a draft taken into the composer); `replacingMedia` swaps one item (a photo or video
+    /// replaced while editing); without either the media stays. Does nothing if the
     /// draft has been deleted meanwhile.
-    public static func update(engine: TelegramEngine, peerId: EnginePeer.Id, id: ChannelDraft.Id, text: String, entities: [MessageTextEntity], richText: Data? = nil, replacingMedia: (index: Int, media: Data)? = nil) -> Signal<Never, NoError> {
+    public static func update(engine: TelegramEngine, peerId: EnginePeer.Id, id: ChannelDraft.Id, text: String, entities: [MessageTextEntity], richText: Data? = nil, media: [Data]? = nil, replacingMedia: (index: Int, media: Data)? = nil) -> Signal<Never, NoError> {
         let timestamp = self.currentTimestamp()
         return self.modify(engine: engine, peerId: peerId, { state -> Void in
             guard let index = state.drafts.firstIndex(where: { $0.id == id }) else {
@@ -191,6 +234,9 @@ public enum ChannelDraftsStore {
             state.drafts[index].text = text
             state.drafts[index].entities = entities
             state.drafts[index].richText = richText
+            if let media {
+                state.drafts[index].media = media
+            }
             if let replacingMedia {
                 if replacingMedia.index < state.drafts[index].media.count {
                     state.drafts[index].media[replacingMedia.index] = replacingMedia.media

@@ -478,7 +478,7 @@ extension ChatControllerImpl {
                 if case let .customChatContents(customChatContents) = strongSelf.presentationInterfaceState.subject, case .channelDrafts = customChatContents.kind {
                     isChannelDrafts = true
                 }
-                let attachmentController = AttachmentController(context: strongSelf.context, updatedPresentationData: strongSelf.updatedPresentationData, style: .glass, chatLocation: strongSelf.chatLocation, isScheduledMessages: isScheduledMessages, isChannelDrafts: isChannelDrafts, isEditingMessage: isEditingMessage, buttons: buttons, initialButton: initialButton, customEmojiAvailable: strongSelf.presentationInterfaceState.customEmojiAvailable)
+                let attachmentController = AttachmentController(context: strongSelf.context, updatedPresentationData: strongSelf.updatedPresentationData, style: .glass, chatLocation: strongSelf.chatLocation, isScheduledMessages: isScheduledMessages, isChannelDrafts: isChannelDrafts, canSaveChannelDraft: strongSelf.presentationInterfaceState.channelDrafts.isAvailable && !isEditingMessage, isEditingMessage: isEditingMessage, buttons: buttons, initialButton: initialButton, customEmojiAvailable: strongSelf.presentationInterfaceState.customEmojiAvailable)
                 attachmentController.attachmentButton = strongSelf.chatDisplayNode.getAttachmentButton()
                 attachmentController.shouldMinimizeOnSwipe = { [weak attachmentController] button in
                     if case .app = button {
@@ -1538,6 +1538,7 @@ extension ChatControllerImpl {
             chatLocation: self.chatLocation,
             isScheduledMessages: isScheduledMessages,
             isChannelDrafts: self.channelDraftsScreenPeerId != nil && !isEditingMessage,
+            canSaveChannelDraft: self.presentationInterfaceState.channelDrafts.isAvailable && !isEditingMessage,
             isActionButtonDone: isEditingMessage,
             bannedSendPhotos: bannedSendPhotos,
             bannedSendVideos: bannedSendVideos,

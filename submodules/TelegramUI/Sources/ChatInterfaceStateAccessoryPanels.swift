@@ -61,7 +61,9 @@ func textInputAccessoryPanel(
                 text: text
             )),
             chatPeerId: chatPresentationInterfaceState.chatLocation.peerId,
-            action: { _ in
+            action: { sourceView in
+                // The post as it will be published, as tapping the Reply or Forward header shows.
+                interfaceInteraction?.presentChannelDraftPreview(sourceView)
             },
             dismiss: { _ in
                 interfaceInteraction?.unlinkChannelDraft()

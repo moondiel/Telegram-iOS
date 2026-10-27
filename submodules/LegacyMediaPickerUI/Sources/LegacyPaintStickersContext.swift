@@ -608,7 +608,8 @@ private final class LegacyMediaPickerSendActionMenuReferenceContentSource: Conte
 public func makeLegacyMediaPickerSendActionMenuPresenter(
     context: AccountContext,
     presentationData: PresentationData? = nil,
-    presentInGlobalOverlay: ((ViewController) -> Void)? = nil
+    presentInGlobalOverlay: ((ViewController) -> Void)? = nil,
+    saveDraft: (() -> Void)? = nil
 ) -> LegacyMediaPickerSendActionMenuPresenter {
     return { sourceView, canSendSilently, canSendWhenOnline, canSchedule, reminder, hasTimer, sendSilently, sendWhenOnline, schedule, sendWithTimer in
         guard sourceView.window != nil else {
@@ -617,6 +618,16 @@ public func makeLegacyMediaPickerSendActionMenuPresenter(
 
         let presentationData = (presentationData ?? context.sharedContext.currentPresentationData.with { $0 }).withUpdated(theme: defaultDarkPresentationTheme)
         var items: [ContextMenuItem] = []
+
+        // Channel Drafts: save the media as a draft, first as in the chat's send menu.
+        if let saveDraft {
+            items.append(.action(ContextMenuActionItem(text: presentationData.strings.Conversation_SendMessage_SaveDraft, icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/SaveDraft"), color: theme.contextMenu.primaryColor)
+            }, action: { _, f in
+                f(.default)
+                saveDraft()
+            })))
+        }
 
         if canSendSilently {
             items.append(.action(ContextMenuActionItem(text: presentationData.strings.Conversation_SendMessage_SendSilently, icon: { theme in

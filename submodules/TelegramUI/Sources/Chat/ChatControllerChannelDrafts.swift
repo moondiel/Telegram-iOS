@@ -15,6 +15,7 @@ import ChannelDrafts
 import ChatTitleView
 import ChatInterfaceState
 import PresentationDataUtils
+import LegacyMediaPickerUI
 
 // Channel Drafts: every hook the feature needs in `ChatControllerImpl` lives in this file.
 // See CHANNEL_DRAFTS.md.
@@ -136,6 +137,80 @@ extension ChatControllerImpl {
             return state.updatedInterfaceState { interfaceState in
                 return interfaceState.withUpdatedComposeInputState(ChatTextInputState(inputText: NSAttributedString(string: "")))
             }.updatedChannelDrafts(channelDrafts)
+        })
+    }
+
+    /// Tap on the "Draft" header: the draft as it will be posted, in the same preview the Reply and
+    /// Forward headers open (a previewing chat in a context menu), with "Do Not Use Draft" as
+    /// Reply's preview has "Do Not Reply".
+    func presentChannelDraftPreview(sourceView: UIView) {
+        guard let peerId = self.channelDraftsPeerId, let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft else {
+            return
+        }
+        let contents = ChannelDraftsChatContents(context: self.context, peerId: peerId, onlyDraftId: attachedDraft.id)
+        let chatController = ChatControllerImpl(context: self.context, chatLocation: .customChatContents, subject: .customChatContents(contents: contents), mode: .standard(.previewing))
+        chatController.canReadHistory.set(false)
+
+        let strings = self.presentationData.strings
+        let items: [ContextMenuItem] = [
+            .action(ContextMenuActionItem(text: strings.ChannelDrafts_DontUseDraft, textColor: .destructive, icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor)
+            }, action: { [weak self] _, f in
+                f(.default)
+                guard let self else {
+                    return
+                }
+                // As × in the header: the composer is cleared and the draft stays as it was.
+                self.unlinkChannelDraft()
+                self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
+                    return state.updatedInterfaceState { $0.withUpdatedComposeInputState(ChatTextInputState(inputText: NSAttributedString(string: ""))) }
+                })
+            }))
+        ]
+        let sourceId = AnyHashable("channelDraft")
+        let source = ContextController.Source(
+            id: sourceId,
+            title: strings.ChannelDrafts_AttachedPanelTitle,
+            source: .controller(ChatContextControllerContentSourceImpl(controller: chatController, sourceView: sourceView, passthroughTouches: true)),
+            items: .single(ContextController.Items(content: .list(items)))
+        )
+        let contextController = makeContextController(
+            presentationData: self.presentationData,
+            configuration: ContextController.Configuration(sources: [source], initialId: sourceId)
+        )
+        self.canReadHistory.set(false)
+        contextController.dismissed = { [weak self] in
+            self?.canReadHistory.set(true)
+        }
+        self.chatDisplayNode.dismissInput()
+        self.presentInGlobalOverlay(contextController)
+    }
+
+    /// Save Draft in the send options of the media picker or the photo editor: the picked media,
+    /// with its caption, is saved instead of sent. With a draft taken into the composer, that draft
+    /// gets the media and the caption (the caption is the composer text the picker took over);
+    /// otherwise each photo, or each album, becomes a new draft.
+    func saveChannelDraft(mediaSignals signals: [Any]?, completion: @escaping () -> Void) {
+        guard let peerId = self.channelDraftsPeerId, let signals else {
+            completion()
+            return
+        }
+        let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft
+        let engine = self.context.engine
+        let _ = (legacyAssetPickerEnqueueMessages(context: self.context, account: self.context.account, signals: signals)
+        |> deliverOnMainQueue).startStandalone(next: { [weak self] items in
+            var newDrafts = ChannelDraftsStore.newDrafts(from: items.map(\.message)).map { $0.draft }
+            if let attachedDraft, !newDrafts.isEmpty {
+                let first = newDrafts.removeFirst()
+                let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: attachedDraft.id, text: first.text, entities: first.entities, richText: first.richText, media: first.media).startStandalone()
+            }
+            if !newDrafts.isEmpty {
+                let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, drafts: newDrafts).startStandalone()
+            }
+            if let self {
+                self.unlinkChannelDraft()
+            }
+            completion()
         })
     }
 

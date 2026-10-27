@@ -1344,6 +1344,11 @@ public enum ChatCustomContentsKind: Equatable {
     case channelDrafts(peerId: EnginePeer.Id)
 }
 
+/// Save Draft in the send options of the media picker and the photo editor. It travels to the chat
+/// as the send's schedule time, as "Send When Online" does with `scheduleWhenOnlineTimestamp`, and
+/// the chat saves the media as a channel draft instead of sending it. It never reaches a message.
+public let channelDraftSaveScheduleTimestamp: Int32 = 0x7ffffffd
+
 public protocol ChatCustomContentsProtocol: AnyObject {
     var kind: ChatCustomContentsKind { get }
     var historyView: Signal<(EngineRawMessageHistoryView, EngineViewUpdateType), NoError> { get }

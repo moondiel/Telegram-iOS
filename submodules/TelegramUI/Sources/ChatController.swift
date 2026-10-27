@@ -9232,6 +9232,11 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         getAnimatedTransitionSource: ((String) -> UIView?)? = nil,
         completion: @escaping () -> Void = {}
     ) {
+        if scheduleTime == channelDraftSaveScheduleTimestamp {
+            // Save Draft in the media send options: saved, not sent.
+            self.saveChannelDraft(mediaSignals: signals, completion: completion)
+            return
+        }
         if let _ = self.presentationInterfaceState.sendPaidMessageStars {
             self.presentPaidMessageAlertIfNeeded(count: Int32(signals?.count ?? 1), forceDark: fromGallery, completion: { [weak self] postpone in
                 self?.commitEnqueueMediaMessages(signals: signals, silentPosting: silentPosting, scheduleTime: scheduleTime, postpone: postpone, parameters: parameters, getAnimatedTransitionSource: getAnimatedTransitionSource, completion: completion)

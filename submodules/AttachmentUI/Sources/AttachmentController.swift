@@ -306,6 +306,8 @@ public protocol AttachmentMediaPickerContext {
     func setCaption(_ caption: NSAttributedString)
     func send(mode: AttachmentMediaPickerSendMode, attachmentMode: AttachmentMediaPickerAttachmentMode, parameters: ChatSendMessageActionSheetController.SendParameters?)
     func schedule(parameters: ChatSendMessageActionSheetController.SendParameters?)
+    /// Channel Drafts: Save Draft in the send options.
+    func saveAsChannelDraft(parameters: ChatSendMessageActionSheetController.SendParameters?)
 }
 
 public extension AttachmentMediaPickerContext {
@@ -366,6 +368,9 @@ public extension AttachmentMediaPickerContext {
     }
 
     func schedule(parameters: ChatSendMessageActionSheetController.SendParameters?) {
+    }
+
+    func saveAsChannelDraft(parameters: ChatSendMessageActionSheetController.SendParameters?) {
     }
 
     func mainButtonAction() {
@@ -446,6 +451,7 @@ public class AttachmentController: ViewController, MinimizableController {
     private let chatLocation: ChatLocation?
     private let isScheduledMessages: Bool
     private let isChannelDrafts: Bool
+    private let canSaveChannelDraft: Bool
     private let isEditingMessage: Bool
     private var buttons: [AttachmentButtonType]
     private let initialButton: AttachmentButtonType
@@ -629,7 +635,7 @@ public class AttachmentController: ViewController, MinimizableController {
                 panelStyle = .legacy
             }
 
-            self.panel = AttachmentPanel(controller: controller, style: panelStyle, context: controller.context, chatLocation: controller.chatLocation, isScheduledMessages: controller.isScheduledMessages, isChannelDrafts: controller.isChannelDrafts, isEditingMessage: controller.isEditingMessage, customEmojiAvailable: controller.customEmojiAvailable, updatedPresentationData: controller.updatedPresentationData)
+            self.panel = AttachmentPanel(controller: controller, style: panelStyle, context: controller.context, chatLocation: controller.chatLocation, isScheduledMessages: controller.isScheduledMessages, isChannelDrafts: controller.isChannelDrafts, canSaveChannelDraft: controller.canSaveChannelDraft, isEditingMessage: controller.isEditingMessage, customEmojiAvailable: controller.customEmojiAvailable, updatedPresentationData: controller.updatedPresentationData)
             self.panel.fromMenu = controller.fromMenu
             self.panel.isStandalone = controller.isStandalone
 
@@ -785,6 +791,9 @@ public class AttachmentController: ViewController, MinimizableController {
                         strongSelf.mediaPickerContext?.send(mode: .whenOnline, attachmentMode: .media, parameters: parameters)
                     }
                 }
+            }
+            self.panel.saveAsChannelDraft = { [weak self] in
+                self?.mediaPickerContext?.saveAsChannelDraft(parameters: nil)
             }
             self.panel.invokeAICompose = { [weak self] in
                 Task { @MainActor in
@@ -1602,6 +1611,8 @@ public class AttachmentController: ViewController, MinimizableController {
         /// Channel Drafts: sending saves a draft, so the send button shows the Save Draft glyph and
         /// has no send options, as on the Drafts screen itself.
         isChannelDrafts: Bool = false,
+        /// A channel the user keeps drafts in: the send options offer Save Draft.
+        canSaveChannelDraft: Bool = false,
         /// The result replaces the media of a message being edited rather than sending a new message, so
         /// send options (schedule, silent, effects) are never offered.
         isEditingMessage: Bool = false,
@@ -1620,6 +1631,7 @@ public class AttachmentController: ViewController, MinimizableController {
         self.chatLocation = chatLocation
         self.isScheduledMessages = isScheduledMessages
         self.isChannelDrafts = isChannelDrafts
+        self.canSaveChannelDraft = canSaveChannelDraft
         self.isEditingMessage = isEditingMessage
         self.buttons = buttons
         self.initialButton = initialButton

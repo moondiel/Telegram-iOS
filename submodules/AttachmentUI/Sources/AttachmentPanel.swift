@@ -1040,6 +1040,7 @@ final class AttachmentPanel: ASDisplayNode, ASScrollViewDelegate, ASGestureRecog
     private let context: AccountContext
     private let isScheduledMessages: Bool
     private let isChannelDrafts: Bool
+    private let canSaveChannelDraft: Bool
     // While a message is being edited the result replaces that message's media, so the long-press
     // send options (schedule, silent, effects) do not apply and the sheet is never offered.
     private let isEditingMessage: Bool
@@ -1139,6 +1140,7 @@ final class AttachmentPanel: ASDisplayNode, ASScrollViewDelegate, ASGestureRecog
     var beganTextEditing: () -> Void = {}
     var textUpdated: (NSAttributedString) -> Void = { _ in }
     var sendMessagePressed: (AttachmentTextInputPanelSendMode, ChatSendMessageActionSheetController.SendParameters?) -> Void = { _, _ in }
+    var saveAsChannelDraft: () -> Void = {}
     var invokeAICompose: () -> Void = {}
     var requestLayout: () -> Void = {}
     var present: (ViewController) -> Void = { _ in }
@@ -1150,7 +1152,7 @@ final class AttachmentPanel: ASDisplayNode, ASScrollViewDelegate, ASGestureRecog
     var onMainButtonPressed: () -> Void = { }
     var onSecondaryButtonPressed: () -> Void = { }
 
-    init(controller: AttachmentController, style: Style, context: AccountContext, chatLocation: ChatLocation?, isScheduledMessages: Bool, isChannelDrafts: Bool = false, isEditingMessage: Bool = false, customEmojiAvailable: Bool, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?) {
+    init(controller: AttachmentController, style: Style, context: AccountContext, chatLocation: ChatLocation?, isScheduledMessages: Bool, isChannelDrafts: Bool = false, canSaveChannelDraft: Bool = false, isEditingMessage: Bool = false, customEmojiAvailable: Bool, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?) {
         self.controller = controller
         self.context = context
         self.panelStyle = style
@@ -1158,6 +1160,7 @@ final class AttachmentPanel: ASDisplayNode, ASScrollViewDelegate, ASGestureRecog
         self.presentationData = updatedPresentationData?.initial ?? context.sharedContext.currentPresentationData.with { $0 }
         self.isScheduledMessages = isScheduledMessages
         self.isChannelDrafts = isChannelDrafts
+        self.canSaveChannelDraft = canSaveChannelDraft
         self.isEditingMessage = isEditingMessage
         self.customEmojiAvailable = customEmojiAvailable
 
@@ -1460,7 +1463,10 @@ final class AttachmentPanel: ASDisplayNode, ASScrollViewDelegate, ASGestureRecog
                             currentPrice: currentPrice,
                             hasTimers: hasTimers,
                             sendPaidMessageStars: strongSelf.presentationInterfaceState.sendPaidMessageStars,
-                            isMonoforum: strongSelf.presentationInterfaceState.renderedPeer?.peer?.isMonoForum ?? false
+                            isMonoforum: strongSelf.presentationInterfaceState.renderedPeer?.peer?.isMonoForum ?? false,
+                            saveDraft: strongSelf.canSaveChannelDraft ? { [weak strongSelf] in
+                                strongSelf?.saveAsChannelDraft()
+                            } : nil
                         )),
                         hasEntityKeyboard: hasEntityKeyboard,
                         gesture: gesture,

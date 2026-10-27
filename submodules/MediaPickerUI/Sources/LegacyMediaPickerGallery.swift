@@ -117,6 +117,7 @@ func presentLegacyMediaPickerGallery(
     chatLocation: ChatLocation?,
     isScheduledMessages: Bool,
     isChannelDrafts: Bool = false,
+    canSaveChannelDraft: Bool = false,
     isActionButtonDone: Bool = false,
     presentationData: PresentationData,
     source: LegacyMediaPickerGallerySource,
@@ -406,7 +407,18 @@ func presentLegacyMediaPickerGallery(
                         }
                     }
 
-                    if let sourceView, let paintStickersContext, paintStickersContext.presentMediaPickerSendActionMenu?(sourceView, hasSilentPosting, sendWhenOnlineAvailable && effectiveHasSchedule, effectiveHasSchedule, reminder, hasTimer, sendSilently, sendWhenOnline, schedule, sendWithTimer) == true {
+                    var presentSendActionMenu = paintStickersContext?.presentMediaPickerSendActionMenu
+                    if canSaveChannelDraft {
+                        // A channel the user can keep drafts in: the same menu with Save Draft.
+                        presentSendActionMenu = makeLegacyMediaPickerSendActionMenuPresenter(context: context, presentationData: presentationData, presentInGlobalOverlay: { [weak legacyController] controller in
+                            legacyController?.presentInGlobalOverlay(controller)
+                        }, saveDraft: {
+                            completed(item.asset, false, channelDraftSaveScheduleTimestamp, {
+                                dismissImpl()
+                            })
+                        })
+                    }
+                    if let sourceView, let presentSendActionMenu, presentSendActionMenu(sourceView, hasSilentPosting, sendWhenOnlineAvailable && effectiveHasSchedule, effectiveHasSchedule, reminder, hasTimer, sendSilently, sendWhenOnline, schedule, sendWithTimer) == true {
                         let hapticFeedback = HapticFeedback()
                         hapticFeedback.impact()
                         return
