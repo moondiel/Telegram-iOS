@@ -16,16 +16,21 @@ public struct ChatChannelDraftsState: Equatable {
         /// post with this media (`messageMediaEditingOptions`). Empty: the button is disabled
         /// (voice and round video messages, stickers, music albums), as when editing.
         public let mediaEditingOptions: MessageMediaEditingOptions
+        /// The longest text the post takes: the caption limit with a photo, video or file, as
+        /// `ChatEditMessageState.inputTextMaxLength` is while editing. The input field counts down
+        /// to it and Send shakes past it.
+        public let inputTextMaxLength: Int32?
 
-        public init(id: Int32, text: String, media: [EngineRawMedia] = [], mediaEditingOptions: MessageMediaEditingOptions = []) {
+        public init(id: Int32, text: String, media: [EngineRawMedia] = [], mediaEditingOptions: MessageMediaEditingOptions = [], inputTextMaxLength: Int32? = nil) {
             self.id = id
             self.text = text
             self.media = media
             self.mediaEditingOptions = mediaEditingOptions
+            self.inputTextMaxLength = inputTextMaxLength
         }
 
         public static func ==(lhs: AttachedDraft, rhs: AttachedDraft) -> Bool {
-            if lhs.id != rhs.id || lhs.text != rhs.text || lhs.media.count != rhs.media.count || lhs.mediaEditingOptions != rhs.mediaEditingOptions {
+            if lhs.id != rhs.id || lhs.text != rhs.text || lhs.media.count != rhs.media.count || lhs.mediaEditingOptions != rhs.mediaEditingOptions || lhs.inputTextMaxLength != rhs.inputTextMaxLength {
                 return false
             }
             for i in 0 ..< lhs.media.count {

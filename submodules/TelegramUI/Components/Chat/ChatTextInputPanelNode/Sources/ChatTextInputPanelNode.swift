@@ -4274,6 +4274,9 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         } else if let presentationInterfaceState = self.presentationInterfaceState {
             if let editMessage = presentationInterfaceState.interfaceState.editMessage, let inputTextMaxLengthValue = editMessage.inputTextMaxLength {
                 inputTextMaxLength = inputTextMaxLengthValue
+            } else if presentationInterfaceState.interfaceState.editMessage == nil, let inputTextMaxLengthValue = presentationInterfaceState.channelDrafts.attachedDraft?.inputTextMaxLength {
+                // A channel draft in the composer counts down as the post being edited does.
+                inputTextMaxLength = inputTextMaxLengthValue
             } else if case let .customChatContents(customChatContents) = presentationInterfaceState.subject, case .businessLinkSetup = customChatContents.kind {
                 inputTextMaxLength = 4096
             }
@@ -5640,7 +5643,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
     }
     
     @objc func sendButtonPressed() {
-        if let richTextInputNode = self.richTextInputNode, let presentationInterfaceState = self.presentationInterfaceState, let editMessage = presentationInterfaceState.interfaceState.editMessage, let inputTextMaxLength = editMessage.inputTextMaxLength {
+        if let richTextInputNode = self.richTextInputNode, let presentationInterfaceState = self.presentationInterfaceState, let inputTextMaxLength = presentationInterfaceState.interfaceState.editMessage?.inputTextMaxLength ?? presentationInterfaceState.channelDrafts.attachedDraft?.inputTextMaxLength {
             let textCount = Int32(self.richTextInputNode?.text.count ?? 0)
             let remainingCount = inputTextMaxLength - textCount
 

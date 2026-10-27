@@ -4032,7 +4032,7 @@ extension ChatControllerImpl {
         }, openChannelDrafts: { [weak self] in
             self?.openChannelDrafts()
         }, unlinkChannelDraft: { [weak self] in
-            self?.unlinkChannelDraft()
+            self?.dismissChannelDraftFromComposer()
         }, displaySearchResultsTooltip: { [weak self] node, nodeRect in
             if let strongSelf = self {
                 strongSelf.searchResultsTooltipController?.dismiss()

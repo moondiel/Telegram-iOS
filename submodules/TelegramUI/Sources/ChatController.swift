@@ -336,6 +336,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     /// The channel draft whose text the attach flow took over as a caption (clearing the
     /// composer). The next send or Save Draft of that flow publishes or updates it.
     var channelDraftTakenByCaption: ChatChannelDraftsState.AttachedDraft?
+    /// What the composer held before Use Draft, given back when the draft leaves it, as the
+    /// composer text comes back after editing a post.
+    var channelDraftReplacedComposer: (inputState: ChatTextInputState, disableUrlPreviews: [String])?
     let editMessageErrorsDisposable = MetaDisposable()
     let enqueueMediaMessageDisposable = MetaDisposable()
     var resolvePeerByNameDisposable: MetaDisposable?

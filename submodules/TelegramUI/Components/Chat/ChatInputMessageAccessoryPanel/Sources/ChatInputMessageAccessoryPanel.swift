@@ -220,15 +220,19 @@ public final class ChatInputMessageAccessoryPanel: Component {
             public let id: AnyHashable
             public let title: String
             public let text: String
+            /// The text names the media ("Photo", "Voice Message"...): drawn in the secondary
+            /// colour, as the Edit header draws a post without a caption.
+            public let textIsMediaKind: Bool
             
-            public init(id: AnyHashable, title: String, text: String) {
+            public init(id: AnyHashable, title: String, text: String, textIsMediaKind: Bool = false) {
                 self.id = id
                 self.title = title
                 self.text = text
+                self.textIsMediaKind = textIsMediaKind
             }
             
             public static func ==(lhs: Custom, rhs: Custom) -> Bool {
-                return lhs.id == rhs.id && lhs.title == rhs.title && lhs.text == rhs.text
+                return lhs.id == rhs.id && lhs.title == rhs.title && lhs.text == rhs.text && lhs.textIsMediaKind == rhs.textIsMediaKind
             }
         }
 
@@ -789,7 +793,7 @@ public final class ChatInputMessageAccessoryPanel: Component {
                 textString = NSAttributedString(string: text, font: Font.regular(14.0), textColor: environment.theme.chat.inputPanel.primaryTextColor)
             case let .custom(custom):
                 titleText = [.text(NSAttributedString(string: custom.title, font: Font.medium(14.0), textColor: environment.theme.chat.inputPanel.panelControlAccentColor))]
-                textString = NSAttributedString(string: custom.text, font: Font.regular(14.0), textColor: environment.theme.chat.inputPanel.primaryTextColor)
+                textString = NSAttributedString(string: custom.text, font: Font.regular(14.0), textColor: custom.textIsMediaKind ? secondaryTextColor : environment.theme.chat.inputPanel.primaryTextColor)
             case let .suggestPost(suggestPost):
                 if suggestPost.state.editingOriginalMessageId != nil {
                     titleText.append(.text(NSAttributedString(string: environment.strings.Chat_PostSuggestion_Suggest_InputEditTitle, font: Font.medium(14.0), textColor: environment.theme.chat.inputPanel.panelControlAccentColor)))

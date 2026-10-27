@@ -27,6 +27,12 @@ Channel admins can keep several drafts per broadcast channel:
   publishes a normal post (an album for several items, the composer text as the caption) and
   removes the draft; Save Draft updates it; × unlinks it and leaves it untouched. As with Edit,
   erasing the text keeps the header.
+- **Use Draft is set up the way Edit sets up a post** (`setupEditMessage`): a voice message being
+  recorded is discarded first (same alert); text keeps its entities or rich structure; with a
+  photo, video or file the text is limited to the caption length (counter, Send shakes past it);
+  a caption gets no link preview; the header names the media in the secondary colour when there
+  is no caption. What the composer held before comes back after ×, Save Draft or Send, as it
+  comes back after an edit.
 - **Save Draft for everything the channel can send**, wherever it offers send options: the text
   composer, a voice message under review, a round video being recorded, the attach screen's send
   menu (photos, videos, files, music, contacts), the photo editor's, and the long-press menus of

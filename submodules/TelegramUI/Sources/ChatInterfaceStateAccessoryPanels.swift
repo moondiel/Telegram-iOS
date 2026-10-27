@@ -50,23 +50,24 @@ func textInputAccessoryPanel(
         // and unlinks the draft, which stays as it was. A draft with media and no caption reads
         // "Photo", "Video"... as the Edit header does.
         var text = attachedDraft.text
+        var textIsMediaKind = false
         if text.isEmpty, let media = attachedDraft.media.first, let kind = mediaContentKind(EngineMedia(media), strings: chatPresentationInterfaceState.strings) {
             text = stringForMediaKind(kind, strings: chatPresentationInterfaceState.strings).0.string
+            textIsMediaKind = true
         }
         return AnyComponentWithIdentity(id: "channelDraft", component: AnyComponent(ChatInputMessageAccessoryPanel(
             context: context,
             contents: .custom(ChatInputMessageAccessoryPanel.Contents.Custom(
                 id: AnyHashable(attachedDraft.id),
                 title: chatPresentationInterfaceState.strings.ChannelDrafts_AttachedPanelTitle,
-                text: text
+                text: text,
+                textIsMediaKind: textIsMediaKind
             )),
             chatPeerId: chatPresentationInterfaceState.chatLocation.peerId,
             action: nil,
             dismiss: { _ in
+                // As × in the Edit header: the composer gets back what it held before.
                 interfaceInteraction?.unlinkChannelDraft()
-                interfaceInteraction?.updateTextInputStateAndMode { _, inputMode in
-                    return (ChatTextInputState(inputText: NSAttributedString(string: "")), inputMode)
-                }
             }
         )))
     }

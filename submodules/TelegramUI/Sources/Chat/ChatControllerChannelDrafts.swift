@@ -137,6 +137,7 @@ extension ChatControllerImpl {
             let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, drafts: [ChannelDraftsStore.NewDraft(text: text, entities: entities, richText: richText)]).startStandalone()
         }
 
+        let wasLinked = self.presentationInterfaceState.channelDrafts.attachedDraft != nil
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
             var channelDrafts = state.channelDrafts
             channelDrafts.attachedDraft = nil
@@ -144,6 +145,10 @@ extension ChatControllerImpl {
                 return interfaceState.withUpdatedComposeInputState(ChatTextInputState(inputText: NSAttributedString(string: "")))
             }.updatedChannelDrafts(channelDrafts)
         })
+        if wasLinked {
+            // As after saving an edit, the composer gets back what it held before.
+            self.restoreComposerReplacedByChannelDraft()
+        }
     }
 
     /// Save Draft in the send options of the media picker or the photo editor: the picked media,
@@ -175,6 +180,9 @@ extension ChatControllerImpl {
             self.channelDraftTakenByCaption = nil
             let first = newDrafts.removeFirst()
             let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: takenDraft.id, text: first.text, entities: first.entities, richText: first.richText, media: first.media).startStandalone()
+            if self.channelDraftReplacedComposer != nil {
+                self.restoreComposerReplacedByChannelDraft()
+            }
         }
         if !newDrafts.isEmpty {
             let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, drafts: newDrafts).startStandalone()
@@ -193,6 +201,9 @@ extension ChatControllerImpl {
         }
         self.channelDraftTakenByCaption = nil
         let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: peerId, ids: Set([takenDraft.id])).startStandalone()
+        if self.channelDraftReplacedComposer != nil {
+            self.restoreComposerReplacedByChannelDraft()
+        }
     }
 
     /// A photo, video or file picked with the attachment button while a draft with media is in the
@@ -221,7 +232,7 @@ extension ChatControllerImpl {
         media[0] = mediaReference.media
         let caption = text.isEmpty ? linkedDraft.text : text
         let _ = ChannelDraftsStore.update(engine: self.context.engine, peerId: peerId, id: linkedDraft.id, text: caption, entities: text.isEmpty ? [] : entities, replacingMedia: (0, ChannelDraft.encodeMedia(mediaReference.media))).startStandalone()
-        let updatedDraft = ChatChannelDraftsState.AttachedDraft(id: linkedDraft.id, text: caption, media: media, mediaEditingOptions: channelDraftMediaEditingOptions(media: media, peerId: peerId))
+        let updatedDraft = ChatChannelDraftsState.AttachedDraft(id: linkedDraft.id, text: caption, media: media, mediaEditingOptions: channelDraftMediaEditingOptions(media: media, peerId: peerId), inputTextMaxLength: linkedDraft.inputTextMaxLength)
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
             var channelDrafts = state.channelDrafts
             channelDrafts.attachedDraft = updatedDraft
@@ -314,6 +325,13 @@ extension ChatControllerImpl {
             channelDrafts.attachedDraft = nil
             return state.updatedChannelDrafts(channelDrafts)
         })
+        // The send clears the composer right after this; then it gets back what it held before Use
+        // Draft, as after an edit is saved.
+        if self.channelDraftReplacedComposer != nil {
+            DispatchQueue.main.async { [weak self] in
+                self?.restoreComposerReplacedByChannelDraft()
+            }
+        }
     }
 
     /// The Drafts button in the input field: opens the Drafts screen, a chat controller over
@@ -335,7 +353,18 @@ extension ChatControllerImpl {
     /// Use Draft: the draft's text (or caption) goes into the composer, linked to the draft ("Draft"
     /// header); its media goes with the link and is posted by Send or Schedule, as editing a post
     /// with media keeps the media out of the text field. The draft stays in the list until then.
+    ///
+    /// Set up as Edit sets up a post (`setupEditMessage`): a voice message being recorded is
+    /// discarded first, the text keeps its entities or rich structure, a photo, video or file
+    /// limits it to the caption length, a caption gets no link preview, the attachment button
+    /// follows the media's editing options, and what the composer held comes back afterwards.
     func useChannelDraft(_ draft: ChannelDraft) {
+        let _ = self.presentVoiceMessageDiscardAlert(action: { [weak self] in
+            self?.applyChannelDraftToComposer(draft)
+        }, delay: true)
+    }
+
+    private func applyChannelDraftToComposer(_ draft: ChannelDraft) {
         // Rich content goes in with its structure, the same InstantPage → composer hop editing a
         // rich message uses.
         let inputState: ChatTextInputState
@@ -346,16 +375,60 @@ extension ChatControllerImpl {
             inputState = ChatTextInputState(inputText: chatInputStateStringWithAppliedEntities(draft.text, entities: draft.entities))
         }
         let media = draft.decodedMedia
+        // Edit's caption limit: a photo or a file takes a caption, anything else a message's length.
+        var inputTextMaxLength: Int32 = 4096
+        if media.contains(where: { $0 is TelegramMediaImage || $0 is TelegramMediaFile }) {
+            inputTextMaxLength = self.context.userLimits.maxCaptionLength
+        }
+        // A caption never has a link preview, as Edit disables previews a post did not have.
+        let disableUrlPreviews = media.isEmpty ? [] : detectUrls(inputState.inputText)
+
+        if self.presentationInterfaceState.channelDrafts.attachedDraft == nil {
+            let interfaceState = self.presentationInterfaceState.interfaceState
+            if interfaceState.composeInputState.inputText.length != 0 {
+                self.channelDraftReplacedComposer = (interfaceState.composeInputState, interfaceState.composeDisableUrlPreviews)
+            } else {
+                self.channelDraftReplacedComposer = nil
+            }
+        }
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
             var channelDrafts = state.channelDrafts
-            channelDrafts.attachedDraft = ChatChannelDraftsState.AttachedDraft(id: draft.id, text: draft.decodedRichText == nil ? draft.text : inputState.inputText.string, media: media, mediaEditingOptions: channelDraftMediaEditingOptions(media: media, peerId: state.chatLocation.peerId))
+            channelDrafts.attachedDraft = ChatChannelDraftsState.AttachedDraft(
+                id: draft.id,
+                text: draft.decodedRichText == nil ? draft.text : inputState.inputText.string,
+                media: media,
+                mediaEditingOptions: channelDraftMediaEditingOptions(media: media, peerId: state.chatLocation.peerId),
+                inputTextMaxLength: inputTextMaxLength
+            )
             return state.updatedInterfaceState { interfaceState in
-                return interfaceState.withUpdatedComposeInputState(inputState)
+                return interfaceState.withUpdatedComposeInputState(inputState).withUpdatedComposeDisableUrlPreviews(disableUrlPreviews)
             }.updatedInputMode { _ in
                 return .text
-            }.updatedChannelDrafts(channelDrafts)
+            }.updatedShowCommands(false).updatedChannelDrafts(channelDrafts)
         })
-        self.chatDisplayNode.ensureInputViewFocused()
+        if !self.chatDisplayNode.ensureInputViewFocused() {
+            DispatchQueue.main.async { [weak self] in
+                self?.chatDisplayNode.ensureInputViewFocused()
+            }
+        }
+    }
+
+    /// × in the "Draft" header: the draft stays as it was and the composer gets back what it held
+    /// before Use Draft, as cancelling an edit does.
+    func dismissChannelDraftFromComposer() {
+        self.unlinkChannelDraft()
+        self.restoreComposerReplacedByChannelDraft()
+    }
+
+    /// The composer text from before Use Draft, or an empty composer.
+    func restoreComposerReplacedByChannelDraft() {
+        let replaced = self.channelDraftReplacedComposer
+        self.channelDraftReplacedComposer = nil
+        self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
+            return state.updatedInterfaceState { interfaceState in
+                return interfaceState.withUpdatedComposeInputState(replaced?.inputState ?? ChatTextInputState(inputText: NSAttributedString(string: ""))).withUpdatedComposeDisableUrlPreviews(replaced?.disableUrlPreviews ?? [])
+            }
+        })
     }
 
     /// ✓ in the "Edit Draft" header on the Drafts screen, and a replacement photo or video picked
