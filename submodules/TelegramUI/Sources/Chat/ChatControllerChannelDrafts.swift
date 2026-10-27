@@ -210,7 +210,7 @@ extension ChatControllerImpl {
         }
         let engine = self.context.engine
         var newDrafts = ChannelDraftsStore.newDrafts(from: messages).map { $0.draft }
-        if let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft, !newDrafts.isEmpty {
+        if let attachedDraft = self.takeLinkedChannelDraft(), !newDrafts.isEmpty {
             let first = newDrafts.removeFirst()
             let text = first.text.isEmpty && first.richText == nil ? attachedDraft.text : first.text
             let entities = first.text.isEmpty && first.richText == nil ? [] : first.entities
@@ -225,6 +225,14 @@ extension ChatControllerImpl {
             channelDrafts.attachedDraft = nil
             return state.updatedInterfaceState { $0.withUpdatedMediaDraftState(nil) }.updatedChannelDrafts(channelDrafts)
         })
+    }
+
+    /// The draft this send or save belongs to: the one linked to the composer, or the one whose text
+    /// the attach flow took over as a caption. Taken once.
+    private func takeLinkedChannelDraft() -> ChatChannelDraftsState.AttachedDraft? {
+        let draft = self.presentationInterfaceState.channelDrafts.attachedDraft ?? self.channelDraftTakenByCaption
+        self.channelDraftTakenByCaption = nil
+        return draft
     }
 
     /// The chat's send funnels: messages marked with `channelDraftSaveScheduleTimestamp` (Save Draft
@@ -298,7 +306,7 @@ extension ChatControllerImpl {
     /// Called from the composer's send (`publishChannelDraft`) and from every send of the chat; the
     /// second call finds the draft unlinked.
     func channelDraftsDidSendMessages(_ messages: [EnqueueMessage]) {
-        guard !messages.isEmpty, let peerId = self.channelDraftsPeerId, let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft else {
+        guard !messages.isEmpty, let peerId = self.channelDraftsPeerId, let attachedDraft = self.takeLinkedChannelDraft() else {
             return
         }
         let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: peerId, ids: Set([attachedDraft.id])).startStandalone()
