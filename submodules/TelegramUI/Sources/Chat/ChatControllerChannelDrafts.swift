@@ -146,52 +146,6 @@ extension ChatControllerImpl {
         })
     }
 
-    /// Tap on the "Draft" header: the draft as it will be posted, in the same preview the Reply and
-    /// Forward headers open (a previewing chat in a context menu), with "Do Not Use Draft" as
-    /// Reply's preview has "Do Not Reply".
-    func presentChannelDraftPreview(sourceView: UIView) {
-        guard let peerId = self.channelDraftsPeerId, let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft else {
-            return
-        }
-        let contents = ChannelDraftsChatContents(context: self.context, peerId: peerId, onlyDraftId: attachedDraft.id)
-        let chatController = ChatControllerImpl(context: self.context, chatLocation: .customChatContents, subject: .customChatContents(contents: contents), mode: .standard(.previewing))
-        chatController.canReadHistory.set(false)
-
-        let strings = self.presentationData.strings
-        let items: [ContextMenuItem] = [
-            .action(ContextMenuActionItem(text: strings.ChannelDrafts_DontUseDraft, textColor: .destructive, icon: { theme in
-                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor)
-            }, action: { [weak self] _, f in
-                f(.default)
-                guard let self else {
-                    return
-                }
-                // As × in the header: the composer is cleared and the draft stays as it was.
-                self.unlinkChannelDraft()
-                self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
-                    return state.updatedInterfaceState { $0.withUpdatedComposeInputState(ChatTextInputState(inputText: NSAttributedString(string: ""))) }
-                })
-            }))
-        ]
-        let sourceId = AnyHashable("channelDraft")
-        let source = ContextController.Source(
-            id: sourceId,
-            title: strings.ChannelDrafts_AttachedPanelTitle,
-            source: .controller(ChatContextControllerContentSourceImpl(controller: chatController, sourceView: sourceView, passthroughTouches: true)),
-            items: .single(ContextController.Items(content: .list(items)))
-        )
-        let contextController = makeContextController(
-            presentationData: self.presentationData,
-            configuration: ContextController.Configuration(sources: [source], initialId: sourceId)
-        )
-        self.canReadHistory.set(false)
-        contextController.dismissed = { [weak self] in
-            self?.canReadHistory.set(true)
-        }
-        self.chatDisplayNode.dismissInput()
-        self.presentInGlobalOverlay(contextController)
-    }
-
     /// Save Draft in the send options of the media picker or the photo editor: the picked media,
     /// with its caption, is saved instead of sent.
     func saveChannelDraft(mediaSignals signals: [Any]?, completion: @escaping () -> Void) {
@@ -525,12 +479,10 @@ extension ChatControllerImpl {
 
 /// The Drafts screen title. Like "Scheduled Messages": text only, without the channel's badges,
 /// in a pill that fits it; during selection the same "N Selected" / "Select Messages" title as
-/// any chat. The preview of a single draft is titled "Draft", as its header in the composer.
+/// any chat.
 func channelDraftsTitleContent(contents: ChatCustomContentsProtocol, selectionState: ChatInterfaceSelectionState?, strings: PresentationStrings) -> ChatTitleContent {
     guard let selectionState else {
-        let isSingleDraft = (contents as? ChannelDraftsChatContents)?.showsSingleDraft ?? false
-        let title = isSingleDraft ? strings.ChannelDrafts_AttachedPanelTitle : strings.ChannelDrafts_Title
-        return .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(title))], subtitle: nil, isEnabled: false, hugsTitle: true)
+        return .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(strings.ChannelDrafts_Title))], subtitle: nil, isEnabled: false, hugsTitle: true)
     }
     if selectionState.selectedIds.isEmpty {
         return .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(2), content: .text(strings.Conversation_SelectMessages))], subtitle: nil, isEnabled: false)

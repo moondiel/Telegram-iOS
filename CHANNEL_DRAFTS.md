@@ -21,8 +21,7 @@ Channel admins can keep several drafts per broadcast channel:
   in the selection header shows Scheduled Messages' sheet and warning and deletes every draft.
 - The Drafts button is the leftmost button in the channel's input field.
 - **Use Draft** closes the screen and puts the text (or caption) into the channel composer with a
-  **Draft** header, as editing a post does. Tapping the header previews the post as it will be
-  published, in the preview the Reply and Forward headers open, with **Do Not Use Draft**. A
+  **Draft** header, as editing a post does (no preview: the Edit header has none either). A
   draft's photos, videos, files or audio stay out of the text field, like the media of a post
   being edited, and the header reads "Photo", "Video"... when there is no caption. Send or Schedule
   publishes a normal post (an album for several items, the composer text as the caption) and

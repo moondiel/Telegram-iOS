@@ -4033,8 +4033,6 @@ extension ChatControllerImpl {
             self?.openChannelDrafts()
         }, unlinkChannelDraft: { [weak self] in
             self?.unlinkChannelDraft()
-        }, presentChannelDraftPreview: { [weak self] sourceView in
-            self?.presentChannelDraftPreview(sourceView: sourceView)
         }, displaySearchResultsTooltip: { [weak self] node, nodeRect in
             if let strongSelf = self {
                 strongSelf.searchResultsTooltipController?.dismiss()
