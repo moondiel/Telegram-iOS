@@ -77,7 +77,7 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
             self.drafts = drafts
             let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
             let signature = account.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)
-            let view = ChannelDraftsChatContents.historyView(drafts: drafts, channel: channel, account: account, signature: signature, correlationIds: self.correlationIds)
+            let view = ChannelDraftsChatContents.historyView(drafts: drafts, channel: channel, account: account, signature: signature, correlationIds: self.correlationIds, asOwnMessages: self.showsSingleDraft)
             let updateType: EngineViewUpdateType = self.didEmitInitialView ? .Generic : .Initial
             self.didEmitInitialView = true
             self.historyViewPromise.set(.single((view, updateType)))
@@ -126,7 +126,13 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
     /// edited after an edit. Messages live in the scheduled-local namespace, so the bubbles behave
     /// like Scheduled Messages posts (no share button, comments or reactions). Nothing is stored in
     /// the message history.
-    private static func historyView(drafts: [ChannelDraft], channel: EnginePeer, account: EnginePeer, signature: String, correlationIds: [ChannelDraft.Id: Int64]) -> EngineRawMessageHistoryView {
+    ///
+    /// `asOwnMessages`: the preview of the draft taken into the composer shows it as the Forward
+    /// preview shows what is about to be sent: the user's own message, sent now (outgoing, on the
+    /// right, in the outgoing colours). A message in a broadcast channel is always drawn as an
+    /// incoming post, so these live outside the channel, with no signature and no edit mark.
+    private static func historyView(drafts: [ChannelDraft], channel: EnginePeer, account: EnginePeer, signature: String, correlationIds: [ChannelDraft.Id: Int64], asOwnMessages: Bool) -> EngineRawMessageHistoryView {
+        let currentTime = Int32(CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1970)
         let channelPeer = channel._asPeer()
         var peers = EngineSimpleDictionary<EnginePeer.Id, EngineRawPeer>()
         peers[channel.id] = channelPeer
@@ -147,15 +153,17 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
                 if isCaptionItem, let richText = draft.decodedRichText {
                     attributes.append(richText)
                 }
-                attributes.append(AuthorSignatureMessageAttribute(signature: signature))
-                if let editDate = draft.editDate {
-                    attributes.append(EditedMessageAttribute(date: editDate, isHidden: false))
+                if !asOwnMessages {
+                    attributes.append(AuthorSignatureMessageAttribute(signature: signature))
+                    if let editDate = draft.editDate {
+                        attributes.append(EditedMessageAttribute(date: editDate, isHidden: false))
+                    }
                 }
                 // The send carries its correlation id on its last message (the last album item).
                 if index == itemCount - 1, let correlationId = correlationIds[draft.id] {
                     attributes.append(OutgoingMessageInfoAttribute(uniqueId: 0, flags: [], acknowledged: true, correlationId: correlationId, bubbleUpEmojiOrStickersets: [], partialReference: nil))
                 }
-                let id = ChannelDraftsChatContents.messageId(channelId: channel.id, draftId: draft.id, index: index)
+                let id = ChannelDraftsChatContents.messageId(channelId: asOwnMessages ? account.id : channel.id, draftId: draft.id, index: index)
                 let message = EngineRawMessage(
                     stableId: UInt32(bitPattern: id.id),
                     stableVersion: UInt32(bitPattern: draft.editDate ?? 0),
@@ -164,14 +172,14 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
                     groupingKey: isAlbum ? Int64(draft.id) : nil,
                     groupInfo: isAlbum ? .init(stableId: UInt32(bitPattern: draft.id)) : nil,
                     threadId: nil,
-                    timestamp: draft.date,
+                    timestamp: asOwnMessages ? currentTime : draft.date,
                     flags: [],
                     tags: [],
                     globalTags: [],
                     localTags: [],
                     customTags: [],
                     forwardInfo: nil,
-                    author: channelPeer,
+                    author: asOwnMessages ? account._asPeer() : channelPeer,
                     text: isCaptionItem ? draft.text : "",
                     attributes: attributes,
                     media: index < media.count ? [media[index]] : [],
