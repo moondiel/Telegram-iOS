@@ -1,8 +1,8 @@
-This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) with the **Channel Drafts** feature on the `feature/channel-drafts` branch. For compiling Telegram in general, see Telegram's [original guide](https://github.com/TelegramMessenger/Telegram-iOS/blob/master/README.md).
-
 # Post Drafts for Telegram iOS
 
 Keep unpublished posts as drafts
+
+This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) with the **Channel Drafts** feature on the `feature/channel-drafts` branch. For compiling Telegram in general, see Telegram's [original guide](https://github.com/TelegramMessenger/Telegram-iOS/blob/master/README.md).
 
 ## What it does
 
