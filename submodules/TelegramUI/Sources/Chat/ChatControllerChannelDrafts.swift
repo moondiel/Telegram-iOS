@@ -227,12 +227,13 @@ extension ChatControllerImpl {
     }
 
     /// A photo, video or file picked from Edit's attachment menu while a draft is in the composer
-    /// (`editMessageMediaWithMessages`): it replaces the draft's media (the first item of an
-    /// album), or becomes its media if it had none, and is stored right away, as Edit commits a
-    /// picked replacement. The picker's caption, which started as the composer text, becomes the
-    /// composer text. True if the pick was for a draft.
+    /// (`editMessageMediaWithMessages`). Done in Edit's picker commits the edit at once; for a
+    /// draft that is publishing it: the picked media replaces the draft's (the first item of an
+    /// album) or becomes its media, the picker's caption (which started as the composer text) is
+    /// the caption, and the post is sent as the composer's Send sends it. True if the pick was
+    /// for a draft.
     func replaceChannelDraftMedia(with messages: [EnqueueMessage]) -> Bool {
-        guard self.presentationInterfaceState.interfaceState.editMessage == nil, let peerId = self.channelDraftsPeerId else {
+        guard self.presentationInterfaceState.interfaceState.editMessage == nil, self.channelDraftsPeerId != nil else {
             return false
         }
         // The picker took the composer text over as its caption, which unlinked the draft.
@@ -243,29 +244,26 @@ extension ChatControllerImpl {
         guard let message = messages.first, case let .message(text, attributes, _, maybeMediaReference, _, _, _, _, _, _) = message, let mediaReference = maybeMediaReference else {
             return true
         }
-        var entities: [MessageTextEntity] = []
-        for attribute in attributes {
-            if let attribute = attribute as? TextEntitiesMessageAttribute {
-                entities = attribute.entities
-            }
-        }
         var media = linkedDraft.media
         if media.isEmpty {
             media = [mediaReference.media]
-            let _ = ChannelDraftsStore.update(engine: self.context.engine, peerId: peerId, id: linkedDraft.id, text: text, entities: entities, media: [ChannelDraft.encodeMedia(mediaReference.media)]).startStandalone()
         } else {
             media[0] = mediaReference.media
-            let _ = ChannelDraftsStore.update(engine: self.context.engine, peerId: peerId, id: linkedDraft.id, text: text, entities: entities, replacingMedia: (0, ChannelDraft.encodeMedia(mediaReference.media))).startStandalone()
         }
         let updatedDraft = self.channelDraftInComposer(id: linkedDraft.id, text: text, media: media)
-        let inputState = ChatTextInputState(inputText: chatInputStateStringWithAppliedEntities(text, entities: entities))
-        self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
+        self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
             var channelDrafts = state.channelDrafts
             channelDrafts.attachedDraft = updatedDraft
-            return state.updatedChannelDrafts(channelDrafts).updatedInterfaceState { interfaceState in
-                return interfaceState.withUpdatedComposeInputState(inputState).withUpdatedComposeDisableUrlPreviews(detectUrls(inputState.inputText))
-            }
+            return state.updatedChannelDrafts(channelDrafts)
         })
+
+        var captionMessages: [EnqueueMessage] = []
+        if !text.isEmpty {
+            captionMessages.append(.message(text: text, attributes: attributes.filter { $0 is TextEntitiesMessageAttribute }, inlineStickers: [:], mediaReference: nil, threadId: self.chatLocation.threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: []))
+        }
+        let postMessages = self.publishChannelDraft(composerMessages: captionMessages)
+        let silentPosting = self.presentationInterfaceState.interfaceState.silentPosting
+        self.sendMessages(self.transformEnqueueMessages(postMessages, silentPosting: silentPosting), media: true)
         return true
     }
 

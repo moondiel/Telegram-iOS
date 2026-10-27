@@ -50,8 +50,9 @@ Channel admins can keep several drafts per broadcast channel:
   an edit follows the draft with no code of its own: the attachment button shows the replace
   icon and opens Edit's menu (adding media to a text draft, replacing a photo, video or file, the
   current photo offered for editing), is disabled for a voice message, round video, sticker or
-  music album; the send button stays; send-as and inline-bot queries hide. A picked replacement
-  is stored at once, as Edit commits it. Then:
+  music album; the send button stays; send-as and inline-bot queries hide. Done in the picker
+  publishes the post at once (picked media, picker caption), as Done in Edit's picker commits
+  the edit. Then:
   - a sticker, round video, poll... carries no caption: the composer text is posted (or saved as
     a draft of its own) before it, as Forward sends its comment first;
   - a sticker, GIF or voice message sent while a draft is in the composer is a separate message
