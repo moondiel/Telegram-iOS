@@ -10655,12 +10655,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     
     func clearInputText() {
-        if let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft {
-            // The attach flow took the composer text over as a caption: the draft goes with it, so
-            // the media's send publishes it and its Save Draft updates it.
-            self.channelDraftTakenByCaption = attachedDraft
-            self.unlinkChannelDraft()
-        }
+        // The attach flow took the composer text over as a caption: the draft goes with it.
+        self.takeChannelDraftForPickedMedia()
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
             if !state.interfaceState.effectiveInputState.isEmpty {
                 return state.updatedInterfaceState { interfaceState in

@@ -541,6 +541,8 @@ extension ChatControllerImpl {
                                 self?.editMessageMediaWithLegacySignals(signals)
                                 completion()
                             } else {
+                                // Channel Drafts: picked media replaces a draft's, even without a caption.
+                                self?.takeChannelDraftForPickedMedia()
                                 self?.enqueueMediaMessages(fromGallery: fromGallery, signals: signals, silentPosting: silentPosting, scheduleTime: scheduleTime, parameters: parameters, getAnimatedTransitionSource: getAnimatedTransitionSource, completion: completion)
                             }
                         })
@@ -2020,6 +2022,8 @@ extension ChatControllerImpl {
                             strongSelf.editMessageMediaWithLegacySignals(signals)
                         }
                     } else {
+                        // Channel Drafts: a capture replaces a draft's media, even without a caption.
+                        strongSelf.takeChannelDraftForPickedMedia()
                         strongSelf.enqueueMediaMessages(signals: signals, silentPosting: silentPosting, scheduleTime: scheduleTime > 0 ? scheduleTime : nil, parameters: parameters)
                     }
                     if !inputText.string.isEmpty {

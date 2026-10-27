@@ -51,8 +51,9 @@ Channel admins can keep several drafts per broadcast channel:
   icon with a photo, video or file and is disabled for a voice message, round video, sticker or
   music album; the send button stays; send-as and inline-bot queries hide. The attachment button
   opens the regular attach menu, with its send options (Send, Schedule, Save Draft...): the
-  picker takes the composer text as its caption (`clearInputText` hands it the draft), and the
-  picked media replaces the draft's: sending or scheduling publishes the post and removes the
+  picker takes the composer text as its caption, and the picked or captured media replaces the
+  draft's, with or without a caption (`takeChannelDraftForPickedMedia`, at the gallery's and the
+  camera's send and in `clearInputText`): sending or scheduling publishes the post and removes the
   draft, Save Draft stores the picked media and caption in that draft. Then:
   - a sticker, round video, poll... carries no caption: the composer text is posted (or saved as
     a draft of its own) before it, as Forward sends its comment first;

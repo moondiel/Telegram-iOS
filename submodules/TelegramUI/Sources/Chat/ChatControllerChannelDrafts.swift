@@ -235,6 +235,17 @@ extension ChatControllerImpl {
         })
     }
 
+    /// Media picked from the attach menu (or pasted) while a draft is in the composer goes in place
+    /// of the draft's media, with the composer text as its caption: the draft leaves the composer
+    /// with the media, so the media's send publishes it and its Save Draft updates it.
+    func takeChannelDraftForPickedMedia() {
+        guard let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft else {
+            return
+        }
+        self.channelDraftTakenByCaption = attachedDraft
+        self.unlinkChannelDraft()
+    }
+
     /// The attach flow's send, with a draft's text as the caption: the post is published and the
     /// draft leaves Drafts.
     func publishChannelDraftTakenByCaption() {
