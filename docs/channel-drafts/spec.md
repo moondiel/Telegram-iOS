@@ -120,4 +120,4 @@ of the listed behaviour before the next stage starts.
 | 3 | **Drafts screen.** `ChatCustomContentsKind.channelDrafts`, `ChannelDraftsChatContents` (drafts as signed channel posts), title, empty state, close button; sending on the screen creates a draft. | The button opens the screen with the saved drafts; empty state shows when there are none; a new draft can be added there. |
 | 4 | **Draft menu.** Use Draft, Copy, Edit (edit header, ✓ saves, empty ✓ deletes), Delete, Select + delete selected. | Every item works on the screen. |
 | 5 | **Linked draft.** "Draft" header in the channel composer; Save Draft updates the same draft; Send publishes and removes it; × clears and unlinks. | The full flow from the README works end to end. |
-| 6 | **Package.** The write-up in `docs/channel-drafts`, the decision log, `channel-drafts.patch` against `feature/custom`. | A Telegram developer can build or apply it from the write-up alone. |
+| 6 | **Package.** The write-up in `docs/channel-drafts`, the decision log, `channel-drafts.patch` against the base commit `16a3d3c5`. | A Telegram developer can build or apply it from the write-up alone. |

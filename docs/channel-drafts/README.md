@@ -68,8 +68,12 @@ cd Telegram-iOS
 
 ### 2. Build configuration
 
-Edit `build-system/template_minimal_development_configuration.json` as the main
-[README](../../README.md#adjust-configuration) describes: bundle id, `api_id`, `api_hash`, Team ID.
+Edit `build-system/template_minimal_development_configuration.json`:
+
+- `bundle_id`: `org.<identifier>.Telegram`, with an identifier from `openssl rand -hex 8`;
+- `api_id` and `api_hash`: yours;
+- `team_id`: in Keychain Access, open the `Apple Development: …` certificate; it is the
+  Organizational Unit under Details.
 
 ### 3. Generate the Xcode project
 
@@ -204,7 +208,8 @@ Existing files get small hooks: an enum case, one call into the feature, one bra
 - `Telegram/Telegram-iOS/en.lproj/Localizable.strings`: the `ChannelDrafts.*` strings and
   `Conversation.SendMessage.SaveDraft`.
 
-The whole change is one patch against `feature/custom`, without the Xcode 26 build fix:
+The whole change is one patch against the branch's base commit `16a3d3c5`, without the Xcode 26
+build fix:
 [`channel-drafts.patch`](channel-drafts.patch). Apply it with `git apply --binary`.
 
 ## Further reading
