@@ -476,11 +476,10 @@ public struct PresentationResourcesChat {
                     color = theme.chat.inputPanel.actionControlForegroundColor
                 }
                 
-                if let image = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/SaveDraft"), color: color) {
-                    // The glyph is drawn left of its canvas's centre, with the plus hanging at the
-                    // bottom right: offset so the glyph reads centred in the round button.
-                    let opticalOffset = CGPoint(x: 1.0, y: -0.33)
-                    image.draw(in: CGRect(origin: CGPoint(x: floorToScreenPixels((size.width - image.size.width) * 0.5 + opticalOffset.x), y: floorToScreenPixels((size.height - image.size.height) * 0.5 + opticalOffset.y)), size: image.size))
+                // The Save Draft glyph at the size and line weight of the schedule glyph
+                // ("Chat/Input/ScheduleIcon"), centred optically in its canvas.
+                if let image = generateTintedImage(image: UIImage(bundleImageName: "Chat/Input/SaveDraftIcon"), color: color) {
+                    image.draw(in: CGRect(origin: CGPoint(x: floorToScreenPixels((size.width - image.size.width) * 0.5), y: floorToScreenPixels((size.height - image.size.height) * 0.5)), size: image.size))
                 }
             })
         })
