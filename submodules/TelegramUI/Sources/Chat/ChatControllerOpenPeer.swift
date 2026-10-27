@@ -140,7 +140,15 @@ extension ChatControllerImpl {
                 return
             }
 
-            if case let .peer(currentPeerId) = self.chatLocation, peer?.id == currentPeerId {
+            // The Drafts screen is its channel's, like Scheduled Messages: the channel's own name in a
+            // post does not navigate away from it.
+            var currentChatPeerId: EnginePeer.Id?
+            if case let .peer(peerId) = self.chatLocation {
+                currentChatPeerId = peerId
+            } else {
+                currentChatPeerId = self.channelDraftsScreenPeerId
+            }
+            if let currentPeerId = currentChatPeerId, peer?.id == currentPeerId {
                 switch navigation {
                     case let .info(params):
                         var section: ChatNavigationButtonAction.ChatInfoSection?

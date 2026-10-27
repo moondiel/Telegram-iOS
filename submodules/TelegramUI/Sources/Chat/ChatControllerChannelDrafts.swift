@@ -251,6 +251,14 @@ extension ChatControllerImpl {
         return true
     }
 
+    /// The channel whose Drafts screen this is; nil on any other screen.
+    var channelDraftsScreenPeerId: EnginePeer.Id? {
+        if case let .customChatContents(customChatContents) = self.presentationInterfaceState.subject, case let .channelDrafts(peerId) = customChatContents.kind {
+            return peerId
+        }
+        return nil
+    }
+
     /// The channel's avatar on the Drafts screen opens the channel's profile, as in Scheduled
     /// Messages.
     func openChannelDraftsChannelInfo() {
