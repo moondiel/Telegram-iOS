@@ -187,31 +187,86 @@ extension ChatControllerImpl {
     }
 
     /// Save Draft in the send options of the media picker or the photo editor: the picked media,
-    /// with its caption, is saved instead of sent. With a draft taken into the composer, that draft
-    /// gets the media and the caption (the caption is the composer text the picker took over);
-    /// otherwise each photo, or each album, becomes a new draft.
+    /// with its caption, is saved instead of sent.
     func saveChannelDraft(mediaSignals signals: [Any]?, completion: @escaping () -> Void) {
-        guard let peerId = self.channelDraftsPeerId, let signals else {
+        guard let signals else {
             completion()
             return
         }
-        let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft
-        let engine = self.context.engine
         let _ = (legacyAssetPickerEnqueueMessages(context: self.context, account: self.context.account, signals: signals)
         |> deliverOnMainQueue).startStandalone(next: { [weak self] items in
-            var newDrafts = ChannelDraftsStore.newDrafts(from: items.map(\.message)).map { $0.draft }
-            if let attachedDraft, !newDrafts.isEmpty {
-                let first = newDrafts.removeFirst()
-                let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: attachedDraft.id, text: first.text, entities: first.entities, richText: first.richText, media: first.media).startStandalone()
-            }
-            if !newDrafts.isEmpty {
-                let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, drafts: newDrafts).startStandalone()
-            }
-            if let self {
-                self.unlinkChannelDraft()
-            }
+            self?.saveChannelDraft(messages: items.map(\.message))
             completion()
         })
+    }
+
+    /// Save Draft for anything the chat would send (a recording, files, music, a sticker, a GIF,
+    /// picked media): the messages are saved as drafts instead. With a draft taken into the
+    /// composer, that draft gets the first one's text and media (the media picker takes the
+    /// composer text over as the caption); the rest, or all of them otherwise, become new drafts.
+    func saveChannelDraft(messages: [EnqueueMessage]) {
+        guard let peerId = self.channelDraftsPeerId else {
+            return
+        }
+        let engine = self.context.engine
+        var newDrafts = ChannelDraftsStore.newDrafts(from: messages).map { $0.draft }
+        if let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft, !newDrafts.isEmpty {
+            let first = newDrafts.removeFirst()
+            let text = first.text.isEmpty && first.richText == nil ? attachedDraft.text : first.text
+            let entities = first.text.isEmpty && first.richText == nil ? [] : first.entities
+            let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: attachedDraft.id, text: text, entities: entities, richText: first.richText, media: first.media).startStandalone()
+        }
+        if !newDrafts.isEmpty {
+            let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, drafts: newDrafts).startStandalone()
+        }
+        // A saved recording leaves the composer as a sent one does.
+        self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
+            var channelDrafts = state.channelDrafts
+            channelDrafts.attachedDraft = nil
+            return state.updatedInterfaceState { $0.withUpdatedMediaDraftState(nil) }.updatedChannelDrafts(channelDrafts)
+        })
+    }
+
+    /// The chat's send funnels: messages marked with `channelDraftSaveScheduleTimestamp` (Save Draft
+    /// in a send menu, carried as the schedule time) are saved as drafts, not sent. True if they were.
+    func saveChannelDraftIfRequested(_ messages: [EnqueueMessage]) -> Bool {
+        var isRequested = false
+        let unmarked = messages.map { message -> EnqueueMessage in
+            return message.withUpdatedAttributes { attributes in
+                return attributes.filter { attribute in
+                    if let attribute = attribute as? OutgoingScheduleInfoMessageAttribute, attribute.scheduleTime == channelDraftSaveScheduleTimestamp {
+                        isRequested = true
+                        return false
+                    }
+                    return true
+                }
+            }
+        }
+        if !isRequested {
+            return false
+        }
+        self.saveChannelDraft(messages: unmarked)
+        return true
+    }
+
+    /// Save Draft offered for the recording in the composer (a voice message under review or a
+    /// round video being recorded).
+    var canSaveRecordingAsChannelDraft: Bool {
+        let state = self.presentationInterfaceState
+        guard state.channelDrafts.isAvailable, state.interfaceState.editMessage == nil else {
+            return false
+        }
+        return state.interfaceState.mediaDraftState != nil || self.videoRecorderValue != nil
+    }
+
+    /// Save Draft for the recording: sent as Schedule sends it, with the Save Draft marker as the
+    /// time, which the send funnels turn into a draft.
+    func saveRecordingAsChannelDraft() {
+        if self.presentationInterfaceState.interfaceState.mediaDraftState != nil {
+            self.sendMediaRecording(scheduleTime: channelDraftSaveScheduleTimestamp)
+        } else if let videoRecorderValue = self.videoRecorderValue {
+            videoRecorderValue.sendVideoRecording(silentPosting: nil, scheduleTime: channelDraftSaveScheduleTimestamp, repeatPeriod: nil, messageEffect: nil)
+        }
     }
 
     /// × in the "Draft" header: the composer lets go of the draft, which stays as it was.

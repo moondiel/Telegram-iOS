@@ -63,6 +63,10 @@ public final class ChatEntityKeyboardInputNode: ChatInputNode {
         let getNavigationController: () -> NavigationController?
         let requestLayout: (ContainedViewLayoutTransition) -> Void
         public var forceTheme: PresentationTheme?
+        /// Channel Drafts: Save Draft in the long-press menus of stickers and GIFs, when the chat
+        /// can keep drafts.
+        public var canSaveChannelDraft: () -> Bool = { false }
+        public var saveChannelDraft: (FileMediaReference) -> Void = { _ in }
 
         public init(
             sendSticker: @escaping (FileMediaReference, Bool, Bool, String?, Bool, UIView?, CGRect?, CALayer?, [ItemCollectionId]) -> Bool,
@@ -2286,6 +2290,15 @@ public final class ChatEntityKeyboardInputNode: ChatInputNode {
                                 }
                             })))
                         }
+
+                        if let interaction = self?.interaction, interaction.canSaveChannelDraft() {
+                            items.append(.action(ContextMenuActionItem(text: presentationData.strings.Conversation_SendMessage_SaveDraft, icon: { theme in
+                                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/SaveDraft"), color: theme.actionSheet.primaryTextColor)
+                            }, action: { [weak interaction] _, f in
+                                f(.default)
+                                interaction?.saveChannelDraft(file)
+                            })))
+                        }
                     }
                 }
             }
@@ -3028,6 +3041,15 @@ public final class EmojiContentPeekBehaviorImpl: EmojiContentPeekBehavior {
                                             }
                                         }
                                         f(.default)
+                                    })))
+                                }
+
+                                if interaction.canSaveChannelDraft() {
+                                    menuItems.append(.action(ContextMenuActionItem(text: presentationData.strings.Conversation_SendMessage_SaveDraft, icon: { theme in
+                                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/SaveDraft"), color: theme.actionSheet.primaryTextColor)
+                                    }, action: { [weak interaction] _, f in
+                                        f(.default)
+                                        interaction?.saveChannelDraft(.standalone(media: file))
                                     })))
                                 }
                             }

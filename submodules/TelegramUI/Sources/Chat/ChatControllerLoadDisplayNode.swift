@@ -1003,6 +1003,10 @@ extension ChatControllerImpl {
             guard let strongSelf = self else {
                 return
             }
+            if scheduleTime == channelDraftSaveScheduleTimestamp {
+                strongSelf.saveChannelDraft(messages: messages)
+                return
+            }
 
             var correlationIds: [Int64] = []
             for message in messages {

@@ -709,17 +709,21 @@ extension ChatControllerImpl {
                 return
             }
             
-            self.chatDisplayNode.setupSendActionOnViewUpdate({ [weak self] in
-                if let strongSelf = self {
-                    strongSelf.chatDisplayNode.collapseInput()
-                    
-                    strongSelf.updateChatPresentationInterfaceState(animated: true, interactive: false, {
-                        $0.updatedInterfaceState { $0.withUpdatedReplyMessageSubject(nil).withUpdatedMediaDraftState(nil).withUpdatedSendMessageEffect(nil).withUpdatedPostSuggestionState(nil) }
-                    })
+            // Save Draft: the recording is saved, not sent (see `saveChannelDraft(messages:)`).
+            let savesChannelDraft = scheduleTime == channelDraftSaveScheduleTimestamp
+            if !savesChannelDraft {
+                self.chatDisplayNode.setupSendActionOnViewUpdate({ [weak self] in
+                    if let strongSelf = self {
+                        strongSelf.chatDisplayNode.collapseInput()
+                        
+                        strongSelf.updateChatPresentationInterfaceState(animated: true, interactive: false, {
+                            $0.updatedInterfaceState { $0.withUpdatedReplyMessageSubject(nil).withUpdatedMediaDraftState(nil).withUpdatedSendMessageEffect(nil).withUpdatedPostSuggestionState(nil) }
+                        })
 
-                    strongSelf.updateDownButtonVisibility()
-                }
-            }, nil)
+                        strongSelf.updateDownButtonVisibility()
+                    }
+                }, nil)
+            }
             
             var attributes: [EngineMessage.Attribute] = []
             if viewOnce {
@@ -746,6 +750,11 @@ extension ChatControllerImpl {
             let waveformBuffer = waveform.makeBitstream()
             
             let messages: [EnqueueMessage] = [.message(text: "", attributes: attributes, inlineStickers: [:], mediaReference: .standalone(media: TelegramMediaFile(fileId: EngineMedia.Id(namespace: Namespaces.Media.LocalFile, id: Int64.random(in: Int64.min ... Int64.max)), partialReference: nil, resource: resource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "audio/ogg", size: Int64(audio.fileSize), attributes: [.Audio(isVoice: true, duration: finalDuration, title: nil, performer: nil, waveform: waveformBuffer)], alternativeRepresentations: [])), threadId: self.chatLocation.threadId, replyToMessageId: self.presentationInterfaceState.interfaceState.replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])]
+            
+            if savesChannelDraft {
+                self.saveChannelDraft(messages: messages)
+                return
+            }
             
             let effectiveSilentPosting = silentPosting ?? self.presentationInterfaceState.interfaceState.silentPosting
             let transformedMessages = self.transformEnqueueMessages(messages, silentPosting: effectiveSilentPosting, scheduleTime: scheduleTime, repeatPeriod: repeatPeriod, postpone: postpone)

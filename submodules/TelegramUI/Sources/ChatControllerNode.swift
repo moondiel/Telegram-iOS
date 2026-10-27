@@ -4094,12 +4094,20 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             return nil
         }
         
+        let entityKeyboardInteraction = ChatEntityKeyboardInputNode.Interaction(chatControllerInteraction: self.controllerInteraction, panelInteraction: interfaceInteraction)
+        // Channel Drafts: Save Draft for stickers and GIFs.
+        entityKeyboardInteraction.canSaveChannelDraft = { [weak self] in
+            return self?.chatPresentationInterfaceState.channelDrafts.isAvailable ?? false
+        }
+        entityKeyboardInteraction.saveChannelDraft = { [weak self] file in
+            self?.controller?.saveChannelDraft(messages: [.message(text: "", attributes: [], inlineStickers: [:], mediaReference: file.abstract, threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])])
+        }
         let inputNode = ChatEntityKeyboardInputNode(
             context: self.context,
             currentInputData: inputMediaNodeData,
             updatedInputData: self.inputMediaNodeDataPromise.get(),
             defaultToEmojiTab: !self.chatPresentationInterfaceState.interfaceState.effectiveInputState.isEmpty || self.chatPresentationInterfaceState.interfaceState.forwardMessageIds != nil || self.openStickersBeginWithEmoji || self.chatPresentationInterfaceState.focusedPollAddOptionMessageId != nil,
-            interaction: ChatEntityKeyboardInputNode.Interaction(chatControllerInteraction: self.controllerInteraction, panelInteraction: interfaceInteraction),
+            interaction: entityKeyboardInteraction,
             chatPeerId: peerId,
             stateContext: self.inputMediaNodeStateContext,
             displayBottomPanel: self.chatPresentationInterfaceState.focusedPollAddOptionMessageId == nil

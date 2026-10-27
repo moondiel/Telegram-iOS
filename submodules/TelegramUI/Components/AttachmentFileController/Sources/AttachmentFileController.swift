@@ -411,7 +411,11 @@ final class AttachmentFileContext: AttachmentMediaPickerContext {
     }
 
     func send(mode: AttachmentMediaPickerSendMode, attachmentMode: AttachmentMediaPickerAttachmentMode, parameters: ChatSendMessageActionSheetController.SendParameters?) {
-        self.controller?.mulitpleCompletion?(mode, .files, parameters, self.controller?.caption)
+        self.controller?.mulitpleCompletion?(mode, .files, parameters, self.controller?.caption, nil)
+    }
+
+    func saveAsChannelDraft(parameters: ChatSendMessageActionSheetController.SendParameters?) {
+        self.controller?.mulitpleCompletion?(.generic, .files, parameters, self.controller?.caption, channelDraftSaveScheduleTimestamp)
     }
 
     func schedule(parameters: ChatSendMessageActionSheetController.SendParameters?) {
@@ -443,7 +447,8 @@ public class AttachmentFileControllerImpl: ItemListController, AttachmentFileCon
     
     fileprivate var bottomEdgeColor: UIColor = .clear
     
-    fileprivate var mulitpleCompletion: ((AttachmentMediaPickerSendMode, AttachmentMediaPickerAttachmentMode, ChatSendMessageActionSheetController.SendParameters?, NSAttributedString?) -> Void)?
+    /// The last value is the send's schedule time (Save Draft's marker, or nil).
+    fileprivate var mulitpleCompletion: ((AttachmentMediaPickerSendMode, AttachmentMediaPickerAttachmentMode, ChatSendMessageActionSheetController.SendParameters?, NSAttributedString?, Int32?) -> Void)?
 
     var delayDisappear = false
 
@@ -957,7 +962,7 @@ public func makeAttachmentFileControllerImpl(
     }
 
     let controller = AttachmentFileControllerImpl(context: context, state: signal, hideNavigationBarBackground: true)
-    controller.mulitpleCompletion = { sendMode, _, _, caption in
+    controller.mulitpleCompletion = { sendMode, _, _, caption, scheduleTime in
         let _ = stateValue.with({ state in
             if let selectedMessageIds = state.selectedMessageIds {
                 var remoteMessageIds: [EngineMessage.Id] = []
@@ -1006,7 +1011,7 @@ public func makeAttachmentFileControllerImpl(
                         }
                     }
                     
-                    send(mediaReferences, sendMode == .silently, nil, caption)
+                    send(mediaReferences, sendMode == .silently, scheduleTime, caption)
                 })
                 dismissImpl?()
             }

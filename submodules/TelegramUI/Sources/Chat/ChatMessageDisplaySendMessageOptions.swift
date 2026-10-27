@@ -252,9 +252,11 @@ func chatMessageDisplaySendMessageOptions(selfController: ChatControllerImpl, no
                     hasTimers: false,
                     sendPaidMessageStars: selfController.presentationInterfaceState.sendPaidMessageStars,
                     isMonoforum: selfController.presentationInterfaceState.renderedPeer?.peer?.isMonoForum ?? false,
-                    saveDraft: selfController.canSaveChannelDraftFromComposer(hasMediaPreview: mediaPreview != nil) ? { [weak selfController] in
+                    saveDraft: selfController.canSaveRecordingAsChannelDraft ? { [weak selfController] in
+                        selfController?.saveRecordingAsChannelDraft()
+                    } : (selfController.canSaveChannelDraftFromComposer(hasMediaPreview: mediaPreview != nil) ? { [weak selfController] in
                         selfController?.saveChannelDraftFromComposer()
-                    } : nil
+                    } : nil)
                 )),
                 hasEntityKeyboard: hasEntityKeyboard,
                 gesture: gesture,

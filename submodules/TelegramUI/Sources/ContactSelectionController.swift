@@ -649,6 +649,10 @@ final class ContactsPickerContext: AttachmentMediaPickerContext {
         })
     }
     
+    func saveAsChannelDraft(parameters: ChatSendMessageActionSheetController.SendParameters?) {
+        self.controller?.contactsNode.requestMultipleAction?(false, channelDraftSaveScheduleTimestamp, parameters)
+    }
+    
     func mainButtonAction() {
     }
 }

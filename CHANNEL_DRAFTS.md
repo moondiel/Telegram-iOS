@@ -27,10 +27,13 @@ Channel admins can keep several drafts per broadcast channel:
   being edited, and the header reads "Photo", "Video"... when there is no caption. Send or Schedule
   publishes a normal post (an album for several items, the composer text as the caption) and
   removes the draft; Save Draft updates it; × unlinks it and leaves it untouched.
-- **Save Draft for photos and videos** in the channel: in the long-press menu of the attach
-  screen's send button and of the photo editor's. The picked media and caption become a draft (or
-  the media of the draft taken into the composer). It travels from the picker as a marker schedule
-  time (`channelDraftSaveScheduleTimestamp`), the way "Send When Online" does.
+- **Save Draft for everything the channel can send**, wherever it offers send options: the text
+  composer, a voice message under review, a round video being recorded, the attach screen's send
+  menu (photos, videos, files, music, contacts), the photo editor's, and the long-press menus of
+  stickers and GIFs. What would be sent becomes a draft instead (or, with a draft taken into the
+  composer, that draft's media). A send menu carries the request as a marker schedule time
+  (`channelDraftSaveScheduleTimestamp`), the way "Send When Online" does; the chat's send funnels
+  (`sendMessages`, the composer's send, the recording send) save instead of sending.
 - **Edit** edits the draft in place with the usual edit header and ✓; while editing, the
   attachment button replaces the photo or video, through Telegram's own replace-media flow.
 - Everything the chat can send is a draft on the Drafts screen: text, rich text (headings, lists,
