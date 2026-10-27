@@ -988,7 +988,7 @@ public class ChatMessageRichDataBubbleContentNode: ChatMessageBubbleContentNode 
                 if case let .customChatContents(contents) = item.associatedData.subject {
                     if case .hashTagSearch = contents.kind {
                         displayStatus = true
-                    } else {
+                    } else if item.associatedData.subject?.hidesMessageTime == true {
                         displayStatus = false
                     }
                 } else if !item.presentationData.chatBubbleCorners.hasTails {

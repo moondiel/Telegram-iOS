@@ -749,7 +749,7 @@ public final class ChatMessageAttachedContentNode: ASDisplayNode {
                 }
                 
                 var statusLayoutAndContinue: (CGFloat, (CGFloat) -> (CGSize, (ListViewItemUpdateAnimation) -> ChatMessageDateAndStatusNode))?
-                if case .customChatContents = associatedData.subject {
+                if associatedData.subject?.hidesMessageTime == true {
                 } else if !presentationData.chatBubbleCorners.hasTails {
                 } else if case let .messageOptions(_, _, info) = associatedData.subject, case let .link(link) = info, link.isCentered {
                 } else if case let .linear(_, bottom) = position {

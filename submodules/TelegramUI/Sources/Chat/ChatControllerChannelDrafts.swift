@@ -16,6 +16,7 @@ import ChatTitleView
 import ChatInterfaceState
 import PresentationDataUtils
 import LegacyMediaPickerUI
+import ChatMessageItemCommon
 
 // Channel Drafts: every hook the feature needs in `ChatControllerImpl` lives in this file.
 // See CHANNEL_DRAFTS.md.
@@ -110,7 +111,15 @@ extension ChatControllerImpl {
         guard let peerId = self.channelDraftsPeerId else {
             return
         }
-        let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft
+        var attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft
+        if let draft = attachedDraft, !draft.media.isEmpty, !channelDraftContentIsEditable(context: self.context, media: draft.media) {
+            // A sticker, round video, poll... carries no caption: the text is posted before it, so
+            // it is saved as a draft of its own and the linked one stays as it is.
+            guard self.channelDraftContentFromComposer() != nil else {
+                return
+            }
+            attachedDraft = nil
+        }
         // A draft with media may be saved with an empty caption; it keeps its media either way.
         guard let content = self.channelDraftContentFromComposer() ?? (attachedDraft?.media.isEmpty == false ? (text: "", entities: []) : nil) else {
             return
@@ -198,38 +207,77 @@ extension ChatControllerImpl {
     }
 
     /// Save Draft for anything the chat would send (a recording, files, music, a sticker, a GIF,
-    /// picked media): the messages are saved as drafts instead. With a draft taken into the
-    /// composer, that draft gets the first one's text and media (the media picker takes the
-    /// composer text over as the caption); the rest, or all of them otherwise, become new drafts.
+    /// picked media): the messages are saved as new drafts instead. Only when the attach flow took
+    /// a draft's text over as the caption do they go into that draft (its first one: text and
+    /// media). A draft linked to the composer is not touched: a sticker or a voice message is not
+    /// part of the post being written, as sending them leaves the composer text alone.
     func saveChannelDraft(messages: [EnqueueMessage]) {
         guard let peerId = self.channelDraftsPeerId else {
             return
         }
         let engine = self.context.engine
         var newDrafts = ChannelDraftsStore.newDrafts(from: messages).map { $0.draft }
-        if let attachedDraft = self.takeLinkedChannelDraft(), !newDrafts.isEmpty {
+        if let takenDraft = self.channelDraftTakenByCaption, !newDrafts.isEmpty {
+            self.channelDraftTakenByCaption = nil
             let first = newDrafts.removeFirst()
-            let text = first.text.isEmpty && first.richText == nil ? attachedDraft.text : first.text
-            let entities = first.text.isEmpty && first.richText == nil ? [] : first.entities
-            let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: attachedDraft.id, text: text, entities: entities, richText: first.richText, media: first.media).startStandalone()
+            let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: takenDraft.id, text: first.text, entities: first.entities, richText: first.richText, media: first.media).startStandalone()
         }
         if !newDrafts.isEmpty {
             let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, drafts: newDrafts).startStandalone()
         }
         // A saved recording leaves the composer as a sent one does.
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
-            var channelDrafts = state.channelDrafts
-            channelDrafts.attachedDraft = nil
-            return state.updatedInterfaceState { $0.withUpdatedMediaDraftState(nil) }.updatedChannelDrafts(channelDrafts)
+            return state.updatedInterfaceState { $0.withUpdatedMediaDraftState(nil) }
         })
     }
 
-    /// The draft this send or save belongs to: the one linked to the composer, or the one whose text
-    /// the attach flow took over as a caption. Taken once.
-    private func takeLinkedChannelDraft() -> ChatChannelDraftsState.AttachedDraft? {
-        let draft = self.presentationInterfaceState.channelDrafts.attachedDraft ?? self.channelDraftTakenByCaption
+    /// The attach flow's send, with a draft's text as the caption: the post is published and the
+    /// draft leaves Drafts.
+    func publishChannelDraftTakenByCaption() {
+        guard let takenDraft = self.channelDraftTakenByCaption, let peerId = self.channelDraftsPeerId else {
+            return
+        }
         self.channelDraftTakenByCaption = nil
-        return draft
+        let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: peerId, ids: Set([takenDraft.id])).startStandalone()
+    }
+
+    /// A photo, video or file picked with the attachment button while a draft with media is in the
+    /// composer replaces that media (its first item), as picking a replacement does while editing
+    /// a post. The picker's caption becomes the composer text, as it does for an edit. True if the
+    /// pick was for the draft.
+    func replaceChannelDraftMedia(with messages: [EnqueueMessage]) -> Bool {
+        guard self.presentationInterfaceState.interfaceState.editMessage == nil, let peerId = self.channelDraftsPeerId else {
+            return false
+        }
+        // The picker may have taken the composer text over as its caption, unlinking the draft.
+        guard let linkedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft ?? self.channelDraftTakenByCaption, !linkedDraft.media.isEmpty else {
+            return false
+        }
+        self.channelDraftTakenByCaption = nil
+        guard let message = messages.first, case let .message(text, attributes, _, maybeMediaReference, _, _, _, _, _, _) = message, let mediaReference = maybeMediaReference else {
+            return true
+        }
+        var entities: [MessageTextEntity] = []
+        for attribute in attributes {
+            if let attribute = attribute as? TextEntitiesMessageAttribute {
+                entities = attribute.entities
+            }
+        }
+        var media = linkedDraft.media
+        media[0] = mediaReference.media
+        let caption = text.isEmpty ? linkedDraft.text : text
+        let _ = ChannelDraftsStore.update(engine: self.context.engine, peerId: peerId, id: linkedDraft.id, text: caption, entities: text.isEmpty ? [] : entities, replacingMedia: (0, ChannelDraft.encodeMedia(mediaReference.media))).startStandalone()
+        let updatedDraft = ChatChannelDraftsState.AttachedDraft(id: linkedDraft.id, text: caption, media: media, mediaEditingOptions: channelDraftMediaEditingOptions(media: media, peerId: peerId))
+        self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
+            var channelDrafts = state.channelDrafts
+            channelDrafts.attachedDraft = updatedDraft
+            var state = state.updatedChannelDrafts(channelDrafts)
+            if !text.isEmpty {
+                state = state.updatedInterfaceState { $0.withUpdatedComposeInputState(ChatTextInputState(inputText: chatInputStateStringWithAppliedEntities(text, entities: entities))) }
+            }
+            return state
+        })
+        return true
     }
 
     /// The chat's send funnels: messages marked with `channelDraftSaveScheduleTimestamp` (Save Draft
@@ -293,7 +341,7 @@ extension ChatControllerImpl {
         }
         var result = messages
         if !attachedDraft.media.isEmpty {
-            result = channelDraftMessagesAttachingMedia(attachedDraft.media, to: messages, threadId: self.chatLocation.threadId)
+            result = channelDraftMessagesAttachingMedia(attachedDraft.media, to: messages, captionable: channelDraftContentIsEditable(context: self.context, media: attachedDraft.media), threadId: self.chatLocation.threadId)
         }
         self.channelDraftsDidSendMessages(result)
         return result
@@ -303,7 +351,7 @@ extension ChatControllerImpl {
     /// Called from the composer's send (`publishChannelDraft`) and from every send of the chat; the
     /// second call finds the draft unlinked.
     func channelDraftsDidSendMessages(_ messages: [EnqueueMessage]) {
-        guard !messages.isEmpty, let peerId = self.channelDraftsPeerId, let attachedDraft = self.takeLinkedChannelDraft() else {
+        guard !messages.isEmpty, let peerId = self.channelDraftsPeerId, let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft else {
             return
         }
         let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: peerId, ids: Set([attachedDraft.id])).startStandalone()
@@ -346,7 +394,7 @@ extension ChatControllerImpl {
         let media = draft.decodedMedia
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
             var channelDrafts = state.channelDrafts
-            channelDrafts.attachedDraft = ChatChannelDraftsState.AttachedDraft(id: draft.id, text: draft.decodedRichText == nil ? draft.text : inputState.inputText.string, media: media)
+            channelDrafts.attachedDraft = ChatChannelDraftsState.AttachedDraft(id: draft.id, text: draft.decodedRichText == nil ? draft.text : inputState.inputText.string, media: media, mediaEditingOptions: channelDraftMediaEditingOptions(media: media, peerId: state.chatLocation.peerId))
             return state.updatedInterfaceState { interfaceState in
                 return interfaceState.withUpdatedComposeInputState(inputState)
             }.updatedInputMode { _ in
@@ -515,7 +563,7 @@ private func channelDraftsDeleteConfirmationItem(messageIds: Set<EngineMessage.I
 /// Long-press menu of a draft on the Drafts screen, in the order of Scheduled Messages
 /// (Use Draft in the place of Send Now / Edit Time): Use Draft · Copy · Edit · Delete · Select.
 /// Telegram's own menu items, strings and icons.
-func channelDraftContextMenuItems(message: EngineRawMessage, contents: ChatCustomContentsProtocol, strings: PresentationStrings, interfaceInteraction: ChatPanelInterfaceInteraction, controllerInteraction: ChatControllerInteraction) -> [ContextMenuItem] {
+func channelDraftContextMenuItems(context: AccountContext, message: EngineRawMessage, contents: ChatCustomContentsProtocol, strings: PresentationStrings, interfaceInteraction: ChatPanelInterfaceInteraction, controllerInteraction: ChatControllerInteraction) -> [ContextMenuItem] {
     guard let contents = contents as? ChannelDraftsChatContents, let draft = contents.draft(messageId: message.id) else {
         return []
     }
@@ -542,13 +590,16 @@ func channelDraftContextMenuItems(message: EngineRawMessage, contents: ChatCusto
         })))
     }
 
-    items.append(.action(ContextMenuActionItem(text: strings.Conversation_MessageDialogEdit, icon: { theme in
-        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
-    }, action: { _, f in
-        interfaceInteraction.setupEditMessage(draftMessageIds.first ?? message.id, { transition in
-            f(.custom(transition))
-        })
-    })))
+    // Edit where Telegram allows editing such a message (not stickers, round videos, polls...).
+    if channelDraftContentIsEditable(context: context, media: draft.decodedMedia) {
+        items.append(.action(ContextMenuActionItem(text: strings.Conversation_MessageDialogEdit, icon: { theme in
+            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)
+        }, action: { _, f in
+            interfaceInteraction.setupEditMessage(draftMessageIds.first ?? message.id, { transition in
+                f(.custom(transition))
+            })
+        })))
+    }
 
     // Delete swaps the menu for its confirmation, as in Scheduled Messages.
     items.append(.action(ContextMenuActionItem(text: strings.Conversation_ContextMenuDelete, textColor: .destructive, icon: { theme in
@@ -578,8 +629,16 @@ func channelDraftContextMenuItems(message: EngineRawMessage, contents: ChatCusto
 
 /// The composer's messages with a draft's media added: the first text message becomes the caption
 /// of the first item (an album for several items), any further text follows as it was. Without
-/// text the media is posted alone.
-private func channelDraftMessagesAttachingMedia(_ media: [EngineRawMedia], to messages: [EnqueueMessage], threadId: Int64?) -> [EnqueueMessage] {
+/// text the media is posted alone. Media that cannot carry a caption (a sticker, a round video,
+/// a poll...) goes after the text, sent as it is, as Forward sends its comment before the
+/// forwarded messages.
+private func channelDraftMessagesAttachingMedia(_ media: [EngineRawMedia], to messages: [EnqueueMessage], captionable: Bool, threadId: Int64?) -> [EnqueueMessage] {
+    if !captionable {
+        let groupingKey: Int64? = media.count > 1 ? Int64.random(in: 1 ..< Int64.max) : nil
+        return messages + media.map { item -> EnqueueMessage in
+            return .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: item), threadId: threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: groupingKey, correlationId: nil, bubbleUpEmojiOrStickersets: [])
+        }
+    }
     var caption: (text: String, attributes: [EngineMessage.Attribute], inlineStickers: [EngineMedia.Id: EngineRawMedia], replyToMessageId: EngineMessageReplySubject?, bubbleUpEmojiOrStickersets: [EngineItemCollectionId])?
     var rest: [EnqueueMessage] = []
     for message in messages {
@@ -609,4 +668,76 @@ private func channelDraftMessagesAttachingMedia(_ media: [EngineRawMedia], to me
     }
     result.append(contentsOf: rest)
     return result
+}
+
+/// What a draft's media may be replaced with: Telegram's rule for editing a post with that media
+/// (`messageMediaEditingOptions`), asked about its first item, as part of an album if it has
+/// several.
+func channelDraftMediaEditingOptions(media: [EngineRawMedia], peerId: EnginePeer.Id?) -> MessageMediaEditingOptions {
+    guard let first = media.first, let peerId else {
+        return []
+    }
+    let message = EngineRawMessage(
+        stableId: 0,
+        stableVersion: 0,
+        id: EngineMessage.Id(peerId: peerId, namespace: Namespaces.Message.ScheduledLocal, id: 0),
+        globallyUniqueId: nil,
+        groupingKey: media.count > 1 ? 1 : nil,
+        groupInfo: nil,
+        threadId: nil,
+        timestamp: 0,
+        flags: [],
+        tags: [],
+        globalTags: [],
+        localTags: [],
+        customTags: [],
+        forwardInfo: nil,
+        author: nil,
+        text: "",
+        attributes: [],
+        media: [first],
+        peers: EngineSimpleDictionary(),
+        associatedMessages: EngineSimpleDictionary(),
+        associatedMessageIds: [],
+        associatedMedia: [:],
+        associatedThreadInfo: nil,
+        associatedStories: [:]
+    )
+    return messageMediaEditingOptions(message: message)
+}
+
+/// Whether a draft's content can be edited (and so carry a caption), by Telegram's own rule for
+/// editing a message (`canEditMessage`): stickers, round videos, contacts, locations, polls and
+/// dice cannot. Asked about the account's own copy of the content, so only the content counts.
+func channelDraftContentIsEditable(context: AccountContext, media: [EngineRawMedia]) -> Bool {
+    guard let first = media.first else {
+        return true
+    }
+    let message = EngineRawMessage(
+        stableId: 0,
+        stableVersion: 0,
+        id: EngineMessage.Id(peerId: context.account.peerId, namespace: Namespaces.Message.QuickReplyCloud, id: 0),
+        globallyUniqueId: nil,
+        groupingKey: nil,
+        groupInfo: nil,
+        threadId: nil,
+        timestamp: Int32(CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1970),
+        flags: [],
+        tags: [],
+        globalTags: [],
+        localTags: [],
+        customTags: [],
+        forwardInfo: nil,
+        author: nil,
+        text: "",
+        attributes: [],
+        media: [first],
+        peers: EngineSimpleDictionary(),
+        associatedMessages: EngineSimpleDictionary(),
+        associatedMessageIds: [],
+        associatedMedia: [:],
+        associatedThreadInfo: nil,
+        associatedStories: [:]
+    )
+    return canEditMessage(accountPeerId: context.account.peerId, limitsConfiguration: context.currentLimitsConfiguration.with { EngineConfiguration.Limits($0) }, message: message)
 }

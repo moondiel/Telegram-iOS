@@ -12,15 +12,20 @@ public struct ChatChannelDraftsState: Equatable {
         /// The draft's photos, videos, files or audio. They are not in the composer: Send and
         /// Schedule post them with the composer text as the caption (an album for several).
         public let media: [EngineRawMedia]
+        /// What the attachment button may replace the media with, by Telegram's rule for editing a
+        /// post with this media (`messageMediaEditingOptions`). Empty: the button is disabled
+        /// (voice and round video messages, stickers, music albums), as when editing.
+        public let mediaEditingOptions: MessageMediaEditingOptions
 
-        public init(id: Int32, text: String, media: [EngineRawMedia] = []) {
+        public init(id: Int32, text: String, media: [EngineRawMedia] = [], mediaEditingOptions: MessageMediaEditingOptions = []) {
             self.id = id
             self.text = text
             self.media = media
+            self.mediaEditingOptions = mediaEditingOptions
         }
 
         public static func ==(lhs: AttachedDraft, rhs: AttachedDraft) -> Bool {
-            if lhs.id != rhs.id || lhs.text != rhs.text || lhs.media.count != rhs.media.count {
+            if lhs.id != rhs.id || lhs.text != rhs.text || lhs.media.count != rhs.media.count || lhs.mediaEditingOptions != rhs.mediaEditingOptions {
                 return false
             }
             for i in 0 ..< lhs.media.count {

@@ -1344,6 +1344,23 @@ public enum ChatCustomContentsKind: Equatable {
     case channelDrafts(peerId: EnginePeer.Id)
 }
 
+public extension ChatControllerSubject {
+    /// Whether messages are drawn without their time: the business editors' contents (quick
+    /// replies, greeting messages, links) are templates, not posts. Drafts keep it, as Scheduled
+    /// Messages does, showing when a draft was saved (and edited).
+    var hidesMessageTime: Bool {
+        if case let .customChatContents(contents) = self {
+            switch contents.kind {
+            case .channelDrafts:
+                return false
+            case .quickReplyMessageInput, .businessLinkSetup, .hashTagSearch, .welcomeMessages:
+                return true
+            }
+        }
+        return false
+    }
+}
+
 /// Save Draft in the send options of the media picker and the photo editor. It travels to the chat
 /// as the send's schedule time, as "Send When Online" does with `scheduleWhenOnlineTimestamp`, and
 /// the chat saves the media as a channel draft instead of sending it. It never reaches a message.

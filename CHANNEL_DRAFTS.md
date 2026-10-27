@@ -37,6 +37,18 @@ Channel admins can keep several drafts per broadcast channel:
   (`sendMessages`, the composer's send, the recording send) save instead of sending.
 - **Edit** edits the draft in place with the usual edit header and ✓; while editing, the
   attachment button replaces the photo or video, through Telegram's own replace-media flow.
+  Edit is offered where Telegram lets a post be edited (`canEditMessage`): not for stickers,
+  round videos, contacts, locations, polls or dice.
+- **Telegram's editing rules hold for a draft taken into the composer** too:
+  - the attachment button replaces its photo, video or file as while editing a post
+    (`messageMediaEditingOptions`), and is disabled for a voice message, a round video, a sticker
+    or a music album, so a photo can never be added to a voice message;
+  - a sticker, round video, poll... carries no caption: the composer text is posted (or saved as
+    a draft of its own) before it, as Forward sends its comment first;
+  - a sticker, GIF or voice message sent while a draft is in the composer is a separate message
+    and leaves the draft linked; Save Draft from their menus makes a new draft.
+- Drafts show the time they were saved (and "edited"), as Scheduled Messages shows the post
+  time; the business editors (quick replies, greeting messages) keep hiding it.
 - Everything the chat can send is a draft on the Drafts screen: text, rich text (headings, lists,
   tables, the article editor), photos, videos, albums, files, voice messages (also after review),
   round videos, stickers, polls, locations, contacts. The attach screen's send button shows the

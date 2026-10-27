@@ -2632,7 +2632,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 }
             }
                         
-            if case .customChatContents = item.associatedData.subject {
+            if item.associatedData.subject?.hidesMessageTime == true {
             } else if (mosaicRange.upperBound == contentPropertiesAndLayouts.count || contentPropertiesAndLayouts[contentPropertiesAndLayouts.count - 1].3.isAttachment) && (!hasText || item.message.invertMedia) {
                 let message = item.content.firstMessage
                 

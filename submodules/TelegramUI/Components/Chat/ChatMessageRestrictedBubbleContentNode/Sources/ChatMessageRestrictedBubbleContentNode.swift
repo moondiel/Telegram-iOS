@@ -10,6 +10,7 @@ import TextFormat
 import ChatMessageDateAndStatusNode
 import ChatMessageBubbleContentNode
 import ChatMessageItemCommon
+import AccountContext
 
 public class ChatMessageRestrictedBubbleContentNode: ChatMessageBubbleContentNode {
     private let textNode: TextNode
@@ -80,7 +81,7 @@ public class ChatMessageRestrictedBubbleContentNode: ChatMessageBubbleContentNod
                 let dateText = stringForMessageTimestampStatus(context: item.context, message: EngineMessage(item.message), dateTimeFormat: item.presentationData.dateTimeFormat, nameDisplayOrder: item.presentationData.nameDisplayOrder, strings: item.presentationData.strings, associatedData: item.associatedData)
                 
                 let statusType: ChatMessageDateAndStatusType?
-                if case .customChatContents = item.associatedData.subject {
+                if item.associatedData.subject?.hidesMessageTime == true {
                     statusType = nil
                 } else {
                     switch position {

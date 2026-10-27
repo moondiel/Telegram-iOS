@@ -14,6 +14,7 @@ import ChatMessageDateAndStatusNode
 import ChatMessageBubbleContentNode
 import ChatMessageItemCommon
 import ChatControllerInteraction
+import AccountContext
 
 private let titleFont = Font.medium(14.0)
 private let liveTitleFont = Font.medium(16.0)
@@ -228,7 +229,7 @@ public class ChatMessageMapBubbleContentNode: ChatMessageBubbleContentNode {
                 let dateText = stringForMessageTimestampStatus(context: item.context, message: EngineMessage(item.message), dateTimeFormat: item.presentationData.dateTimeFormat, nameDisplayOrder: item.presentationData.nameDisplayOrder, strings: item.presentationData.strings, format: dateFormat, associatedData: item.associatedData)
                 
                 let statusType: ChatMessageDateAndStatusType?
-                if case .customChatContents = item.associatedData.subject {
+                if item.associatedData.subject?.hidesMessageTime == true {
                     statusType = nil
                 } else {
                     switch position {

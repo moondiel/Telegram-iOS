@@ -1061,7 +1061,6 @@ extension ChatControllerImpl {
                 
                 let effectiveSilentPosting = silentPosting ?? strongSelf.presentationInterfaceState.interfaceState.silentPosting
                 let transformedMessages = strongSelf.transformEnqueueMessages(messages, silentPosting: effectiveSilentPosting, scheduleTime: scheduleTime, repeatPeriod: repeatPeriod, postpone: postpone)
-                strongSelf.channelDraftsDidSendMessages(transformedMessages)
                 
                 var forwardedMessages: [[EnqueueMessage]] = []
                 var forwardSourcePeerIds = Set<PeerId>()
@@ -1275,6 +1274,11 @@ extension ChatControllerImpl {
                     }
                     strongSelf.presentAttachmentMenu(subject: .edit(mediaOptions: editMediaOptions, mediaReference: originalMediaReference))
                 })
+            } else if let attachedDraft = strongSelf.presentationInterfaceState.channelDrafts.attachedDraft, !attachedDraft.media.isEmpty {
+                // A channel draft with media: replace it, as when editing a post with media.
+                if !attachedDraft.mediaEditingOptions.isEmpty {
+                    strongSelf.presentAttachmentMenu(subject: .edit(mediaOptions: attachedDraft.mediaEditingOptions, mediaReference: nil))
+                }
             } else {
                 strongSelf.presentAttachmentMenu(subject: .default)
             }

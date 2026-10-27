@@ -8657,6 +8657,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     
     func editMessageMediaWithMessages(_ messages: [EnqueueMessage]) {
+        if self.replaceChannelDraftMedia(with: messages) {
+            return
+        }
         if let message = messages.first, case let .message(text, attributes, _, maybeMediaReference, _, _, _, _, _, _) = message, let mediaReference = maybeMediaReference {
             self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
                 var entities: [MessageTextEntity] = []
@@ -9160,7 +9163,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             return
         }
         // A post sent from the attach flow with a draft's text as its caption publishes the draft.
-        self.channelDraftsDidSendMessages(messages)
+        self.publishChannelDraftTakenByCaption()
         if case let .customChatContents(customChatContents) = self.subject {
             customChatContents.enqueueMessages(messages: messages)
             return
@@ -10653,9 +10656,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     
     func clearInputText() {
         if let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft {
-            // The attach flow took the composer text over as a caption: remember the draft it came
-            // from, so the media's send or Save Draft reaches it.
+            // The attach flow took the composer text over as a caption: the draft goes with it, so
+            // the media's send publishes it and its Save Draft updates it.
             self.channelDraftTakenByCaption = attachedDraft
+            self.unlinkChannelDraft()
         }
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
             if !state.interfaceState.effectiveInputState.isEmpty {

@@ -2428,7 +2428,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             case .businessLinkSetup:
                 actions.removeAll()
             case .channelDrafts:
-                actions = channelDraftContextMenuItems(message: message, contents: customChatContents, strings: chatPresentationInterfaceState.strings, interfaceInteraction: interfaceInteraction, controllerInteraction: controllerInteraction)
+                actions = channelDraftContextMenuItems(context: context, message: message, contents: customChatContents, strings: chatPresentationInterfaceState.strings, interfaceInteraction: interfaceInteraction, controllerInteraction: controllerInteraction)
             }
         }
         

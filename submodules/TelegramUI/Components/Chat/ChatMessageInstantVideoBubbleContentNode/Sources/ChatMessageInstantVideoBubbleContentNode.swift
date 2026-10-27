@@ -14,6 +14,7 @@ import ChatMessageItemCommon
 import ChatMessageInteractiveInstantVideoNode
 import ChatMessageInteractiveFileNode
 import ChatControllerInteraction
+import AccountContext
 
 extension ChatMessageInteractiveInstantVideoNode.AnimateFileNodeDescription {
     convenience init(_ node: ChatMessageInteractiveFileNode) {
@@ -201,7 +202,7 @@ public class ChatMessageInstantVideoBubbleContentNode: ChatMessageBubbleContentN
             }
             
             let statusType: ChatMessageDateAndStatusType?
-            if case .customChatContents = item.associatedData.subject {
+            if item.associatedData.subject?.hidesMessageTime == true {
                 statusType = nil
             } else {
                 switch preparePosition {

@@ -1063,7 +1063,7 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                     
                     animation.animator.updateFrame(layer: strongSelf.dateAndStatusNode.layer, frame: dateAndStatusFrame, completion: nil)
                     dateAndStatusApply(animation)
-                    if case .customChatContents = item.associatedData.subject {
+                    if item.associatedData.subject?.hidesMessageTime == true {
                         strongSelf.dateAndStatusNode.isHidden = true
                     }
                     

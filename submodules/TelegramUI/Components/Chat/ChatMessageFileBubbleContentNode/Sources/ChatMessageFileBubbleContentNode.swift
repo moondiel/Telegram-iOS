@@ -13,6 +13,7 @@ import ChatMessageBubbleContentNode
 import ChatMessageItemCommon
 import ChatMessageInteractiveFileNode
 import ChatControllerInteraction
+import AccountContext
 
 public class ChatMessageFileBubbleContentNode: ChatMessageBubbleContentNode {
     public let interactiveFileNode: ChatMessageInteractiveFileNode
@@ -117,7 +118,7 @@ public class ChatMessageFileBubbleContentNode: ChatMessageBubbleContentNode {
                 incoming = false
             }
             let statusType: ChatMessageDateAndStatusType?
-            if case .customChatContents = item.associatedData.subject {
+            if item.associatedData.subject?.hidesMessageTime == true {
                 statusType = nil
             } else if item.message.timestamp == 0 {
                 statusType = nil

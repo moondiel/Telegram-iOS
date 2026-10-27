@@ -15,6 +15,7 @@ import MessageInlineBlockBackgroundView
 import TextSelectionNode
 import Geocoding
 import UrlEscaping
+import AccountContext
 
 private func generateMaskImage() -> UIImage? {
     return generateImage(CGSize(width: 140, height: 30), rotatedContext: { size, context in
@@ -329,7 +330,7 @@ public class ChatMessageFactCheckBubbleContentNode: ChatMessageBubbleContentNode
                 let dateText = stringForMessageTimestampStatus(context: item.context, message: EngineMessage(item.message), dateTimeFormat: item.presentationData.dateTimeFormat, nameDisplayOrder: item.presentationData.nameDisplayOrder, strings: item.presentationData.strings, format: dateFormat, associatedData: item.associatedData)
                 
                 let statusType: ChatMessageDateAndStatusType?
-                if case .customChatContents = item.associatedData.subject {
+                if item.associatedData.subject?.hidesMessageTime == true {
                     statusType = nil
                 } else {
                     switch position {
