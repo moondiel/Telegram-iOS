@@ -1693,11 +1693,6 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
             }
         }
         hasMediaDraft = interfaceState.interfaceState.mediaDraftState != nil
-        if interfaceState.interfaceState.editMessage == nil, let attachedDraft = interfaceState.channelDrafts.attachedDraft, !attachedDraft.media.isEmpty {
-            // A channel draft with media in the composer: the attachment button replaces the media,
-            // as when editing a post with it, and is disabled where editing allows no replacement.
-            isMediaEnabled = !attachedDraft.mediaEditingOptions.isEmpty
-        }
         
         // A channel draft with media taken into the composer is sent like a forward: the send button
         // stays, even without text.

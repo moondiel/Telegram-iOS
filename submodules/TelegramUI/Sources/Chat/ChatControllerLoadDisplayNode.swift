@@ -1274,11 +1274,10 @@ extension ChatControllerImpl {
                     }
                     strongSelf.presentAttachmentMenu(subject: .edit(mediaOptions: editMediaOptions, mediaReference: originalMediaReference))
                 })
-            } else if let attachedDraft = strongSelf.presentationInterfaceState.channelDrafts.attachedDraft, !attachedDraft.media.isEmpty {
-                // A channel draft with media: replace it, as when editing a post with media.
-                if !attachedDraft.mediaEditingOptions.isEmpty {
-                    strongSelf.presentAttachmentMenu(subject: .edit(mediaOptions: attachedDraft.mediaEditingOptions, mediaReference: nil))
-                }
+            } else if let attachedDraft = strongSelf.presentationInterfaceState.channelDrafts.attachedDraft, let editMessageState = strongSelf.presentationInterfaceState.editMessageState {
+                // A channel draft in the composer: the attachment menu of Edit, for the draft's
+                // media as Edit opens it for the post's (see `updatedChannelDraftsState`).
+                strongSelf.presentAttachmentMenu(subject: .edit(mediaOptions: channelDraftEditMediaOptions(editMessageState), mediaReference: channelDraftOriginalMediaReference(attachedDraft)))
             } else {
                 strongSelf.presentAttachmentMenu(subject: .default)
             }

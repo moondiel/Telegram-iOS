@@ -33,7 +33,14 @@ func channelDraftsAreAvailable(_ state: ChatPresentationInterfaceState) -> Bool 
 }
 
 /// Keeps `channelDrafts` consistent with the rest of the state. Called on every state update.
-func updatedChannelDraftsState(_ state: ChatPresentationInterfaceState) -> ChatPresentationInterfaceState {
+///
+/// A draft taken into the composer is edited the way a post is: while it is linked the chat
+/// carries the same `editMessageState` Edit sets up (`updatedChatEditInterfaceMessageState`):
+/// `.plaintext` for text, `.media(mediaOptions:)` with media. Everything that follows an edit
+/// reads it from there: the attachment button's replace icon, enabled state and menu, the send
+/// button, the send-as button, the input's context queries.
+func updatedChannelDraftsState(_ state: ChatPresentationInterfaceState, previous: ChatPresentationInterfaceState) -> ChatPresentationInterfaceState {
+    var state = state
     var channelDrafts = state.channelDrafts
     channelDrafts.isAvailable = channelDraftsAreAvailable(state)
     // Like the Edit header, the Draft header stays when the text is erased: only ×, sending,
@@ -41,10 +48,23 @@ func updatedChannelDraftsState(_ state: ChatPresentationInterfaceState) -> ChatP
     if channelDrafts.attachedDraft != nil && !channelDrafts.isAvailable {
         channelDrafts.attachedDraft = nil
     }
-    if channelDrafts == state.channelDrafts {
+    if channelDrafts != state.channelDrafts {
+        state = state.updatedChannelDrafts(channelDrafts)
+    }
+
+    // A real edit (or a suggested post's) owns `editMessageState`.
+    guard state.interfaceState.editMessage == nil, state.interfaceState.postSuggestionState == nil else {
         return state
     }
-    return state.updatedChannelDrafts(channelDrafts)
+    if let attachedDraft = channelDrafts.attachedDraft {
+        let content: ChatEditInterfaceMessageStateContent = attachedDraft.media.isEmpty ? .plaintext : .media(mediaOptions: attachedDraft.mediaEditingOptions)
+        if state.editMessageState?.content != content || state.editMessageState?.mediaReference != nil {
+            state = state.updatedEditMessageState(ChatEditInterfaceMessageState(content: content, mediaReference: nil))
+        }
+    } else if previous.channelDrafts.attachedDraft != nil, previous.interfaceState.editMessage == nil, previous.interfaceState.postSuggestionState == nil {
+        state = state.updatedEditMessageState(nil)
+    }
+    return state
 }
 
 extension ChatControllerImpl {
@@ -206,16 +226,17 @@ extension ChatControllerImpl {
         }
     }
 
-    /// A photo, video or file picked with the attachment button while a draft with media is in the
-    /// composer replaces that media (its first item), as picking a replacement does while editing
-    /// a post. The picker's caption becomes the composer text, as it does for an edit. True if the
-    /// pick was for the draft.
+    /// A photo, video or file picked from Edit's attachment menu while a draft is in the composer
+    /// (`editMessageMediaWithMessages`): it replaces the draft's media (the first item of an
+    /// album), or becomes its media if it had none, and is stored right away, as Edit commits a
+    /// picked replacement. The picker's caption, which started as the composer text, becomes the
+    /// composer text. True if the pick was for a draft.
     func replaceChannelDraftMedia(with messages: [EnqueueMessage]) -> Bool {
         guard self.presentationInterfaceState.interfaceState.editMessage == nil, let peerId = self.channelDraftsPeerId else {
             return false
         }
-        // The picker may have taken the composer text over as its caption, unlinking the draft.
-        guard let linkedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft ?? self.channelDraftTakenByCaption, !linkedDraft.media.isEmpty else {
+        // The picker took the composer text over as its caption, which unlinked the draft.
+        guard let linkedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft ?? self.channelDraftTakenByCaption else {
             return false
         }
         self.channelDraftTakenByCaption = nil
@@ -229,20 +250,39 @@ extension ChatControllerImpl {
             }
         }
         var media = linkedDraft.media
-        media[0] = mediaReference.media
-        let caption = text.isEmpty ? linkedDraft.text : text
-        let _ = ChannelDraftsStore.update(engine: self.context.engine, peerId: peerId, id: linkedDraft.id, text: caption, entities: text.isEmpty ? [] : entities, replacingMedia: (0, ChannelDraft.encodeMedia(mediaReference.media))).startStandalone()
-        let updatedDraft = ChatChannelDraftsState.AttachedDraft(id: linkedDraft.id, text: caption, media: media, mediaEditingOptions: channelDraftMediaEditingOptions(media: media, peerId: peerId), inputTextMaxLength: linkedDraft.inputTextMaxLength)
-        self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
+        if media.isEmpty {
+            media = [mediaReference.media]
+            let _ = ChannelDraftsStore.update(engine: self.context.engine, peerId: peerId, id: linkedDraft.id, text: text, entities: entities, media: [ChannelDraft.encodeMedia(mediaReference.media)]).startStandalone()
+        } else {
+            media[0] = mediaReference.media
+            let _ = ChannelDraftsStore.update(engine: self.context.engine, peerId: peerId, id: linkedDraft.id, text: text, entities: entities, replacingMedia: (0, ChannelDraft.encodeMedia(mediaReference.media))).startStandalone()
+        }
+        let updatedDraft = self.channelDraftInComposer(id: linkedDraft.id, text: text, media: media)
+        let inputState = ChatTextInputState(inputText: chatInputStateStringWithAppliedEntities(text, entities: entities))
+        self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
             var channelDrafts = state.channelDrafts
             channelDrafts.attachedDraft = updatedDraft
-            var state = state.updatedChannelDrafts(channelDrafts)
-            if !text.isEmpty {
-                state = state.updatedInterfaceState { $0.withUpdatedComposeInputState(ChatTextInputState(inputText: chatInputStateStringWithAppliedEntities(text, entities: entities))) }
+            return state.updatedChannelDrafts(channelDrafts).updatedInterfaceState { interfaceState in
+                return interfaceState.withUpdatedComposeInputState(inputState).withUpdatedComposeDisableUrlPreviews(detectUrls(inputState.inputText))
             }
-            return state
         })
         return true
+    }
+
+    /// A draft as the composer holds it, with what Edit derives from a post's media: what the
+    /// attachment button may replace it with (`messageMediaEditingOptions`) and the caption limit.
+    func channelDraftInComposer(id: ChannelDraft.Id, text: String, media: [EngineRawMedia]) -> ChatChannelDraftsState.AttachedDraft {
+        var inputTextMaxLength: Int32 = 4096
+        if media.contains(where: { $0 is TelegramMediaImage || $0 is TelegramMediaFile }) {
+            inputTextMaxLength = self.context.userLimits.maxCaptionLength
+        }
+        return ChatChannelDraftsState.AttachedDraft(
+            id: id,
+            text: text,
+            media: media,
+            mediaEditingOptions: channelDraftMediaEditingOptions(media: media, peerId: self.chatLocation.peerId),
+            inputTextMaxLength: inputTextMaxLength
+        )
     }
 
     /// The chat's send funnels: messages marked with `channelDraftSaveScheduleTimestamp` (Save Draft
@@ -375,11 +415,7 @@ extension ChatControllerImpl {
             inputState = ChatTextInputState(inputText: chatInputStateStringWithAppliedEntities(draft.text, entities: draft.entities))
         }
         let media = draft.decodedMedia
-        // Edit's caption limit: a photo or a file takes a caption, anything else a message's length.
-        var inputTextMaxLength: Int32 = 4096
-        if media.contains(where: { $0 is TelegramMediaImage || $0 is TelegramMediaFile }) {
-            inputTextMaxLength = self.context.userLimits.maxCaptionLength
-        }
+        let attachedDraft = self.channelDraftInComposer(id: draft.id, text: draft.decodedRichText == nil ? draft.text : inputState.inputText.string, media: media)
         // A caption never has a link preview, as Edit disables previews a post did not have.
         let disableUrlPreviews = media.isEmpty ? [] : detectUrls(inputState.inputText)
 
@@ -393,13 +429,7 @@ extension ChatControllerImpl {
         }
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
             var channelDrafts = state.channelDrafts
-            channelDrafts.attachedDraft = ChatChannelDraftsState.AttachedDraft(
-                id: draft.id,
-                text: draft.decodedRichText == nil ? draft.text : inputState.inputText.string,
-                media: media,
-                mediaEditingOptions: channelDraftMediaEditingOptions(media: media, peerId: state.chatLocation.peerId),
-                inputTextMaxLength: inputTextMaxLength
-            )
+            channelDrafts.attachedDraft = attachedDraft
             return state.updatedInterfaceState { interfaceState in
                 return interfaceState.withUpdatedComposeInputState(inputState).withUpdatedComposeDisableUrlPreviews(disableUrlPreviews)
             }.updatedInputMode { _ in
@@ -765,4 +795,29 @@ func channelDraftContentIsEditable(context: AccountContext, media: [EngineRawMed
         associatedStories: [:]
     )
     return canEditMessage(accountPeerId: context.account.peerId, limitsConfiguration: context.currentLimitsConfiguration.with { EngineConfiguration.Limits($0) }, message: message)
+}
+
+/// The media options Edit's attachment menu gets for a draft in the composer: `nil` (add media)
+/// for text, as for a text post.
+func channelDraftEditMediaOptions(_ editMessageState: ChatEditInterfaceMessageState) -> MessageMediaEditingOptions? {
+    switch editMessageState.content {
+    case .plaintext:
+        return nil
+    case let .media(mediaOptions):
+        return mediaOptions
+    }
+}
+
+/// The draft's photo or video, which Edit's media picker offers to edit in place, as it offers
+/// the post's (`displayAttachmentMenu`).
+func channelDraftOriginalMediaReference(_ attachedDraft: ChatChannelDraftsState.AttachedDraft) -> AnyMediaReference? {
+    var result: AnyMediaReference?
+    for media in attachedDraft.media {
+        if let image = media as? TelegramMediaImage {
+            result = .standalone(media: image)
+        } else if let file = media as? TelegramMediaFile, file.isVideo || file.isAnimated {
+            result = .standalone(media: file)
+        }
+    }
+    return result
 }
