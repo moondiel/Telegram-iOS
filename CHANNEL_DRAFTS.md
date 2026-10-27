@@ -52,8 +52,9 @@ Channel admins can keep several drafts per broadcast channel:
     a draft of its own) before it, as Forward sends its comment first;
   - a sticker, GIF or voice message sent while a draft is in the composer is a separate message
     and leaves the draft linked; Save Draft from their menus makes a new draft.
-- Drafts show the time they were saved (and "edited"), as Scheduled Messages shows the post
-  time; the business editors (quick replies, greeting messages) keep hiding it.
+- Drafts show only the time they were saved, as Scheduled Messages shows only the post time
+  (no admin signature, no "edited"); the business editors (quick replies, greeting messages)
+  keep hiding it.
 - Everything the chat can send is a draft on the Drafts screen: text, rich text (headings, lists,
   tables, the article editor), photos, videos, albums, files, voice messages (also after review),
   round videos, stickers, polls, locations, contacts. The attach screen's send button shows the

@@ -43,17 +43,16 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
         self.peerId = peerId
         self.kind = .channelDrafts(peerId: peerId)
 
-        let peers = context.engine.data.subscribe(
-            TelegramEngine.EngineData.Item.Peer.Peer(id: peerId),
-            TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId)
+        let channelPeer = context.engine.data.subscribe(
+            TelegramEngine.EngineData.Item.Peer.Peer(id: peerId)
         )
         let drafts = ChannelDraftsStore.drafts(engine: context.engine, peerId: peerId)
         self.disposable = (combineLatest(queue: Queue.mainQueue(),
             drafts,
-            peers
+            channelPeer
         )
-        |> deliverOnMainQueue).startStrict(next: { [weak self] drafts, peers in
-            guard let self, let channel = peers.0, let account = peers.1 else {
+        |> deliverOnMainQueue).startStrict(next: { [weak self] drafts, channel in
+            guard let self, let channel else {
                 return
             }
             let knownIds = Set(self.drafts.map(\.id))
@@ -64,9 +63,7 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
                 }
             }
             self.drafts = drafts
-            let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
-            let signature = account.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)
-            let view = ChannelDraftsChatContents.historyView(drafts: drafts, channel: channel, signature: signature, correlationIds: self.correlationIds)
+            let view = ChannelDraftsChatContents.historyView(drafts: drafts, channel: channel, correlationIds: self.correlationIds)
             let updateType: EngineViewUpdateType = self.didEmitInitialView ? .Generic : .Initial
             self.didEmitInitialView = true
             self.historyViewPromise.set(.single((view, updateType)))
@@ -111,11 +108,11 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
 
     // MARK: History
 
-    /// Drafts as channel posts: authored by the channel, signed with the admin's name, marked
-    /// edited after an edit. Messages live in the scheduled-local namespace, so the bubbles behave
+    /// Drafts as channel posts, drawn as Scheduled Messages draws them: authored by the channel,
+    /// only the time in the corner (no signature, no "edited"). Messages live in the scheduled-local namespace, so the bubbles behave
     /// like Scheduled Messages posts (no share button, comments or reactions). Nothing is stored in
     /// the message history.
-    private static func historyView(drafts: [ChannelDraft], channel: EnginePeer, signature: String, correlationIds: [ChannelDraft.Id: Int64]) -> EngineRawMessageHistoryView {
+    private static func historyView(drafts: [ChannelDraft], channel: EnginePeer, correlationIds: [ChannelDraft.Id: Int64]) -> EngineRawMessageHistoryView {
         let channelPeer = channel._asPeer()
         var peers = EngineSimpleDictionary<EnginePeer.Id, EngineRawPeer>()
         peers[channel.id] = channelPeer
@@ -134,10 +131,6 @@ public final class ChannelDraftsChatContents: ChatCustomContentsProtocol {
                 }
                 if isCaptionItem, let richText = draft.decodedRichText {
                     attributes.append(richText)
-                }
-                attributes.append(AuthorSignatureMessageAttribute(signature: signature))
-                if let editDate = draft.editDate {
-                    attributes.append(EditedMessageAttribute(date: editDate, isHidden: false))
                 }
                 // The send carries its correlation id on its last message (the last album item).
                 if index == itemCount - 1, let correlationId = correlationIds[draft.id] {
