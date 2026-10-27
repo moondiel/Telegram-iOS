@@ -97,13 +97,22 @@ func textInputAccessoryPanel(
         }
         
         if case let .customChatContents(customChatContents) = chatPresentationInterfaceState.subject, let draftsContents = customChatContents as? ChannelDraftsChatContents {
-            // Channel Drafts: the edited draft is not a stored message, so the header shows its text directly.
+            // Channel Drafts: the edited draft is not a stored message, so the header shows its text
+            // directly, or names its media in the secondary colour, as the Edit header does.
+            let draft = draftsContents.draft(messageId: editMessage.messageId)
+            var text = draft.map(channelDraftHeaderText) ?? ""
+            var textIsMediaKind = false
+            if text.isEmpty, let media = draft?.decodedMedia.first, let kind = mediaContentKind(EngineMedia(media), strings: chatPresentationInterfaceState.strings) {
+                text = stringForMediaKind(kind, strings: chatPresentationInterfaceState.strings).0.string
+                textIsMediaKind = true
+            }
             return AnyComponentWithIdentity(id: "edit", component: AnyComponent(ChatInputMessageAccessoryPanel(
                 context: context,
                 contents: .custom(ChatInputMessageAccessoryPanel.Contents.Custom(
                     id: AnyHashable(editMessage.messageId),
                     title: chatPresentationInterfaceState.strings.ChannelDrafts_EditPanelTitle,
-                    text: draftsContents.draft(messageId: editMessage.messageId)?.text ?? ""
+                    text: text,
+                    textIsMediaKind: textIsMediaKind
                 )),
                 chatPeerId: nil,
                 action: { _ in

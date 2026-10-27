@@ -161,7 +161,8 @@ func inputTextPanelStateForChatPresentationInterfaceState(_ chatPresentationInte
         case .inputButtons:
             return ChatTextInputPanelState(accessoryItems: [.botInput(isEnabled: true, inputMode: .keyboard)], contextPlaceholder: contextPlaceholder, mediaRecordingState: chatPresentationInterfaceState.inputTextPanelState.mediaRecordingState)
         case .none, .text:
-            if let _ = chatPresentationInterfaceState.interfaceState.editMessage {
+            // A channel draft in the composer gets the input field's buttons of an edit.
+            if chatPresentationInterfaceState.interfaceState.editMessage != nil || chatPresentationInterfaceState.channelDrafts.attachedDraft != nil {
                 accessoryItems.append(.input(isEnabled: true, inputMode: .emoji))
                 
                 return ChatTextInputPanelState(accessoryItems: accessoryItems, contextPlaceholder: contextPlaceholder, mediaRecordingState: chatPresentationInterfaceState.inputTextPanelState.mediaRecordingState)

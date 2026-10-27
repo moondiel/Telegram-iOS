@@ -57,6 +57,15 @@ Channel admins can keep several drafts per broadcast channel:
     a draft of its own) before it, as Forward sends its comment first;
   - a sticker, GIF or voice message sent while a draft is in the composer is a separate message
     and leaves the draft linked; Save Draft from their menus makes a new draft.
+  - the input field shows Edit's buttons (no Drafts, Scheduled or silent-post button);
+  - Use Draft ends an edit in progress, as starting another Edit does;
+  - the link is kept with the channel's drafts (`linkedId`), so a reopened chat has the draft in
+    its composer again, as an edit in progress survives leaving the chat; deleting that draft on
+    the Drafts screen takes it out of the composer, as deleting a post ends its edit;
+  - media pasted or dropped in goes out with the draft's text as its caption; a text draft is then
+    published, a draft with media of its own stays in Drafts.
+- **Store writes are serialized** (`ChannelDraftsWriter`): every write is a read-modify-write of
+  the channel's entry, so two started together would otherwise lose one change.
 - Drafts show only the time they were saved, as Scheduled Messages shows only the post time
   (no admin signature, no "edited"); the business editors (quick replies, greeting messages)
   keep hiding it.

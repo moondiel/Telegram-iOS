@@ -6,7 +6,7 @@ import TelegramPresentationData
 
 /// The Drafts screen: a regular chat controller over these custom contents
 /// (`ChatControllerSubject.customChatContents`), the same mechanism as Quick Replies and Welcome
-/// Messages. Every draft is shown as a post of the channel signed by the admin, so the bubbles,
+/// Messages. Every draft is shown as a post of the channel, as Scheduled Messages shows one, so the bubbles,
 /// the input panel (attachments, stickers, voice), selection and the message menu are Telegram's own.
 ///
 /// Sending on this screen saves a new draft; editing a bubble edits the draft; deleting removes it.

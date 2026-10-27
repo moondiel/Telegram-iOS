@@ -44,8 +44,9 @@ func updatedChannelDraftsState(_ state: ChatPresentationInterfaceState, previous
     var channelDrafts = state.channelDrafts
     channelDrafts.isAvailable = channelDraftsAreAvailable(state)
     // Like the Edit header, the Draft header stays when the text is erased: only ×, sending,
-    // scheduling or saving the draft unlinks it. It goes with the chat's ability to keep drafts.
-    if channelDrafts.attachedDraft != nil && !channelDrafts.isAvailable {
+    // scheduling or saving the draft unlinks it. It goes when the chat loses the ability to keep
+    // drafts (not while the channel is still loading, when a reopened chat restores its link).
+    if channelDrafts.attachedDraft != nil && !channelDrafts.isAvailable && previous.channelDrafts.isAvailable {
         channelDrafts.attachedDraft = nil
     }
     if channelDrafts != state.channelDrafts {
@@ -81,20 +82,38 @@ extension ChatControllerImpl {
         guard let peerId = self.channelDraftsPeerId else {
             return
         }
+        // A draft that was in the composer when the chat was closed is in it again (the composer
+        // text itself is saved with the chat), as an edit in progress is.
+        let _ = (ChannelDraftsStore.linkedDraft(engine: self.context.engine, peerId: peerId)
+        |> deliverOnMainQueue).startStandalone(next: { [weak self] draft in
+            guard let self, let draft, self.presentationInterfaceState.channelDrafts.attachedDraft == nil else {
+                return
+            }
+            let attachedDraft = self.channelDraftInComposer(id: draft.id, text: channelDraftHeaderText(draft), media: draft.decodedMedia)
+            self.updateChatPresentationInterfaceState(animated: false, interactive: false, { state in
+                var channelDrafts = state.channelDrafts
+                channelDrafts.attachedDraft = attachedDraft
+                return state.updatedChannelDrafts(channelDrafts)
+            })
+        })
         self.channelDraftsDisposable.set((ChannelDraftsStore.drafts(engine: self.context.engine, peerId: peerId)
-        |> map { drafts -> Bool in
-            return !drafts.isEmpty
-        }
-        |> distinctUntilChanged
-        |> deliverOnMainQueue).startStrict(next: { [weak self] hasDrafts in
+        |> deliverOnMainQueue).startStrict(next: { [weak self] drafts in
             guard let self else {
                 return
             }
-            self.updateChatPresentationInterfaceState(animated: true, interactive: false, { state in
-                var channelDrafts = state.channelDrafts
-                channelDrafts.hasDrafts = hasDrafts
-                return state.updatedChannelDrafts(channelDrafts)
-            })
+            // The draft in the composer was deleted on the Drafts screen: it leaves the composer,
+            // as an edit ends when the post being edited is deleted.
+            if let attachedDraft = self.presentationInterfaceState.channelDrafts.attachedDraft, !drafts.contains(where: { $0.id == attachedDraft.id }) {
+                self.dismissChannelDraftFromComposer()
+            }
+            let hasDrafts = !drafts.isEmpty
+            if self.presentationInterfaceState.channelDrafts.hasDrafts != hasDrafts {
+                self.updateChatPresentationInterfaceState(animated: true, interactive: false, { state in
+                    var channelDrafts = state.channelDrafts
+                    channelDrafts.hasDrafts = hasDrafts
+                    return state.updatedChannelDrafts(channelDrafts)
+                })
+            }
         }))
     }
 
@@ -155,6 +174,9 @@ extension ChatControllerImpl {
             let _ = ChannelDraftsStore.update(engine: engine, peerId: peerId, id: attachedDraft.id, text: text, entities: entities, richText: richText).startStandalone()
         } else {
             let _ = ChannelDraftsStore.add(engine: engine, peerId: peerId, drafts: [ChannelDraftsStore.NewDraft(text: text, entities: entities, richText: richText)]).startStandalone()
+        }
+        if self.presentationInterfaceState.channelDrafts.attachedDraft != nil {
+            let _ = ChannelDraftsStore.setLinkedDraft(engine: engine, peerId: peerId, id: nil).startStandalone()
         }
 
         let wasLinked = self.presentationInterfaceState.channelDrafts.attachedDraft != nil
@@ -220,7 +242,11 @@ extension ChatControllerImpl {
             return
         }
         self.channelDraftTakenByCaption = nil
-        let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: peerId, ids: Set([takenDraft.id])).startStandalone()
+        // Only the draft's text went out (with media pasted or dropped in): a draft with media of
+        // its own keeps it and stays in Drafts.
+        if takenDraft.media.isEmpty {
+            let _ = ChannelDraftsStore.delete(engine: self.context.engine, peerId: peerId, ids: Set([takenDraft.id])).startStandalone()
+        }
         if self.channelDraftReplacedComposer != nil {
             self.restoreComposerReplacedByChannelDraft()
         }
@@ -260,8 +286,16 @@ extension ChatControllerImpl {
         var captionMessages: [EnqueueMessage] = []
         if !text.isEmpty {
             captionMessages.append(.message(text: text, attributes: attributes.filter { $0 is TextEntitiesMessageAttribute }, inlineStickers: [:], mediaReference: nil, threadId: self.chatLocation.threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: []))
+        } else if let composer = self.channelDraftContentFromComposer() {
+            // A picker without a caption field (iCloud files) leaves the composer as it is; as Edit
+            // keeps the edited text then, the composer text is the caption.
+            captionMessages.append(.message(text: composer.text, attributes: composer.entities.isEmpty ? [] : [TextEntitiesMessageAttribute(entities: composer.entities)], inlineStickers: [:], mediaReference: nil, threadId: self.chatLocation.threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: []))
         }
         let postMessages = self.publishChannelDraft(composerMessages: captionMessages)
+        if self.channelDraftReplacedComposer == nil {
+            // Sent: the composer empties, as after the composer's own Send.
+            self.restoreComposerReplacedByChannelDraft()
+        }
         let silentPosting = self.presentationInterfaceState.interfaceState.silentPosting
         self.sendMessages(self.transformEnqueueMessages(postMessages, silentPosting: silentPosting), media: true)
         return true
@@ -270,8 +304,10 @@ extension ChatControllerImpl {
     /// A draft as the composer holds it, with what Edit derives from a post's media: what the
     /// attachment button may replace it with (`messageMediaEditingOptions`) and the caption limit.
     func channelDraftInComposer(id: ChannelDraft.Id, text: String, media: [EngineRawMedia]) -> ChatChannelDraftsState.AttachedDraft {
+        // Edit's rule: a photo or a file takes a caption. A sticker or a round video takes none,
+        // so its text is a message of its own.
         var inputTextMaxLength: Int32 = 4096
-        if media.contains(where: { $0 is TelegramMediaImage || $0 is TelegramMediaFile }) {
+        if media.contains(where: { $0 is TelegramMediaImage || $0 is TelegramMediaFile }) && channelDraftContentIsEditable(context: self.context, media: media) {
             inputTextMaxLength = self.context.userLimits.maxCaptionLength
         }
         return ChatChannelDraftsState.AttachedDraft(
@@ -327,6 +363,9 @@ extension ChatControllerImpl {
 
     /// × in the "Draft" header: the composer lets go of the draft, which stays as it was.
     func unlinkChannelDraft() {
+        if let peerId = self.channelDraftsPeerId, self.presentationInterfaceState.channelDrafts.attachedDraft != nil {
+            let _ = ChannelDraftsStore.setLinkedDraft(engine: self.context.engine, peerId: peerId, id: nil).startStandalone()
+        }
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
             var channelDrafts = state.channelDrafts
             channelDrafts.attachedDraft = nil
@@ -413,7 +452,7 @@ extension ChatControllerImpl {
             inputState = ChatTextInputState(inputText: chatInputStateStringWithAppliedEntities(draft.text, entities: draft.entities))
         }
         let media = draft.decodedMedia
-        let attachedDraft = self.channelDraftInComposer(id: draft.id, text: draft.decodedRichText == nil ? draft.text : inputState.inputText.string, media: media)
+        let attachedDraft = self.channelDraftInComposer(id: draft.id, text: channelDraftHeaderText(draft), media: media)
         // A caption never has a link preview, as Edit disables previews a post did not have.
         let disableUrlPreviews = media.isEmpty ? [] : detectUrls(inputState.inputText)
 
@@ -425,9 +464,14 @@ extension ChatControllerImpl {
                 self.channelDraftReplacedComposer = nil
             }
         }
+        if let peerId = self.channelDraftsPeerId {
+            let _ = ChannelDraftsStore.setLinkedDraft(engine: self.context.engine, peerId: peerId, id: draft.id).startStandalone()
+        }
         self.updateChatPresentationInterfaceState(animated: true, interactive: true, saveInterfaceState: true, { state in
             var channelDrafts = state.channelDrafts
             channelDrafts.attachedDraft = attachedDraft
+            // An edit in progress gives way, as it does to another Edit.
+            let state = state.interfaceState.editMessage == nil ? state : state.updatedInterfaceState { $0.withUpdatedEditMessage(nil) }.updatedEditMessageState(nil)
             return state.updatedInterfaceState { interfaceState in
                 return interfaceState.withUpdatedComposeInputState(inputState).withUpdatedComposeDisableUrlPreviews(disableUrlPreviews)
             }.updatedInputMode { _ in
@@ -818,4 +862,12 @@ func channelDraftOriginalMediaReference(_ attachedDraft: ChatChannelDraftsState.
         }
     }
     return result
+}
+
+/// The text the "Draft" header shows: the draft's text, or the plain text of its rich content.
+func channelDraftHeaderText(_ draft: ChannelDraft) -> String {
+    if let richText = draft.decodedRichText {
+        return ChatTextInputState(content: chatInputContent(fromInstantPage: richText.instantPage), selectionRange: 0 ..< 0).inputText.string
+    }
+    return draft.text
 }

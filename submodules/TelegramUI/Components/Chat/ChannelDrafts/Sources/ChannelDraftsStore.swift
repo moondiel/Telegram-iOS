@@ -89,8 +89,61 @@ public struct ChannelDraft: Codable, Equatable {
 private struct ChannelDraftsState: Codable, Equatable {
     var drafts: [ChannelDraft]
     var lastId: ChannelDraft.Id
+    /// The draft taken into the channel's composer with Use Draft, so the composer finds it again
+    /// when the chat is opened next, as an edit in progress survives leaving the chat.
+    var linkedId: ChannelDraft.Id?
 
-    static let empty = ChannelDraftsState(drafts: [], lastId: 0)
+    static let empty = ChannelDraftsState(drafts: [], lastId: 0, linkedId: nil)
+}
+
+/// Runs the store's read-modify-writes one at a time: two of them started together (an update
+/// and a link change, a delete from the Drafts screen and a publish from the chat) would
+/// otherwise both read the same state and the second write would drop the first one's change.
+private final class ChannelDraftsWriter {
+    private let queue = Queue()
+    private var isRunning = false
+    private var pending: [() -> Void] = []
+
+    func enqueue<T>(_ signal: Signal<T, NoError>) -> Signal<T, NoError> {
+        return Signal { subscriber in
+            let disposable = MetaDisposable()
+            let queue = self.queue
+            var didFinish = false
+            let finish: () -> Void = { [weak self] in
+                queue.async {
+                    guard let self, !didFinish else {
+                        return
+                    }
+                    didFinish = true
+                    self.isRunning = false
+                    self.runNext()
+                }
+            }
+            queue.async {
+                self.pending.append {
+                    disposable.set(signal.start(next: { value in
+                        subscriber.putNext(value)
+                    }, completed: {
+                        subscriber.putCompletion()
+                        finish()
+                    }))
+                }
+                self.runNext()
+            }
+            return ActionDisposable {
+                disposable.dispose()
+                finish()
+            }
+        }
+    }
+
+    private func runNext() {
+        guard !self.isRunning, !self.pending.isEmpty else {
+            return
+        }
+        self.isRunning = true
+        self.pending.removeFirst()()
+    }
 }
 
 /// Device-local storage of channel drafts in the account's item cache
@@ -99,6 +152,8 @@ private struct ChannelDraftsState: Codable, Equatable {
 /// Drafts never leave the device. Syncing them between devices and between the admins of a channel
 /// needs a server API (see the README); these functions are the only place that would change.
 public enum ChannelDraftsStore {
+    private static let writer = ChannelDraftsWriter()
+
     private static func key(peerId: EnginePeer.Id) -> EngineDataBuffer {
         let key = EngineDataBuffer(length: 8)
         key.setInt64(0, value: peerId.toInt64())
@@ -126,12 +181,12 @@ public enum ChannelDraftsStore {
     private static func modify<T>(engine: TelegramEngine, peerId: EnginePeer.Id, _ f: @escaping (inout ChannelDraftsState) -> T) -> Signal<T, NoError> {
         let collectionId = ApplicationSpecificItemCacheCollectionId.channelDrafts
         let key = self.key(peerId: peerId)
-        return engine.data.get(self.stateItem(peerId: peerId))
+        return self.writer.enqueue(engine.data.get(self.stateItem(peerId: peerId))
         |> mapToSignal { entry -> Signal<T, NoError> in
             var state = entry?.get(ChannelDraftsState.self) ?? .empty
             let result = f(&state)
             let write: Signal<Never, NoError>
-            if state.drafts.isEmpty && state.lastId == 0 {
+            if state.drafts.isEmpty && state.lastId == 0 && state.linkedId == nil {
                 write = engine.itemCache.remove(collectionId: collectionId, id: key)
             } else {
                 write = engine.itemCache.put(collectionId: collectionId, id: key, item: state)
@@ -139,7 +194,26 @@ public enum ChannelDraftsStore {
             return write
             |> map { _ -> T in }
             |> then(.single(result))
+        })
+    }
+
+    /// The draft taken into the channel's composer (Use Draft), if it still exists.
+    public static func linkedDraft(engine: TelegramEngine, peerId: EnginePeer.Id) -> Signal<ChannelDraft?, NoError> {
+        return engine.data.get(self.stateItem(peerId: peerId))
+        |> map { entry -> ChannelDraft? in
+            guard let state = entry?.get(ChannelDraftsState.self), let linkedId = state.linkedId else {
+                return nil
+            }
+            return state.drafts.first(where: { $0.id == linkedId })
         }
+    }
+
+    /// Records which draft the composer holds (`nil`: none). Deleting that draft clears it.
+    public static func setLinkedDraft(engine: TelegramEngine, peerId: EnginePeer.Id, id: ChannelDraft.Id?) -> Signal<Never, NoError> {
+        return self.modify(engine: engine, peerId: peerId, { state -> Void in
+            state.linkedId = id
+        })
+        |> ignoreValues
     }
 
     public struct NewDraft {
@@ -252,6 +326,9 @@ public enum ChannelDraftsStore {
     public static func delete(engine: TelegramEngine, peerId: EnginePeer.Id, ids: Set<ChannelDraft.Id>) -> Signal<Never, NoError> {
         return self.modify(engine: engine, peerId: peerId, { state -> Void in
             state.drafts.removeAll(where: { ids.contains($0.id) })
+            if let linkedId = state.linkedId, ids.contains(linkedId) {
+                state.linkedId = nil
+            }
         })
         |> ignoreValues
     }
