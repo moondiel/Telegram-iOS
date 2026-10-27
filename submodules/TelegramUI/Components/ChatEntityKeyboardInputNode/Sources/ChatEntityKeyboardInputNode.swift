@@ -642,6 +642,12 @@ public final class ChatEntityKeyboardInputNode: ChatInputNode {
                     navigationController: interaction.getNavigationController,
                     updateIsPreviewing: { [weak self] value in
                         self?.previewingStickersPromise.set(value)
+                    },
+                    canSaveChannelDraft: { [weak interaction] in
+                        return interaction?.canSaveChannelDraft() ?? false
+                    },
+                    saveChannelDraft: { [weak interaction] file in
+                        interaction?.saveChannelDraft(file)
                     }
                 ),
                 chatPeerId: chatPeerId,
@@ -2745,8 +2751,13 @@ public final class EmojiContentPeekBehaviorImpl: EmojiContentPeekBehavior {
         public let presentGlobalOverlayController: (ViewController, Any?) -> Void
         public let navigationController: () -> NavigationController?
         public let updateIsPreviewing: (Bool) -> Void
+        /// Channel Drafts: Save Draft in a sticker's preview menu.
+        public let canSaveChannelDraft: () -> Bool
+        public let saveChannelDraft: (FileMediaReference) -> Void
 
-        public init(sendSticker: @escaping (FileMediaReference, Bool, Bool, String?, Bool, UIView?, CGRect?, CALayer?, [ItemCollectionId]) -> Bool, sendEmoji: @escaping (TelegramMediaFile) -> Void, setStatus: @escaping (TelegramMediaFile) -> Void, copyEmoji: @escaping (TelegramMediaFile) -> Void, presentController: @escaping (ViewController, Any?) -> Void, presentGlobalOverlayController: @escaping (ViewController, Any?) -> Void, navigationController: @escaping () -> NavigationController?, updateIsPreviewing: @escaping (Bool) -> Void) {
+        public init(sendSticker: @escaping (FileMediaReference, Bool, Bool, String?, Bool, UIView?, CGRect?, CALayer?, [ItemCollectionId]) -> Bool, sendEmoji: @escaping (TelegramMediaFile) -> Void, setStatus: @escaping (TelegramMediaFile) -> Void, copyEmoji: @escaping (TelegramMediaFile) -> Void, presentController: @escaping (ViewController, Any?) -> Void, presentGlobalOverlayController: @escaping (ViewController, Any?) -> Void, navigationController: @escaping () -> NavigationController?, updateIsPreviewing: @escaping (Bool) -> Void, canSaveChannelDraft: @escaping () -> Bool = { false }, saveChannelDraft: @escaping (FileMediaReference) -> Void = { _ in }) {
+            self.canSaveChannelDraft = canSaveChannelDraft
+            self.saveChannelDraft = saveChannelDraft
             self.sendSticker = sendSticker
             self.sendEmoji = sendEmoji
             self.setStatus = setStatus
