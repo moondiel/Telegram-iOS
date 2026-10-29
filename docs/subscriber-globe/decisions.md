@@ -119,7 +119,7 @@ statistics card shows with a row of tabs at its top: Boosts / Gifts, TON / Stars
 the header's Show Globe action, so the switch lives inside the card. The globe card is as tall as
 the pie chart (361 pt), so switching does not move the list.
 
-**D-019. Countries are told apart by colour, not flags. (moondiel)** As the Languages chart colours
+**D-019. Countries are told apart by colour, not flags. (moondiel)** Where the colours come from is replaced by D-025. As the Languages chart colours
 its languages, each country gets one colour by rank, used by the pie chart, its marker and ring on
 the globe, the dot on its label and the dot in the sheet's list. Flags are gone everywhere; labels
 read "Russia 49%".
@@ -154,3 +154,15 @@ drag in any direction, so some drags turned the globe and scrolled the list at o
 started neither. The globe now decides for both by one test at the start of the drag: sideways
 turns the globe, otherwise the list scrolls. It declines the list's drag the way `UISlider`
 declines a scroll view's (`gestureRecognizerShouldBegin` on the touched view).
+
+**D-025. A country takes its language's colour from the Languages chart. (moondiel)** The server
+sends the Languages chart's colours with the graph ("BLUE#007aff", "#3497ED"; GraphCore resolves
+the name). Each country now takes the colour of the language that brings it the most followers,
+so Russia is drawn in Russian's colour and Germany in German's, in the pie chart, on the globe and
+on its label. When a larger country already has that colour (Kazakhstan after Russia, both from
+Russian), the country takes the next of the named colours statistics graphs use (blue, green,
+orange, red, violet, light blue, golden, indigo, pink, emerald, light green, sea blue) that no
+country has yet, so no two countries share a colour. The colour strings go into the countries'
+graph unchanged, so the chart resolves them exactly as it resolves the Languages chart's; the globe
+resolves them the same way (GraphCore's `GColor(hexString:)` cannot be called from StatisticsUI,
+since Display declares a `UIColor(hexString:)` with the same signature).

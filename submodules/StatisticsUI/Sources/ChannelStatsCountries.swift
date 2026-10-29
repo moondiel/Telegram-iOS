@@ -21,6 +21,14 @@ struct ChannelStatsCountry: Equatable {
     /// Where the country's marker sits on the globe.
     let latitude: Double
     let longitude: Double
+    /// The country's colour, written as statistics graphs write theirs ("BLUE#007aff" or
+    /// "#3497ED"), so the pie chart reads it exactly as the Languages chart reads its own.
+    let color: String
+
+    /// The colour for drawing, resolved as Telegram's charts resolve it.
+    var uiColor: UIColor {
+        return statisticsGraphColor(self.color) ?? .gray
+    }
 }
 
 /// A channel's followers by country, most followers first.
@@ -34,12 +42,44 @@ struct ChannelStatsCountries: Equatable {
     }
 }
 
-/// One colour per country, by rank, shared by the pie chart, the globe's markers and the sheet's
-/// list, so a country is the same colour everywhere, as languages are in the Languages chart.
-private let channelStatsCountryColorValues: [UInt32] = [0x3497ED, 0x9ED448, 0xF5BD25, 0xE65850, 0x5E5DB1, 0x45B8C9, 0xF79E39, 0x5FB641, 0xA65EB3, 0x2373DB]
+/// The named colours statistics graphs use (GraphCore resolves each name to a system colour),
+/// for countries whose language's colour is already taken by a larger country.
+private let statisticsGraphColors: [String] = [
+    "BLUE#007aff", "GREEN#34c759", "ORANGE#ff9500", "RED#ff3b30", "VIOLET#af52de", "LIGHTBLUE#5ac8fa",
+    "GOLDEN#ffcc00", "INDIGO#5e5ce6", "PINK#ff2d55", "EMERALD#50e3c2", "LIGHTGREEN#7ED321", "SEABLUE#35afdc"
+]
 
-func channelStatsCountryColor(at index: Int) -> UIColor {
-    return UIColor(rgb: channelStatsCountryColorValues[index % channelStatsCountryColorValues.count])
+/// The names GraphCore gives its colours, with the colours it resolves them to.
+private let statisticsGraphColorNames: [String: UInt32] = [
+    "red": 0xff3b30, "green": 0x34c759, "blue": 0x007aff, "golden": 0xffcc00, "yellow": 0xffcc00,
+    "lightgreen": 0x7ED321, "lightblue": 0x5ac8fa, "seablue": 0x35afdc, "orange": 0xff9500,
+    "violet": 0xaf52de, "emerald": 0x50e3c2, "pink": 0xff2d55, "indigo": 0x5e5ce6
+]
+
+/// A graph colour ("BLUE#007aff", "#3497ED") as RGB, resolved the way GraphCore's
+/// `GColor(hexString:)` resolves it: a known name wins, otherwise the hex after the `#`.
+/// (That initializer cannot be called here: Display declares one with the same signature.)
+private func statisticsGraphColorValue(_ string: String) -> UInt32? {
+    let components = string.components(separatedBy: "#")
+    if let name = components.first, let value = statisticsGraphColorNames[name.lowercased()] {
+        return value
+    }
+    guard let hex = components.last, hex.count == 6 || hex.count == 8, let value = UInt64(hex, radix: 16) else {
+        return nil
+    }
+    return hex.count == 8 ? UInt32(truncatingIfNeeded: value >> 8) : UInt32(truncatingIfNeeded: value)
+}
+
+func statisticsGraphColor(_ string: String) -> UIColor? {
+    return statisticsGraphColorValue(string).flatMap { UIColor(rgb: $0) }
+}
+
+/// Two colour strings name the same colour when they resolve to the same RGB.
+private func colorKey(_ color: String) -> String {
+    if let value = statisticsGraphColorValue(color) {
+        return String(value)
+    }
+    return color.lowercased()
 }
 
 /// Marker positions: each country's capital or largest city.
@@ -230,9 +270,10 @@ extension ChannelStatsCountries {
             return nil
         }
         let types = json["types"] as? [String: String] ?? [:]
+        let languageColors = json["colors"] as? [String: String] ?? [:]
 
-        // The latest value of every language, the graph's last day.
-        var languageValues: [(code: String?, value: Double)] = []
+        // The latest value of every language, the graph's last day, with its colour in the chart.
+        var languageValues: [(code: String?, value: Double, color: String?)] = []
         for column in columns {
             guard let id = column.first as? String, id != "x", types[id] != "x" else {
                 continue
@@ -244,7 +285,7 @@ extension ChannelStatsCountries {
             if value <= 0.0 {
                 continue
             }
-            languageValues.append((names[id].flatMap(languageCode(forColumnName:)), value))
+            languageValues.append((names[id].flatMap(languageCode(forColumnName:)), value, languageColors[id]))
         }
         let languagesTotal = languageValues.reduce(0.0, { $0 + $1.value })
         if languagesTotal <= 0.0 {
@@ -252,24 +293,45 @@ extension ChannelStatsCountries {
         }
 
         var estimates: [String: Double] = [:]
-        for (code, value) in languageValues {
+        // The language that brings each country the most followers, and that language's colour.
+        var mainLanguage: [String: (followers: Double, color: String?)] = [:]
+        for (code, value, color) in languageValues {
             guard let code, let shares = languageCountryShares[code] else {
                 continue
             }
             let languageFollowers = Double(followers) * value / languagesTotal
             for (country, share) in shares {
-                estimates[country, default: 0.0] += languageFollowers * share
+                let countryFollowers = languageFollowers * share
+                estimates[country, default: 0.0] += countryFollowers
+                if countryFollowers > (mainLanguage[country]?.followers ?? 0.0) {
+                    mainLanguage[country] = (countryFollowers, color)
+                }
             }
         }
 
-        // The largest countries, enough to read on a globe and in a list.
+        // The largest countries, enough to read on a globe. Each takes the colour its main
+        // language has in the Languages chart, so Russia is the colour of Russian; a country whose
+        // language's colour a larger one already took gets the next colour statistics graphs use.
         var countries: [ChannelStatsCountry] = []
+        var usedColors = Set<String>()
+        var spareColors = statisticsGraphColors.makeIterator()
         for (code, estimate) in estimates.sorted(by: { $0.value > $1.value }).prefix(10) {
             let count = Int(estimate.rounded())
             guard count > 0, let coordinate = countryMarkerCoordinates[code] else {
                 continue
             }
-            countries.append(ChannelStatsCountry(code: code, followers: count, latitude: coordinate.0, longitude: coordinate.1))
+            var color: String?
+            if let languageColor = mainLanguage[code]?.color, !usedColors.contains(colorKey(languageColor)) {
+                color = languageColor
+            }
+            while color == nil, let spare = spareColors.next() {
+                if !usedColors.contains(colorKey(spare)) {
+                    color = spare
+                }
+            }
+            let resolvedColor = color ?? statisticsGraphColors[countries.count % statisticsGraphColors.count]
+            usedColors.insert(colorKey(resolvedColor))
+            countries.append(ChannelStatsCountry(code: code, followers: count, latitude: coordinate.0, longitude: coordinate.1, color: resolvedColor))
         }
         if countries.isEmpty {
             return nil
@@ -302,7 +364,7 @@ extension ChannelStatsCountries {
             columns.append(column)
             types[id] = "area"
             names[id] = locale.localizedString(forRegionCode: country.code) ?? country.code
-            colorMap[id] = String(format: "#%06X", channelStatsCountryColorValues[index % channelStatsCountryColorValues.count])
+            colorMap[id] = country.color
         }
         let json: [String: Any] = [
             "columns": columns,

@@ -309,7 +309,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         let total = max(1, self.countries.total)
         let locale = localeWithStrings(strings)
         for (index, country) in self.countries.countries.enumerated() {
-            let color = channelStatsCountryColor(at: index)
+            let color = country.uiColor
             let center = unitVector(latitude: Float(country.latitude * Double.pi / 180.0), longitude: Float(country.longitude * Double.pi / 180.0))
             let orientation = simd_quatf(from: SIMD3<Float>(0.0, 1.0, 0.0), to: center)
             // Bigger audiences get bigger dots, by area.
@@ -359,10 +359,10 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         self.landNode.geometry?.materials = [flatMaterial(color: colors.land)]
         // Each country in its colour from the chart.
         for (index, node) in self.markerNodes.enumerated() {
-            node.geometry?.materials = [flatMaterial(color: channelStatsCountryColor(at: index))]
+            node.geometry?.materials = [flatMaterial(color: self.countries.countries[index].uiColor)]
         }
         for (index, node) in self.ringNodes.enumerated() {
-            let material = flatMaterial(color: channelStatsCountryColor(at: index))
+            let material = flatMaterial(color: self.countries.countries[index].uiColor)
             material.writesToDepthBuffer = false
             node.geometry?.materials = [material]
         }
@@ -382,7 +382,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         let total = max(1, self.countries.total)
         for (index, labelView) in self.labelViews.enumerated() where index < self.countries.countries.count {
             let share = Int((Double(self.countries.countries[index].followers) * 100.0 / Double(total)).rounded())
-            labelView.update(name: self.labelNames[index], share: share, color: channelStatsCountryColor(at: index), colors: colors)
+            labelView.update(name: self.labelNames[index], share: share, color: self.countries.countries[index].uiColor, colors: colors)
         }
         self.shadedGlobeFrame = nil
     }

@@ -17,7 +17,9 @@ replaces one function.
    from it.
 2. The card opens with Telegram's statistics tabs, **Chart** and **Globe**, the same tabs item
    (`BoostsTabsItem`) that switches Boosts / Gifts and TON / Stars. **Chart** shows a pie chart
-   with a legend of every country in its colour, the same chart and legend as **Languages**.
+   with a legend of every country in its colour, the same chart and legend as **Languages**. A
+   country takes the colour its main language has in the Languages chart (Russia that of Russian);
+   when that colour is taken, the next of the colours statistics graphs use.
 3. **Globe** switches the same card to the globe. The two are pages side by side inside the
    card: the chart slides out to the left and the globe in from the right, on the 0.4 s spring a
    profile's tabs use, while the tabs' underline moves along; the globe arrives turning and
