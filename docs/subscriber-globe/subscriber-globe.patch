@@ -953,10 +953,10 @@ index 00000000..525fcb4d
 +}()
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeView.swift b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
 new file mode 100644
-index 00000000..2209b660
+index 00000000..bc47b5c1
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
-@@ -0,0 +1,590 @@
+@@ -0,0 +1,600 @@
 +import Foundation
 +import UIKit
 +import SceneKit
@@ -1538,11 +1538,21 @@ index 00000000..2209b660
 +    }
 +
 +    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-+        if let pan = gestureRecognizer as? UIPanGestureRecognizer, pan.view === self {
-+            // Only sideways drags turn the globe; the rest scroll the list. Once turning, the
-+            // drag also tilts it.
-+            let velocity = pan.velocity(in: self)
-+            return abs(velocity.x) > abs(velocity.y) * 1.2
++        guard let pan = gestureRecognizer as? UIPanGestureRecognizer else {
++            return true
++        }
++        let velocity = pan.velocity(in: self)
++        let isSideways = abs(velocity.x) > abs(velocity.y)
++        if pan.view === self {
++            // Sideways drags turn the globe; once turning, the drag also tilts it.
++            return isSideways
++        }
++        if pan.view is UIScrollView {
++            // UIKit also asks the touched view about its ancestors' drags, as UISlider uses it.
++            // The list's scroll takes the up-and-down drags and the globe the sideways ones, by
++            // the same test, so a drag never moves both and there is no angle where neither
++            // starts. A vertical list's scroll would otherwise also start on a sideways drag.
++            return !isSideways
 +        }
 +        return true
 +    }
