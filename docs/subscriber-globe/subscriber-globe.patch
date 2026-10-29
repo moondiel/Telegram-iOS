@@ -1,20 +1,19 @@
 diff --git a/Telegram/Telegram-iOS/en.lproj/Localizable.strings b/Telegram/Telegram-iOS/en.lproj/Localizable.strings
-index 0b086435..31138ca5 100644
+index 0b086435..1f2fb4f2 100644
 --- a/Telegram/Telegram-iOS/en.lproj/Localizable.strings
 +++ b/Telegram/Telegram-iOS/en.lproj/Localizable.strings
-@@ -17106,3 +17106,10 @@ Error: %8$@";
+@@ -17106,3 +17106,9 @@ Error: %8$@";
  "Notification.GramTransfer.UnknownUser" = "UNKNOWN USER";
  
  "Chat.ViewStyle" = "VIEW STYLE";
 +
 +"ChannelStats.Countries.Title" = "FOLLOWERS BY COUNTRY";
 +"ChannelStats.Countries.Demo" = "DEMO";
-+"ChannelStats.Countries.DemoInfo" = "Demo data. Telegram does not report where followers are from yet, so these numbers are a sample spread. With a country breakdown from the server they would show your channel's audience.";
 +"ChannelStats.Countries.ShowGlobe" = "Show Globe";
 +"ChannelStats.Countries.ShowChart" = "Show Chart";
 +"ChannelStats.Countries.ScreenTitle" = "Followers by Country";
 diff --git a/submodules/StatisticsUI/Sources/ChannelStatsController.swift b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
-index 618b0f67..80168cf2 100644
+index 618b0f67..3d2596c3 100644
 --- a/submodules/StatisticsUI/Sources/ChannelStatsController.swift
 +++ b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
 @@ -58,8 +58,10 @@ private final class ChannelStatsControllerArguments {
@@ -46,7 +45,7 @@ index 618b0f67..80168cf2 100644
      case postInteractions
      case instantPageInteractions
      case reactionsByEmotion
-@@ -189,6 +194,12 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -189,6 +194,11 @@ private enum StatsEntry: ItemListNodeEntry {
      case languagesTitle(PresentationTheme, String)
      case languagesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
      
@@ -54,21 +53,20 @@ index 618b0f67..80168cf2 100644
 +    case countriesTitle(PresentationTheme, String, String, String)
 +    case countriesGlobe(PresentationTheme, PresentationStrings, ChannelStatsCountries)
 +    case countriesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
-+    case countriesInfo(PresentationTheme, String)
 +    
      case postInteractionsTitle(PresentationTheme, String)
      case postInteractionsGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
  
-@@ -281,6 +292,8 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -281,6 +291,8 @@ private enum StatsEntry: ItemListNodeEntry {
                  return StatsSection.followersBySource.rawValue
              case .languagesTitle, .languagesGraph:
                  return StatsSection.languages.rawValue
-+            case .countriesTitle, .countriesGlobe, .countriesGraph, .countriesInfo:
++            case .countriesTitle, .countriesGlobe, .countriesGraph:
 +                return StatsSection.countries.rawValue
              case .postInteractionsTitle, .postInteractionsGraph:
                  return StatsSection.postInteractions.rawValue
              case .instantPageInteractionsTitle, .instantPageInteractionsGraph:
-@@ -362,30 +375,38 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -362,30 +374,36 @@ private enum StatsEntry: ItemListNodeEntry {
                  return 14
              case .languagesGraph:
                  return 15
@@ -81,37 +79,35 @@ index 618b0f67..80168cf2 100644
 -            case .instantPageInteractionsTitle:
 +            case .countriesGraph:
                  return 18
--            case .instantPageInteractionsGraph:
-+            case .countriesInfo:
-                 return 19
--            case .reactionsByEmotionTitle:
 +            case .postInteractionsTitle:
-                 return 20
--            case .reactionsByEmotionGraph:
++                return 20
 +            case .postInteractionsGraph:
-                 return 21
--            case .storyInteractionsTitle:
++                return 21
 +            case .instantPageInteractionsTitle:
-                 return 22
--            case .storyInteractionsGraph:
-+            case .instantPageInteractionsGraph:
-                 return 23
--            case .storyReactionsByEmotionTitle:
-+            case .reactionsByEmotionTitle:
-                 return 24
--            case .storyReactionsByEmotionGraph:
-+            case .reactionsByEmotionGraph:
-                 return 25
--            case .postsTitle:
-+            case .storyInteractionsTitle:
-                 return 26
-+            case .storyInteractionsGraph:
++                return 22
+             case .instantPageInteractionsGraph:
+-                return 19
++                return 23
+             case .reactionsByEmotionTitle:
+-                return 20
++                return 24
+             case .reactionsByEmotionGraph:
+-                return 21
++                return 25
+             case .storyInteractionsTitle:
+-                return 22
++                return 26
+             case .storyInteractionsGraph:
+-                return 23
 +                return 27
-+            case .storyReactionsByEmotionTitle:
+             case .storyReactionsByEmotionTitle:
+-                return 24
 +                return 28
-+            case .storyReactionsByEmotionGraph:
+             case .storyReactionsByEmotionGraph:
+-                return 25
 +                return 29
-+            case .postsTitle:
+             case .postsTitle:
+-                return 26
 +                return 30
              case let .post(index, _, _, _, _, _, _):
 -                return 27 + index
@@ -119,7 +115,7 @@ index 618b0f67..80168cf2 100644
              case .boostLevel:
                  return 2000
              case .boostOverviewTitle:
-@@ -569,6 +590,30 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -569,6 +587,24 @@ private enum StatsEntry: ItemListNodeEntry {
                  } else {
                      return false
                  }
@@ -141,16 +137,10 @@ index 618b0f67..80168cf2 100644
 +                } else {
 +                    return false
 +                }
-+            case let .countriesInfo(lhsTheme, lhsText):
-+                if case let .countriesInfo(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
-+                    return true
-+                } else {
-+                    return false
-+                }
              case let .postInteractionsTitle(lhsTheme, lhsText):
                  if case let .postInteractionsTitle(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
                      return true
-@@ -931,6 +976,18 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -931,6 +967,16 @@ private enum StatsEntry: ItemListNodeEntry {
                   let .adsCpmInfo(_, text),
                   let .adsProceedsInfo(_, text):
                  return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
@@ -164,12 +154,10 @@ index 618b0f67..80168cf2 100644
 +                })
 +            case let .countriesGraph(_, _, _, graph, type):
 +                return StatsGraphItem(presentationData: presentationData, systemStyle: .glass, graph: graph, type: type, sectionId: self.section, style: .blocks)
-+            case let .countriesInfo(_, text):
-+                return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
              case let .overview(_, stats):
                  return StatsOverviewItem(context: arguments.context, presentationData: presentationData, systemStyle: .glass, isGroup: false, stats: stats, sectionId: self.section, style: .blocks)
              case let .growthGraph(_, _, _, graph, type),
-@@ -1331,7 +1388,8 @@ private func statsEntries(
+@@ -1331,7 +1377,8 @@ private func statsEntries(
      peer: EnginePeer?,
      messages: [Message]?,
      stories: StoryListContext.State?,
@@ -179,7 +167,7 @@ index 618b0f67..80168cf2 100644
  ) -> [StatsEntry] {
      var entries: [StatsEntry] = []
      
-@@ -1376,6 +1434,20 @@ private func statsEntries(
+@@ -1376,6 +1423,19 @@ private func statsEntries(
          entries.append(.languagesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.languagesGraph, .pie))
      }
      
@@ -194,13 +182,12 @@ index 618b0f67..80168cf2 100644
 +        } else {
 +            entries.append(.countriesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, countries.graph(strings: presentationData.strings, period: data.period), .pie))
 +        }
-+        entries.append(.countriesInfo(presentationData.theme, presentationData.strings.ChannelStats_Countries_DemoInfo))
 +    }
 +    
      if !data.interactionsGraph.isEmpty {
          entries.append(.postInteractionsTitle(presentationData.theme, presentationData.strings.Stats_InteractionsTitle))
          entries.append(.postInteractionsGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.interactionsGraph, .twoAxisStep))
-@@ -1781,7 +1853,8 @@ private func channelStatsControllerEntries(
+@@ -1781,7 +1841,8 @@ private func channelStatsControllerEntries(
      monetizationConfiguration: MonetizationConfiguration,
      canViewRevenue: Bool,
      canViewStarsRevenue: Bool,
@@ -210,7 +197,7 @@ index 618b0f67..80168cf2 100644
  ) -> [StatsEntry] {
      switch state.section {
      case .stats:
-@@ -1792,7 +1865,8 @@ private func channelStatsControllerEntries(
+@@ -1792,7 +1853,8 @@ private func channelStatsControllerEntries(
                  peer: peer,
                  messages: messages,
                  stories: stories,
@@ -220,7 +207,7 @@ index 618b0f67..80168cf2 100644
              )
          }
      case .boosts:
-@@ -1926,6 +2000,11 @@ public func channelStatsController(
+@@ -1926,6 +1988,11 @@ public func channelStatsController(
      var updateStatusBarImpl: ((StatusBarStyle) -> Void)?
      var dismissInputImpl: (() -> Void)?
      
@@ -232,7 +219,7 @@ index 618b0f67..80168cf2 100644
      let arguments = ChannelStatsControllerArguments(context: context, loadDetailedGraph: { graph, x -> Signal<StatsGraph?, NoError> in
          return statsContext.loadDetailedGraph(graph, x: x)
      }, openPostStats: { peer, item in
-@@ -2117,6 +2196,14 @@ public func channelStatsController(
+@@ -2117,6 +2184,14 @@ public func channelStatsController(
      },
      dismissInput: {
          dismissInputImpl?()
@@ -247,7 +234,7 @@ index 618b0f67..80168cf2 100644
      })
      
      let messageView = context.account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: nil), index: .upperBound, anchorIndex: .upperBound, count: 200, fixedCombinedReadStates: nil)
-@@ -2152,7 +2239,7 @@ public func channelStatsController(
+@@ -2152,7 +2227,7 @@ public func channelStatsController(
      let presentationData = updatedPresentationData?.signal ?? context.sharedContext.presentationData
      let signal = combineLatest(
          presentationData,
@@ -256,7 +243,7 @@ index 618b0f67..80168cf2 100644
          peer.get(),
          dataPromise.get(),
          messagesPromise.get(),
-@@ -2168,7 +2255,11 @@ public func channelStatsController(
+@@ -2168,7 +2243,11 @@ public func channelStatsController(
          longLoadingSignal
      )
      |> deliverOnMainQueue
@@ -269,7 +256,7 @@ index 618b0f67..80168cf2 100644
          let (canViewStats, adsRestricted, _, _) = peerData
          var canViewRevenue = peerData.2
          var canViewStarsRevenue = peerData.3
-@@ -2290,7 +2381,7 @@ public func channelStatsController(
+@@ -2290,7 +2369,7 @@ public func channelStatsController(
          }
          
          let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: title, leftNavigationButton: leftNavigationButton, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: true)
@@ -728,10 +715,10 @@ index 00000000..525fcb4d
 +}()
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeScreen.swift b/submodules/StatisticsUI/Sources/StatsGlobeScreen.swift
 new file mode 100644
-index 00000000..b0e0cfe5
+index 00000000..7a56b6f3
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeScreen.swift
-@@ -0,0 +1,279 @@
+@@ -0,0 +1,269 @@
 +import Foundation
 +import UIKit
 +import Display
@@ -808,7 +795,6 @@ index 00000000..b0e0cfe5
 +    private let globeView: StatsGlobeView
 +    private let titleNode: ImmediateTextNode
 +    private let closeButton: HighlightableButtonNode
-+    private let infoNode: ImmediateTextNode
 +
 +    var close: (() -> Void)?
 +
@@ -839,22 +825,16 @@ index 00000000..b0e0cfe5
 +        self.closeButton.setTitle(presentationData.strings.Common_Close, with: Font.regular(17.0), with: presentationData.theme.list.itemAccentColor, for: .normal)
 +        self.closeButton.hitTestSlop = UIEdgeInsets(top: -8.0, left: -8.0, bottom: -8.0, right: -8.0)
 +
-+        self.infoNode = ImmediateTextNode()
-+        self.infoNode.maximumNumberOfLines = 0
-+        self.infoNode.textAlignment = .center
-+        self.infoNode.attributedText = NSAttributedString(string: countries.isDemo ? presentationData.strings.ChannelStats_Countries_DemoInfo : "", font: Font.regular(13.0), textColor: presentationData.theme.list.freeTextColor)
-+
 +        super.init()
 +
 +        self.addSubnode(self.backgroundNode)
 +        self.addSubnode(self.titleNode)
 +        self.addSubnode(self.closeButton)
-+        self.addSubnode(self.infoNode)
 +
 +        self.closeButton.addTarget(self, action: #selector(self.closePressed), forControlEvents: .touchUpInside)
 +
 +        // Nothing shows until the dive starts, which places the globe over the card first.
-+        for node in [self.backgroundNode, self.titleNode, self.closeButton, self.infoNode] as [ASDisplayNode] {
++        for node in [self.backgroundNode, self.titleNode, self.closeButton] as [ASDisplayNode] {
 +            node.alpha = 0.0
 +        }
 +        self.globeView.alpha = 0.0
@@ -887,13 +867,10 @@ index 00000000..b0e0cfe5
 +        transition.updateFrame(node: self.titleNode, frame: CGRect(origin: CGPoint(x: floor((size.width - titleSize.width) / 2.0), y: topInset + floor((barHeight - titleSize.height) / 2.0)), size: titleSize))
 +
 +        let bottomInset = max(layout.intrinsicInsets.bottom, layout.safeInsets.bottom) + 16.0
-+        let infoSize = self.infoNode.updateLayout(CGSize(width: size.width - sideInset * 2.0 - 16.0, height: 200.0))
-+        let infoFrame = CGRect(origin: CGPoint(x: floor((size.width - infoSize.width) / 2.0), y: size.height - bottomInset - infoSize.height), size: infoSize)
-+        transition.updateFrame(node: self.infoNode, frame: infoFrame)
 +
 +        // The globe takes the space between the bar and the note, with room for its halo.
 +        let top = topInset + barHeight
-+        let bottom = infoFrame.minY - 12.0
++        let bottom = size.height - bottomInset
 +        let available = CGRect(x: 0.0, y: top, width: size.width, height: max(0.0, bottom - top))
 +        self.restingRadius = floor(max(60.0, min(available.width - 48.0, available.height - 48.0) / 2.0))
 +        self.restingOffset = CGPoint(x: available.midX - size.width / 2.0, y: available.midY - size.height / 2.0)
@@ -950,7 +927,7 @@ index 00000000..b0e0cfe5
 +
 +        self.backgroundNode.alpha = 1.0
 +        self.backgroundNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3)
-+        for node in [self.titleNode, self.closeButton, self.infoNode] as [ASDisplayNode] {
++        for node in [self.titleNode, self.closeButton] as [ASDisplayNode] {
 +            node.alpha = 1.0
 +            node.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3, delay: 0.1)
 +        }
@@ -986,7 +963,7 @@ index 00000000..b0e0cfe5
 +        let current = (center: CGPoint(x: size.width / 2.0 + self.globeView.centerOffset.x, y: size.height / 2.0 + self.globeView.centerOffset.y), radius: shownRadius)
 +
 +        self.backgroundNode.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, removeOnCompletion: false)
-+        for node in [self.titleNode, self.closeButton, self.infoNode] as [ASDisplayNode] {
++        for node in [self.titleNode, self.closeButton] as [ASDisplayNode] {
 +            node.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
 +        }
 +
