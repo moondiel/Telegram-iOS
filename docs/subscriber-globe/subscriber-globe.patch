@@ -1062,10 +1062,10 @@ index 00000000..525fcb4d
 +}()
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeView.swift b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
 new file mode 100644
-index 00000000..3c873f7e
+index 00000000..00520848
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
-@@ -0,0 +1,670 @@
+@@ -0,0 +1,743 @@
 +import Foundation
 +import UIKit
 +import SceneKit
@@ -1183,6 +1183,12 @@ index 00000000..3c873f7e
 +    private let label: UILabel
 +    /// Whether the label has room, eased so labels do not pop when they start to overlap.
 +    var visibility: CGFloat = 0.0
++    /// Which side of its marker the label sits on (an index into the places tried), kept while it
++    /// stays free so labels do not hop between sides.
++    var place: Int?
++    /// Where the label is drawn relative to its marker, eased towards its place so a move to
++    /// another side glides instead of jumping.
++    var offset: CGPoint?
 +
 +    override init(frame: CGRect) {
 +        self.dotView = UIView()
@@ -1242,6 +1248,8 @@ index 00000000..3c873f7e
 +    private let seaNode: SCNNode
 +    private let landNode: SCNNode
 +    private var markerNodes: [SCNNode] = []
++    /// Each marker's radius, in units of the globe's radius.
++    private var markerRadii: [CGFloat] = []
 +    private var ringNodes: [SCNNode] = []
 +    private let cameraNode: SCNNode
 +
@@ -1397,6 +1405,7 @@ index 00000000..3c873f7e
 +            // Bigger audiences get bigger dots, by area.
 +            let share = Double(country.followers) / Double(total)
 +            let markerRadius = CGFloat(0.022 + 0.034 * sqrt(share))
++            self.markerRadii.append(markerRadius)
 +
 +            let ring = SCNNode(geometry: SCNCylinder(radius: markerRadius, height: 0.0005))
 +            ring.simdPosition = center * 1.003
@@ -1528,29 +1537,93 @@ index 00000000..3c873f7e
 +        let globeFrame = self.globeFrame
 +        let radius = globeFrame.width / 2.0
 +        let rotation = simd_quatf(angle: Float(self.orientation.latitude), axis: SIMD3<Float>(1.0, 0.0, 0.0)) * simd_quatf(angle: Float(-self.orientation.longitude), axis: SIMD3<Float>(0.0, 1.0, 0.0))
++        let countries = self.countries.countries
 +
-+        var taken: [CGRect] = []
-+        for (index, labelView) in self.labelViews.enumerated() where index < self.countries.countries.count {
-+            let country = self.countries.countries[index]
++        // Where every marker is on screen, and how much it faces the viewer.
++        var markers: [(point: CGPoint, radius: CGFloat, facing: CGFloat)] = []
++        for (index, country) in countries.enumerated() {
 +            let point = rotation.act(unitVector(latitude: Float(country.latitude * Double.pi / 180.0), longitude: Float(country.longitude * Double.pi / 180.0)) * 1.005)
-+            let screenPoint = CGPoint(x: globeFrame.midX + CGFloat(point.x) * radius, y: globeFrame.midY - CGFloat(point.y) * radius)
-+            let size = labelView.bounds.size
-+            let frame = CGRect(x: screenPoint.x - size.width / 2.0, y: screenPoint.y - size.height - 7.0 - radius * 0.03, width: size.width, height: size.height)
-+
++            let markerRadius = (index < self.markerRadii.count ? self.markerRadii[index] : 0.03) * radius
 +            // Fades out as the marker turns towards the edge, before it goes round the back.
 +            let facing = max(0.0, min(1.0, (CGFloat(point.z) - 0.2) / 0.25))
-+            // The larger audience keeps its label when two would overlap; countries come sorted.
-+            let hasRoom = facing > 0.0 && !taken.contains(where: { $0.insetBy(dx: -2.0, dy: -2.0).intersects(frame) })
-+            if hasRoom {
-+                taken.append(frame)
++            markers.append((CGPoint(x: globeFrame.midX + CGFloat(point.x) * radius, y: globeFrame.midY - CGFloat(point.y) * radius), markerRadius, facing))
++        }
++
++        // Labels are placed largest audience first. Each tries the four sides of its marker, above,
++        // below, right and left (its current side first, so it does not hop), and takes the first
++        // that overlaps no placed label, no other visible marker and stays inside the globe's view.
++        // Only a label with no free side hides.
++        let bounds = self.bounds.insetBy(dx: 4.0, dy: 4.0)
++        var taken: [CGRect] = []
++        for (index, labelView) in self.labelViews.enumerated() where index < markers.count {
++            let marker = markers[index]
++            let size = labelView.bounds.size
++            let gap: CGFloat = 5.0
++            let offsets: [CGPoint] = [
++                CGPoint(x: 0.0, y: -(marker.radius + gap + size.height / 2.0)),
++                CGPoint(x: 0.0, y: marker.radius + gap + size.height / 2.0),
++                CGPoint(x: marker.radius + gap + size.width / 2.0, y: 0.0),
++                CGPoint(x: -(marker.radius + gap + size.width / 2.0), y: 0.0)
++            ]
++
++            var order = Array(0 ..< offsets.count)
++            if let place = labelView.place, let position = order.firstIndex(of: place) {
++                order.remove(at: position)
++                order.insert(place, at: 0)
 +            }
-+            let target: CGFloat = hasRoom ? 1.0 : 0.0
++
++            var chosen: Int?
++            if marker.facing > 0.0 {
++                for place in order {
++                    let center = CGPoint(x: marker.point.x + offsets[place].x, y: marker.point.y + offsets[place].y)
++                    let frame = CGRect(x: center.x - size.width / 2.0, y: center.y - size.height / 2.0, width: size.width, height: size.height)
++                    if !bounds.contains(frame) {
++                        continue
++                    }
++                    if taken.contains(where: { $0.insetBy(dx: -2.0, dy: -2.0).intersects(frame) }) {
++                        continue
++                    }
++                    let coversMarker = markers.enumerated().contains(where: { entry in
++                        let (otherIndex, other) = entry
++                        if otherIndex == index || other.facing <= 0.0 {
++                            return false
++                        }
++                        let markerFrame = CGRect(x: other.point.x - other.radius, y: other.point.y - other.radius, width: other.radius * 2.0, height: other.radius * 2.0)
++                        return markerFrame.intersects(frame)
++                    })
++                    if coversMarker {
++                        continue
++                    }
++                    chosen = place
++                    taken.append(frame)
++                    break
++                }
++            }
++
++            if let chosen {
++                if labelView.place != chosen {
++                    labelView.place = chosen
++                    // A hidden label appears straight at its place; a shown one glides there.
++                    if labelView.visibility <= 0.0 {
++                        labelView.offset = offsets[chosen]
++                    }
++                }
++            }
++            let targetOffset = offsets[labelView.place ?? 0]
++            var offset = labelView.offset ?? targetOffset
++            offset = CGPoint(x: offset.x + (targetOffset.x - offset.x) * 0.3, y: offset.y + (targetOffset.y - offset.y) * 0.3)
++            if abs(offset.x - targetOffset.x) < 0.5 && abs(offset.y - targetOffset.y) < 0.5 {
++                offset = targetOffset
++            }
++            labelView.offset = offset
++
++            let target: CGFloat = chosen != nil ? 1.0 : 0.0
 +            labelView.visibility += (target - labelView.visibility) * 0.25
 +            if abs(labelView.visibility - target) < 0.01 {
 +                labelView.visibility = target
 +            }
-+            labelView.center = CGPoint(x: frame.midX, y: frame.midY)
-+            labelView.alpha = facing * labelView.visibility
++            labelView.center = CGPoint(x: marker.point.x + offset.x, y: marker.point.y + offset.y)
++            labelView.alpha = marker.facing * labelView.visibility
 +        }
 +    }
 +
