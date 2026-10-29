@@ -147,3 +147,10 @@ Replaces the list part of D-016.
 the card is where it is looked at and turned. A sideways drag turns it (and, once turning, tilts
 it), a flick lets it coast, and left alone it turns slowly. Up-and-down drags still scroll the
 list, and the back swipe keeps the screen's left edge. Zoom went with the sheet.
+
+**D-024. A drag on the globe goes to the globe or to the list, never both.** The globe's drag
+started only when clearly sideways, while the list's scroll, a vertical scroll view, started on a
+drag in any direction, so some drags turned the globe and scrolled the list at once, and some
+started neither. The globe now decides for both by one test at the start of the drag: sideways
+turns the globe, otherwise the list scrolls. It declines the list's drag the way `UISlider`
+declines a scroll view's (`gestureRecognizerShouldBegin` on the touched view).
