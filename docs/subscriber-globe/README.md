@@ -1,9 +1,8 @@
 # Subscriber Globe
 
 Subscriber Globe adds a **Followers by country** card to a channel's statistics. The card shows a
-pie chart of the countries or, switched from the section header, a dotted globe in the theme's
-colours with a marker per country carrying its number of followers. A tap opens the globe in a
-sheet.
+pie chart of the countries or, switched by tabs at its top, a dotted globe in the theme's colours
+with a marker per country, which turns right in the card.
 
 Telegram's statistics do not report countries yet: `stats.broadcastStats` breaks followers down
 by language only. The section therefore estimates countries from the channel's real languages
@@ -28,12 +27,7 @@ replaces one function.
    share, with a label carrying a dot of that colour, its name and share. When two labels would overlap, the larger audience
    keeps its label. A sideways drag turns the globe and lets it coast; up-and-down drags scroll
    the list.
-5. A tap on the globe opens Telegram's glass sheet with a glass close button, as statistics'
-   transaction info does. It holds a large globe at the card's turn, which turns any way and zooms
-   with a pinch or a double tap. A drag that
-   starts on the globe turns the globe; anywhere else it pulls the sheet down. The sheet's title
-   reads "Estimated from languages" underneath.
-6. A note under the card says: "Estimated from the languages your followers use Telegram in."
+5. A note under the card says: "Estimated from the languages your followers use Telegram in."
 
 ## Requirements
 
@@ -88,7 +82,7 @@ Statistics are only available for channels with enough followers; the server dec
   colours, light or dark. It turns under the finger, coasts, and turns slowly when left alone.
 - Markers sized by share and coloured as in the chart, labels with country names in the app's
   language and shares, and labels that give way to larger audiences.
-- The chart and globe pages sliding inside one card, and the globe sheet.
+- The chart and globe pages sliding inside one card.
 
 **Limited**
 
@@ -143,20 +137,18 @@ New files:
 |---|---|
 | `submodules/StatisticsUI/Sources/ChannelStatsCountries.swift` | The model, marker coordinates, the language-to-country table and the estimate, and the pie chart's graph |
 | `submodules/StatisticsUI/Sources/StatsGlobeLand.swift` | The land: a grid of dots 2° apart, one bit each (1.7 KB), and its decoder |
-| `submodules/StatisticsUI/Sources/StatsGlobeView.swift` | The globe: SceneKit sphere, land dots, markers and their rings, labels, turning, coasting and zooming |
+| `submodules/StatisticsUI/Sources/StatsGlobeView.swift` | The globe: SceneKit sphere, land dots, markers and their rings, labels, turning and coasting |
 | `submodules/StatisticsUI/Sources/StatsCountriesItem.swift` | The countries card: one list item with the pie chart and the globe as pages that slide |
-| `submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift` | The globe sheet: Telegram's glass sheet with a large globe |
 | `docs/subscriber-globe/*` | This write-up, the decision log and the API proposal |
 
 Changed files:
 
 - `submodules/StatisticsUI/Sources/ChannelStatsController.swift`: the section
-  (`StatsSection.countries`), its entries (header, Chart / Globe tabs, the card, the estimate note), which tab is selected, opening the globe sheet, and the entries after the
+  (`StatsSection.countries`), its entries (header, Chart / Globe tabs, the card, the estimate note), which tab is selected, and the entries after the
   section moved down five stable ids.
 - `Telegram/Telegram-iOS/en.lproj/Localizable.strings`: `ChannelStats.Countries.Title`,
-  `ChannelStats.Countries.EstimateInfo`, `ChannelStats.Countries.EstimateSubtitle`,
-  `ChannelStats.Countries.TabChart`, `ChannelStats.Countries.TabGlobe`,
-  `ChannelStats.Countries.ScreenTitle`.
+  `ChannelStats.Countries.EstimateInfo`,
+  `ChannelStats.Countries.TabChart`, `ChannelStats.Countries.TabGlobe`.
 
 The whole change is one patch against the base commit `16a3d3c5`, without the Xcode 26 build fix:
 [`subscriber-globe.patch`](subscriber-globe.patch). Apply it with `git apply`.

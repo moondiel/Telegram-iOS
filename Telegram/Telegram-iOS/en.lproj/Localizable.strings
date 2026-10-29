@@ -17109,7 +17109,5 @@ Error: %8$@";
 
 "ChannelStats.Countries.Title" = "FOLLOWERS BY COUNTRY";
 "ChannelStats.Countries.EstimateInfo" = "Estimated from the languages your followers use Telegram in.";
-"ChannelStats.Countries.EstimateSubtitle" = "Estimated from languages";
 "ChannelStats.Countries.TabChart" = "Chart";
 "ChannelStats.Countries.TabGlobe" = "Globe";
-"ChannelStats.Countries.ScreenTitle" = "Followers by Country";

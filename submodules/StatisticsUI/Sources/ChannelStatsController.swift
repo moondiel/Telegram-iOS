@@ -59,9 +59,8 @@ private final class ChannelStatsControllerArguments {
     let openEarnStars: () -> Void
     let dismissInput: () -> Void
     let setCountriesGlobeSelected: (Bool) -> Void
-    let openCountriesGlobe: (StatsGlobeView) -> Void
     
-    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void, setCountriesGlobeSelected: @escaping (Bool) -> Void, openCountriesGlobe: @escaping (StatsGlobeView) -> Void) {
+    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void, setCountriesGlobeSelected: @escaping (Bool) -> Void) {
         self.context = context
         self.loadDetailedGraph = loadDetailedGraph
         self.openPostStats = openPostStats
@@ -89,7 +88,6 @@ private final class ChannelStatsControllerArguments {
         self.openEarnStars = openEarnStars
         self.dismissInput = dismissInput
         self.setCountriesGlobeSelected = setCountriesGlobeSelected
-        self.openCountriesGlobe = openCountriesGlobe
     }
 }
 
@@ -985,9 +983,7 @@ private enum StatsEntry: ItemListNodeEntry {
                     arguments.setCountriesGlobeSelected(tab == .gifts)
                 })
             case let .countriesCard(_, _, countries, graph, showsGlobe):
-                return StatsCountriesItem(presentationData: presentationData, systemStyle: .glass, countries: countries, graph: graph, showsGlobe: showsGlobe, sectionId: self.section, openGlobe: { view in
-                    arguments.openCountriesGlobe(view)
-                })
+                return StatsCountriesItem(presentationData: presentationData, systemStyle: .glass, countries: countries, graph: graph, showsGlobe: showsGlobe, sectionId: self.section)
             case let .countriesInfo(_, text):
                 return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
             case let .overview(_, stats):
@@ -2195,9 +2191,6 @@ public func channelStatsController(
     },
     setCountriesGlobeSelected: { globeSelected in
         countriesShowGlobePromise.set(globeSelected)
-    },
-    openCountriesGlobe: { view in
-        pushImpl?(StatsGlobeSheetScreen(context: context, sourceView: view))
     })
     
     let messageView = context.account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: nil), index: .upperBound, anchorIndex: .upperBound, count: 200, fixedCombinedReadStates: nil)

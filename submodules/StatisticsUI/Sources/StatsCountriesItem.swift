@@ -24,16 +24,14 @@ final class StatsCountriesItem: ListViewItem, ItemListItem {
     let graph: StatsGraph
     let showsGlobe: Bool
     let sectionId: ItemListSectionId
-    let openGlobe: (StatsGlobeView) -> Void
 
-    init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle, countries: ChannelStatsCountries, graph: StatsGraph, showsGlobe: Bool, sectionId: ItemListSectionId, openGlobe: @escaping (StatsGlobeView) -> Void) {
+    init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle, countries: ChannelStatsCountries, graph: StatsGraph, showsGlobe: Bool, sectionId: ItemListSectionId) {
         self.presentationData = presentationData
         self.systemStyle = systemStyle
         self.countries = countries
         self.graph = graph
         self.showsGlobe = showsGlobe
         self.sectionId = sectionId
-        self.openGlobe = openGlobe
     }
 
     func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, neighbors: ListViewItemNeighbors, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
@@ -82,7 +80,6 @@ final class StatsCountriesItemNode: ListViewItemNode {
     private let chartContainerNode: ASDisplayNode
     private let chartNode: ChartNode
     private let globePageView: UIView
-    private let expandIconView: UIImageView
     private var globeView: StatsGlobeView?
 
     private var item: StatsCountriesItem?
@@ -109,7 +106,6 @@ final class StatsCountriesItemNode: ListViewItemNode {
         self.chartNode = ChartNode()
 
         self.globePageView = UIView()
-        self.expandIconView = UIImageView()
 
         super.init(layerBacked: false)
 
@@ -127,7 +123,6 @@ final class StatsCountriesItemNode: ListViewItemNode {
         super.didLoad()
 
         self.pagesNode.view.addSubview(self.globePageView)
-        self.globePageView.addSubview(self.expandIconView)
 
         // As the chart card does: the back swipe keeps the left edge, and on the chart also the
         // range slider's strip.
@@ -182,7 +177,6 @@ final class StatsCountriesItemNode: ListViewItemNode {
                     self.topStripeNode.backgroundColor = theme.list.itemBlocksSeparatorColor
                     self.bottomStripeNode.backgroundColor = theme.list.itemBlocksSeparatorColor
                     self.backgroundNode.backgroundColor = theme.list.itemBlocksBackgroundColor
-                    self.expandIconView.image = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Expand"), color: theme.list.itemSecondaryTextColor)
                     self.chartNode.setup(
                         theme: ChartTheme(presentationTheme: theme),
                         strings: ChartStrings(
@@ -234,24 +228,15 @@ final class StatsCountriesItemNode: ListViewItemNode {
                     globeView.updateColors(colors)
                 } else {
                     self.globeView?.removeFromSuperview()
-                    globeView = StatsGlobeView(countries: item.countries, colors: colors, strings: item.presentationData.strings, isExpanded: false)
+                    globeView = StatsGlobeView(countries: item.countries, colors: colors, strings: item.presentationData.strings)
                     self.globeView = globeView
                     self.globePageView.insertSubview(globeView, at: 0)
-                }
-                globeView.tapped = { [weak self, weak globeView] in
-                    guard let self, let globeView, let item = self.item else {
-                        return
-                    }
-                    item.openGlobe(globeView)
                 }
                 let globeFrame = CGRect(origin: CGPoint(), size: pageSize)
                 if globeView.frame != globeFrame {
                     globeView.frame = globeFrame
                 }
                 globeView.radius = floor(min(pageSize.width, pageSize.height) / 2.0 - 34.0)
-                if let image = self.expandIconView.image {
-                    self.expandIconView.frame = CGRect(origin: CGPoint(x: pageSize.width - 12.0 - image.size.width, y: 12.0), size: image.size)
-                }
 
                 // The pages, side by side in tab order: the chart, then the globe.
                 self.pagesNode.frame = CGRect(origin: CGPoint(x: leftInset, y: 0.0), size: pageSize)

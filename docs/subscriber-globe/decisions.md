@@ -90,7 +90,7 @@ to the back swipe.
 and fullscreen, is gone; the DEMO badge in the header still marks the numbers. Why they are a demo
 is in this write-up and in [api.md](api.md).
 
-**D-016. A tap opens the globe in a sheet. (moondiel)** Instead of the fullscreen dive, the card
+**D-016. A tap opens the globe in a sheet. (moondiel)** Replaced by D-023. Instead of the fullscreen dive, the card
 opens Telegram's glass sheet (`SheetComponent`, `.glass`, with a `GlassBarButtonComponent` close
 button), built as statistics' `TransactionInfoScreen` is. The sheet has room for what the card
 does not: a large globe that turns any way and zooms, and the list of countries with flag, name,
@@ -139,6 +139,11 @@ side its tab is on, while `BoostsTabsItem` moves its underline on its own spring
 turning the last part of a turn and settles. The card is as tall as the chart, legend included,
 on both pages. The globe stops when its page is off screen.
 
-**D-022. The sheet holds only the globe. (moondiel)** The list of countries under the sheet's
+**D-022. The sheet holds only the globe. (moondiel)** Replaced by D-023. The list of countries under the sheet's
 globe is gone (it repeated the chart's legend); the globe takes the room, up to 460 pt tall.
 Replaces the list part of D-016.
+
+**D-023. No sheet: the globe is turned in the card. (moondiel)** The globe does not open anywhere;
+the card is where it is looked at and turned. A sideways drag turns it (and, once turning, tilts
+it), a flick lets it coast, and left alone it turns slowly. Up-and-down drags still scroll the
+list, and the back swipe keeps the screen's left edge. Zoom went with the sheet.
