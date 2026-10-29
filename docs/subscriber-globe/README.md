@@ -1,8 +1,9 @@
 # Subscriber Globe
 
-Subscriber Globe adds a **Followers by country** section to a channel's statistics. It is a satellite
-globe with a marker per country carrying its number of followers, and a pie chart of the countries
-below it.
+Subscriber Globe adds a **Followers by country** card to a channel's statistics. The card shows a
+pie chart of the countries or, switched from the section header, a dotted globe in the theme's
+colours with a marker per country carrying its number of followers. A tap opens the globe
+fullscreen.
 
 Telegram's statistics do not report countries yet: `stats.broadcastStats` breaks followers down
 by language only. The section therefore shows a demo distribution, labelled **DEMO** with a note
@@ -12,15 +13,19 @@ in [api.md](api.md). The client is built so that real data only replaces one fun
 ## The flow
 
 1. Open a channel you admin, then Statistics. Below **Languages** there is a new section,
-   **FOLLOWERS BY COUNTRY**, with a **DEMO** badge.
-2. The globe opens over the country with the most followers. Drag to turn it; pinch to zoom in on
-   a region (down to about 1,500 km).
-3. Each country is a marker in the theme's accent colour with its number of followers. Its flag
-   and name show under it when there is room. Markers that would overlap merge into one with
-   their sum, and split again as you zoom in.
-4. Below the globe, a pie chart with a legend lists every country and its share. It is the same
-   chart and legend as **Languages**.
-5. A note under the section says the data is a demo and why.
+   **FOLLOWERS BY COUNTRY**, with a **DEMO** badge and **Show Globe** on the right.
+2. The card first shows a pie chart with a legend of every country and its share, the same chart
+   and legend as **Languages**.
+3. **Show Globe** switches the card to the globe; the header then reads **Show Chart**.
+4. The globe opens over the country with the most followers and turns slowly on its own. Land is
+   dots, each country is an accent dot whose ring pings outward, sized by its share, with a label
+   carrying its flag and number of followers. When two labels would overlap, the larger audience
+   keeps its label. A sideways drag turns the globe and lets it coast; up-and-down drags scroll
+   the list.
+5. A tap on the globe dives into it: the globe grows from the card to fill the screen. There the
+   labels also name the country, the globe turns any way and zooms with a pinch or a double tap.
+   **Close** shrinks it back onto the card, which carries on from where it was turned to.
+6. A note under the section says the data is a demo and why.
 
 ## Requirements
 
@@ -28,7 +33,7 @@ The same as for the main project: macOS 26 and Xcode 26.6 (`versions.json`), plu
 `api_id` and `api_hash`. The branch includes the Xcode 26 build fix `24193067`, which is not part
 of the feature.
 
-The globe is Apple's satellite map, so it needs a network connection to load its imagery.
+The globe is drawn on the device and needs no network.
 
 ## Build from scratch
 
@@ -70,23 +75,27 @@ Statistics are only available for channels with enough followers; the server dec
 **Works for real**
 
 - The section, its card styling and its place in Statistics, built from Telegram's own items:
-  the section header with a badge, the glass card, the pie chart, the footer note.
-- The globe: Apple's satellite map, which Telegram's location screens already show in Satellite
-  mode. It turns under the finger and zooms in, and follows the light or dark theme.
-- Markers with follower counts, country names in the app's language, and clustering.
+  the section header with a badge and an action, the glass card, the pie chart, the footer note.
+- The globe: a sphere with the land as about 3,000 dots, drawn with SceneKit in the theme's
+  colours, light or dark. It turns under the finger, coasts, and turns slowly when left alone.
+- Markers sized by share, labels with flags, follower counts and (fullscreen) country names in the
+  app's language, and labels that give way to larger audiences.
+- The fullscreen globe and the dive into it and back.
 
 **Limited**
 
 - **The numbers are a demo.** They are generated from the channel's id (the same each visit) and
   add up to its real follower count, but the split by country is made up. Telegram's API has no
   country breakdown. Getting one is a server change; see [api.md](api.md).
-- The globe sits inside the scrolling list. Dragging on it turns the globe; scrolling the list
-  works from anywhere else.
+- The coastlines are drawn by hand at the 2° scale of the dots (no map data could be bundled or
+  downloaded). They are a picture of the world, not a map: small islands are missing.
+- Marker positions come from a table of 26 countries; a country outside it would need a row.
 - There are no automated tests.
 
 **Not verified**
 
-- Behaviour on a slow network while the satellite imagery loads.
+- The globe has not been run on a device yet: its frame rate on older iPhones, and how the card's
+  sideways drag shares the screen with the back swipe.
 - How the pie chart's zoom slider behaves with the demo's flat daily columns (seven equal days).
 
 ## How the countries travel (prototype vs. production)
@@ -116,16 +125,22 @@ New files:
 | File | Role |
 |---|---|
 | `submodules/StatisticsUI/Sources/ChannelStatsCountries.swift` | The model, marker coordinates, the demo distribution, and the pie chart's graph |
-| `submodules/StatisticsUI/Sources/StatsGlobeItem.swift` | The globe card: a list item hosting MapKit's satellite globe with country markers and clusters |
+| `submodules/StatisticsUI/Sources/StatsGlobeLand.swift` | The land: a grid of dots 2° apart, one bit each (1.7 KB), and its decoder |
+| `submodules/StatisticsUI/Sources/StatsGlobeView.swift` | The globe: SceneKit sphere, land dots, markers and their rings, labels, turning, coasting and zooming |
+| `submodules/StatisticsUI/Sources/StatsGlobeItem.swift` | The globe card: a list item hosting the globe in the statistics list |
+| `submodules/StatisticsUI/Sources/StatsGlobeScreen.swift` | The fullscreen globe and the dive into it from the card and back |
 | `docs/subscriber-globe/*` | This write-up, the decision log and the API proposal |
 
 Changed files:
 
 - `submodules/StatisticsUI/Sources/ChannelStatsController.swift`: the section
-  (`StatsSection.countries`), its four entries (header with the DEMO badge, globe, pie chart,
-  note), and the entries after it moved down four stable ids.
+  (`StatsSection.countries`), its entries (header with the DEMO badge and the Show Globe / Show
+  Chart action, globe, pie chart, note), whether the card shows the globe, opening the fullscreen
+  globe, and the entries after the section moved down four stable ids.
 - `Telegram/Telegram-iOS/en.lproj/Localizable.strings`: `ChannelStats.Countries.Title`,
-  `ChannelStats.Countries.Demo`, `ChannelStats.Countries.DemoInfo`.
+  `ChannelStats.Countries.Demo`, `ChannelStats.Countries.DemoInfo`,
+  `ChannelStats.Countries.ShowGlobe`, `ChannelStats.Countries.ShowChart`,
+  `ChannelStats.Countries.ScreenTitle`.
 
 The whole change is one patch against the base commit `16a3d3c5`, without the Xcode 26 build fix:
 [`subscriber-globe.patch`](subscriber-globe.patch). Apply it with `git apply`.

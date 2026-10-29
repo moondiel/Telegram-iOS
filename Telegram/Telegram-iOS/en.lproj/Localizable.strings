@@ -17109,4 +17109,7 @@ Error: %8$@";
 
 "ChannelStats.Countries.Title" = "FOLLOWERS BY COUNTRY";
 "ChannelStats.Countries.Demo" = "DEMO";
-"ChannelStats.Countries.DemoInfo" = "Demo data. Telegram does not report where followers are from yet, so this map shows a sample spread. With a country breakdown from the server it would show your channel's audience.";
+"ChannelStats.Countries.DemoInfo" = "Demo data. Telegram does not report where followers are from yet, so these numbers are a sample spread. With a country breakdown from the server they would show your channel's audience.";
+"ChannelStats.Countries.ShowGlobe" = "Show Globe";
+"ChannelStats.Countries.ShowChart" = "Show Chart";
+"ChannelStats.Countries.ScreenTitle" = "Followers by Country";

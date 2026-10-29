@@ -58,8 +58,10 @@ private final class ChannelStatsControllerArguments {
     let presentCpmLocked: () -> Void
     let openEarnStars: () -> Void
     let dismissInput: () -> Void
+    let toggleCountriesGlobe: () -> Void
+    let openCountriesGlobe: (StatsGlobeView) -> Void
     
-    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void) {
+    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void, toggleCountriesGlobe: @escaping () -> Void, openCountriesGlobe: @escaping (StatsGlobeView) -> Void) {
         self.context = context
         self.loadDetailedGraph = loadDetailedGraph
         self.openPostStats = openPostStats
@@ -86,6 +88,8 @@ private final class ChannelStatsControllerArguments {
         self.presentCpmLocked = presentCpmLocked
         self.openEarnStars = openEarnStars
         self.dismissInput = dismissInput
+        self.toggleCountriesGlobe = toggleCountriesGlobe
+        self.openCountriesGlobe = openCountriesGlobe
     }
 }
 
@@ -191,7 +195,7 @@ private enum StatsEntry: ItemListNodeEntry {
     case languagesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
     
     // Subscriber Globe: followers by country (see ChannelStatsCountries.swift).
-    case countriesTitle(PresentationTheme, String, String)
+    case countriesTitle(PresentationTheme, String, String, String)
     case countriesGlobe(PresentationTheme, PresentationStrings, ChannelStatsCountries)
     case countriesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
     case countriesInfo(PresentationTheme, String)
@@ -586,8 +590,8 @@ private enum StatsEntry: ItemListNodeEntry {
                 } else {
                     return false
                 }
-            case let .countriesTitle(lhsTheme, lhsText, lhsAccessory):
-                if case let .countriesTitle(rhsTheme, rhsText, rhsAccessory) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsAccessory == rhsAccessory {
+            case let .countriesTitle(lhsTheme, lhsText, lhsAccessory, lhsAction):
+                if case let .countriesTitle(rhsTheme, rhsText, rhsAccessory, rhsAction) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsAccessory == rhsAccessory, lhsAction == rhsAction {
                     return true
                 } else {
                     return false
@@ -972,10 +976,14 @@ private enum StatsEntry: ItemListNodeEntry {
                  let .adsCpmInfo(_, text),
                  let .adsProceedsInfo(_, text):
                 return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
-            case let .countriesTitle(_, text, accessory):
-                return ItemListSectionHeaderItem(presentationData: presentationData, text: text, badge: accessory, sectionId: self.section)
+            case let .countriesTitle(_, text, accessory, action):
+                return ItemListSectionHeaderItem(presentationData: presentationData, text: text, badge: accessory, actionText: action, action: {
+                    arguments.toggleCountriesGlobe()
+                }, sectionId: self.section)
             case let .countriesGlobe(_, _, countries):
-                return StatsGlobeItem(presentationData: presentationData, systemStyle: .glass, countries: countries, sectionId: self.section)
+                return StatsGlobeItem(presentationData: presentationData, systemStyle: .glass, countries: countries, sectionId: self.section, open: { view in
+                    arguments.openCountriesGlobe(view)
+                })
             case let .countriesGraph(_, _, _, graph, type):
                 return StatsGraphItem(presentationData: presentationData, systemStyle: .glass, graph: graph, type: type, sectionId: self.section, style: .blocks)
             case let .countriesInfo(_, text):
@@ -1380,7 +1388,8 @@ private func statsEntries(
     peer: EnginePeer?,
     messages: [Message]?,
     stories: StoryListContext.State?,
-    interactions: [ChannelStatsPostInteractions.PostId: ChannelStatsPostInteractions]?
+    interactions: [ChannelStatsPostInteractions.PostId: ChannelStatsPostInteractions]?,
+    countriesShowGlobe: Bool
 ) -> [StatsEntry] {
     var entries: [StatsEntry] = []
     
@@ -1425,12 +1434,17 @@ private func statsEntries(
         entries.append(.languagesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.languagesGraph, .pie))
     }
     
-    // Subscriber Globe: followers by country, on demo data until the server reports countries.
+    // Subscriber Globe: followers by country, on demo data until the server reports countries. One
+    // card, showing the pie chart or the globe; the header switches between them.
     if let peer, data.followers.current >= 1.0 {
         let countries = ChannelStatsCountries.demo(peerId: peer.id, followers: Int(data.followers.current))
-        entries.append(.countriesTitle(presentationData.theme, presentationData.strings.ChannelStats_Countries_Title, presentationData.strings.ChannelStats_Countries_Demo))
-        entries.append(.countriesGlobe(presentationData.theme, presentationData.strings, countries))
-        entries.append(.countriesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, countries.graph(strings: presentationData.strings, period: data.period), .pie))
+        let toggleText = countriesShowGlobe ? presentationData.strings.ChannelStats_Countries_ShowChart : presentationData.strings.ChannelStats_Countries_ShowGlobe
+        entries.append(.countriesTitle(presentationData.theme, presentationData.strings.ChannelStats_Countries_Title, presentationData.strings.ChannelStats_Countries_Demo, toggleText))
+        if countriesShowGlobe {
+            entries.append(.countriesGlobe(presentationData.theme, presentationData.strings, countries))
+        } else {
+            entries.append(.countriesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, countries.graph(strings: presentationData.strings, period: data.period), .pie))
+        }
         entries.append(.countriesInfo(presentationData.theme, presentationData.strings.ChannelStats_Countries_DemoInfo))
     }
     
@@ -1839,7 +1853,8 @@ private func channelStatsControllerEntries(
     monetizationConfiguration: MonetizationConfiguration,
     canViewRevenue: Bool,
     canViewStarsRevenue: Bool,
-    canJoinRefPrograms: Bool
+    canJoinRefPrograms: Bool,
+    countriesShowGlobe: Bool
 ) -> [StatsEntry] {
     switch state.section {
     case .stats:
@@ -1850,7 +1865,8 @@ private func channelStatsControllerEntries(
                 peer: peer,
                 messages: messages,
                 stories: stories,
-                interactions: interactions
+                interactions: interactions,
+                countriesShowGlobe: countriesShowGlobe
             )
         }
     case .boosts:
@@ -1983,6 +1999,11 @@ public func channelStatsController(
     var buyAdsImpl: (() -> Void)?
     var updateStatusBarImpl: ((StatusBarStyle) -> Void)?
     var dismissInputImpl: (() -> Void)?
+    
+    // Subscriber Globe: whether the countries card shows the globe instead of the pie chart.
+    let countriesShowGlobeValue = Atomic<Bool>(value: false)
+    let countriesShowGlobePromise = ValuePromise<Bool>(false, ignoreRepeated: true)
+    let previousCountriesShowGlobe = Atomic<Bool?>(value: nil)
     
     let arguments = ChannelStatsControllerArguments(context: context, loadDetailedGraph: { graph, x -> Signal<StatsGraph?, NoError> in
         return statsContext.loadDetailedGraph(graph, x: x)
@@ -2175,6 +2196,14 @@ public func channelStatsController(
     },
     dismissInput: {
         dismissInputImpl?()
+    },
+    toggleCountriesGlobe: {
+        let showGlobe = countriesShowGlobeValue.modify { !$0 }
+        countriesShowGlobePromise.set(showGlobe)
+    },
+    openCountriesGlobe: { view in
+        let presentationData = updatedPresentationData?.initial ?? context.sharedContext.currentPresentationData.with { $0 }
+        presentImpl?(StatsGlobeScreen(presentationData: presentationData, sourceView: view))
     })
     
     let messageView = context.account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: nil), index: .upperBound, anchorIndex: .upperBound, count: 200, fixedCombinedReadStates: nil)
@@ -2210,7 +2239,7 @@ public func channelStatsController(
     let presentationData = updatedPresentationData?.signal ?? context.sharedContext.presentationData
     let signal = combineLatest(
         presentationData,
-        statePromise.get(),
+        combineLatest(statePromise.get(), countriesShowGlobePromise.get()),
         peer.get(),
         dataPromise.get(),
         messagesPromise.get(),
@@ -2226,7 +2255,11 @@ public func channelStatsController(
         longLoadingSignal
     )
     |> deliverOnMainQueue
-    |> map { presentationData, state, peer, data, messageView, stories, boostData, boostersState, giftsState, revenueState, revenueTransactions, starsState, starsTransactions, peerData, longLoading -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { presentationData, stateAndCountriesShowGlobe, peer, data, messageView, stories, boostData, boostersState, giftsState, revenueState, revenueTransactions, starsState, starsTransactions, peerData, longLoading -> (ItemListControllerState, (ItemListNodeState, Any)) in
+        let (state, countriesShowGlobe) = stateAndCountriesShowGlobe
+        // Switching the countries card between chart and globe animates; nothing else here does.
+        let previousShowGlobe = previousCountriesShowGlobe.swap(countriesShowGlobe)
+        let countriesToggled = previousShowGlobe != nil && previousShowGlobe != countriesShowGlobe
         let (canViewStats, adsRestricted, _, _) = peerData
         var canViewRevenue = peerData.2
         var canViewStarsRevenue = peerData.3
@@ -2348,7 +2381,7 @@ public func channelStatsController(
         }
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: title, leftNavigationButton: leftNavigationButton, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: true)
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: channelStatsControllerEntries(presentationData: presentationData, state: state, peer: peer, data: data, messages: messages, stories: stories, interactions: interactions, boostData: boostData, boostersState: boostersState, giftsState: giftsState, giveawayAvailable: premiumConfiguration.giveawayGiftsPurchaseAvailable, isGroup: isGroup, boostsOnly: boostsOnly, revenueState: revenueState?.stats, revenueTransactions: revenueTransactions, starsState: starsState?.stats, starsTransactions: starsTransactions, adsRestricted: adsRestricted, premiumConfiguration: premiumConfiguration, monetizationConfiguration: monetizationConfiguration, canViewRevenue: canViewRevenue, canViewStarsRevenue: canViewStarsRevenue, canJoinRefPrograms: canJoinRefPrograms), style: .blocks, emptyStateItem: emptyStateItem, headerItem: headerItem, crossfadeState: previous == nil, animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: channelStatsControllerEntries(presentationData: presentationData, state: state, peer: peer, data: data, messages: messages, stories: stories, interactions: interactions, boostData: boostData, boostersState: boostersState, giftsState: giftsState, giveawayAvailable: premiumConfiguration.giveawayGiftsPurchaseAvailable, isGroup: isGroup, boostsOnly: boostsOnly, revenueState: revenueState?.stats, revenueTransactions: revenueTransactions, starsState: starsState?.stats, starsTransactions: starsTransactions, adsRestricted: adsRestricted, premiumConfiguration: premiumConfiguration, monetizationConfiguration: monetizationConfiguration, canViewRevenue: canViewRevenue, canViewStarsRevenue: canViewStarsRevenue, canJoinRefPrograms: canJoinRefPrograms, countriesShowGlobe: countriesShowGlobe), style: .blocks, emptyStateItem: emptyStateItem, headerItem: headerItem, crossfadeState: previous == nil, animateChanges: countriesToggled)
         
         return (controllerState, (listState, arguments))
     }
