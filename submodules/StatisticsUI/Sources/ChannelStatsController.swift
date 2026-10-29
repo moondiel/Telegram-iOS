@@ -98,6 +98,7 @@ private enum StatsSection: Int32 {
     case viewsBySource
     case followersBySource
     case languages
+    case countries
     case postInteractions
     case instantPageInteractions
     case reactionsByEmotion
@@ -188,6 +189,12 @@ private enum StatsEntry: ItemListNodeEntry {
     
     case languagesTitle(PresentationTheme, String)
     case languagesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
+    
+    // Subscriber Globe: followers by country (see ChannelStatsCountries.swift).
+    case countriesTitle(PresentationTheme, String, String)
+    case countriesGlobe(PresentationTheme, PresentationStrings, ChannelStatsCountries)
+    case countriesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
+    case countriesInfo(PresentationTheme, String)
     
     case postInteractionsTitle(PresentationTheme, String)
     case postInteractionsGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
@@ -281,6 +288,8 @@ private enum StatsEntry: ItemListNodeEntry {
                 return StatsSection.followersBySource.rawValue
             case .languagesTitle, .languagesGraph:
                 return StatsSection.languages.rawValue
+            case .countriesTitle, .countriesGlobe, .countriesGraph, .countriesInfo:
+                return StatsSection.countries.rawValue
             case .postInteractionsTitle, .postInteractionsGraph:
                 return StatsSection.postInteractions.rawValue
             case .instantPageInteractionsTitle, .instantPageInteractionsGraph:
@@ -362,30 +371,38 @@ private enum StatsEntry: ItemListNodeEntry {
                 return 14
             case .languagesGraph:
                 return 15
-            case .postInteractionsTitle:
+            case .countriesTitle:
                 return 16
-            case .postInteractionsGraph:
+            case .countriesGlobe:
                 return 17
-            case .instantPageInteractionsTitle:
+            case .countriesGraph:
                 return 18
-            case .instantPageInteractionsGraph:
+            case .countriesInfo:
                 return 19
-            case .reactionsByEmotionTitle:
+            case .postInteractionsTitle:
                 return 20
-            case .reactionsByEmotionGraph:
+            case .postInteractionsGraph:
                 return 21
-            case .storyInteractionsTitle:
+            case .instantPageInteractionsTitle:
                 return 22
-            case .storyInteractionsGraph:
+            case .instantPageInteractionsGraph:
                 return 23
-            case .storyReactionsByEmotionTitle:
+            case .reactionsByEmotionTitle:
                 return 24
-            case .storyReactionsByEmotionGraph:
+            case .reactionsByEmotionGraph:
                 return 25
-            case .postsTitle:
+            case .storyInteractionsTitle:
                 return 26
+            case .storyInteractionsGraph:
+                return 27
+            case .storyReactionsByEmotionTitle:
+                return 28
+            case .storyReactionsByEmotionGraph:
+                return 29
+            case .postsTitle:
+                return 30
             case let .post(index, _, _, _, _, _, _):
-                return 27 + index
+                return 31 + index
             case .boostLevel:
                 return 2000
             case .boostOverviewTitle:
@@ -565,6 +582,30 @@ private enum StatsEntry: ItemListNodeEntry {
                 }
             case let .languagesGraph(lhsTheme, lhsStrings, lhsDateTimeFormat, lhsGraph, lhsType):
                 if case let .languagesGraph(rhsTheme, rhsStrings, rhsDateTimeFormat, rhsGraph, rhsType) = rhs, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsDateTimeFormat == rhsDateTimeFormat, lhsGraph == rhsGraph, lhsType == rhsType {
+                    return true
+                } else {
+                    return false
+                }
+            case let .countriesTitle(lhsTheme, lhsText, lhsAccessory):
+                if case let .countriesTitle(rhsTheme, rhsText, rhsAccessory) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsAccessory == rhsAccessory {
+                    return true
+                } else {
+                    return false
+                }
+            case let .countriesGlobe(lhsTheme, lhsStrings, lhsCountries):
+                if case let .countriesGlobe(rhsTheme, rhsStrings, rhsCountries) = rhs, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsCountries == rhsCountries {
+                    return true
+                } else {
+                    return false
+                }
+            case let .countriesGraph(lhsTheme, lhsStrings, lhsDateTimeFormat, lhsGraph, lhsType):
+                if case let .countriesGraph(rhsTheme, rhsStrings, rhsDateTimeFormat, rhsGraph, rhsType) = rhs, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsDateTimeFormat == rhsDateTimeFormat, lhsGraph == rhsGraph, lhsType == rhsType {
+                    return true
+                } else {
+                    return false
+                }
+            case let .countriesInfo(lhsTheme, lhsText):
+                if case let .countriesInfo(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
                     return true
                 } else {
                     return false
@@ -931,6 +972,14 @@ private enum StatsEntry: ItemListNodeEntry {
                  let .adsCpmInfo(_, text),
                  let .adsProceedsInfo(_, text):
                 return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
+            case let .countriesTitle(_, text, accessory):
+                return ItemListSectionHeaderItem(presentationData: presentationData, text: text, badge: accessory, sectionId: self.section)
+            case let .countriesGlobe(_, _, countries):
+                return StatsGlobeItem(presentationData: presentationData, systemStyle: .glass, countries: countries, sectionId: self.section)
+            case let .countriesGraph(_, _, _, graph, type):
+                return StatsGraphItem(presentationData: presentationData, systemStyle: .glass, graph: graph, type: type, sectionId: self.section, style: .blocks)
+            case let .countriesInfo(_, text):
+                return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
             case let .overview(_, stats):
                 return StatsOverviewItem(context: arguments.context, presentationData: presentationData, systemStyle: .glass, isGroup: false, stats: stats, sectionId: self.section, style: .blocks)
             case let .growthGraph(_, _, _, graph, type),
@@ -1374,6 +1423,15 @@ private func statsEntries(
     if !data.languagesGraph.isEmpty {
         entries.append(.languagesTitle(presentationData.theme, presentationData.strings.Stats_LanguagesTitle))
         entries.append(.languagesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.languagesGraph, .pie))
+    }
+    
+    // Subscriber Globe: followers by country, on demo data until the server reports countries.
+    if let peer, data.followers.current >= 1.0 {
+        let countries = ChannelStatsCountries.demo(peerId: peer.id, followers: Int(data.followers.current))
+        entries.append(.countriesTitle(presentationData.theme, presentationData.strings.ChannelStats_Countries_Title, presentationData.strings.ChannelStats_Countries_Demo))
+        entries.append(.countriesGlobe(presentationData.theme, presentationData.strings, countries))
+        entries.append(.countriesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, countries.graph(strings: presentationData.strings, period: data.period), .pie))
+        entries.append(.countriesInfo(presentationData.theme, presentationData.strings.ChannelStats_Countries_DemoInfo))
     }
     
     if !data.interactionsGraph.isEmpty {
