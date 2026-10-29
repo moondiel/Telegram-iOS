@@ -6,14 +6,16 @@ colours with a marker per country carrying its number of followers. A tap opens 
 sheet.
 
 Telegram's statistics do not report countries yet: `stats.broadcastStats` breaks followers down
-by language only. The section therefore shows a demo distribution, labelled **DEMO** in the
-section header, until the server sends a country breakdown. The change that would take on the server is
-in [api.md](api.md). The client is built so that real data only replaces one function.
+by language only. The section therefore estimates countries from the channel's real languages
+graph, and says so under the card, until the server sends a country breakdown. The change that
+would take on the server is in [api.md](api.md). The client is built so that exact data only
+replaces one function.
 
 ## The flow
 
 1. Open a channel you admin, then Statistics. Below **Languages** there is a new section,
-   **FOLLOWERS BY COUNTRY**, with a **DEMO** badge and **Show Globe** on the right.
+   **FOLLOWERS BY COUNTRY**, with **Show Globe** on the right. It appears once the Languages
+   graph has loaded, since it is computed from it.
 2. The card first shows a pie chart with a legend of every country and its share, the same chart
    and legend as **Languages**.
 3. **Show Globe** switches the card to the globe; the header then reads **Show Chart**.
@@ -26,7 +28,9 @@ in [api.md](api.md). The client is built so that real data only replaces one fun
    transaction info does. It holds a large globe at the card's turn, whose labels also name the
    country, which turns any way and zooms with a pinch or a double tap. Under it is the list of
    countries with flag, name, share and followers; tapping one turns the globe to it. A drag that
-   starts on the globe turns the globe; anywhere else it pulls the sheet down.
+   starts on the globe turns the globe; anywhere else it pulls the sheet down. The sheet's title
+   reads "Estimated from languages" underneath.
+6. A note under the card says: "Estimated from the languages your followers use Telegram in."
 
 ## Requirements
 
@@ -76,7 +80,7 @@ Statistics are only available for channels with enough followers; the server dec
 **Works for real**
 
 - The section, its card styling and its place in Statistics, built from Telegram's own items:
-  the section header with a badge and an action, the glass card, the pie chart.
+  the section header with an action, the glass card, the pie chart, the footer note.
 - The globe: a sphere with the land as about 3,000 dots, drawn with SceneKit in the theme's
   colours, light or dark. It turns under the finger, coasts, and turns slowly when left alone.
 - Markers sized by share, labels with flags, follower counts and (in the sheet) country names in the
@@ -85,31 +89,40 @@ Statistics are only available for channels with enough followers; the server dec
 
 **Limited**
 
-- **The numbers are a demo.** They are generated from the channel's id (the same each visit) and
-  add up to its real follower count, but the split by country is made up. Telegram's API has no
-  country breakdown. Getting one is a server change; see [api.md](api.md).
+- **The countries are an estimate.** They start from real numbers: the channel's follower count
+  and the latest day of its languages graph. Each language's followers are then shared out over
+  the countries where Telegram users speak it, from a table of rough shares in
+  `ChannelStatsCountries.swift` (Russian: 70% Russia, 7% Ukraine, 7% Kazakhstan…; English spread
+  over India, the US, Nigeria, the UK and others). So a Russian speaker in Dubai counts towards
+  Russia, and English, spoken everywhere, is spread thin. Languages missing from the table are
+  left out, and the ten largest countries are shown. Exact numbers are a server change; see
+  [api.md](api.md).
 - The coastlines are drawn by hand at the 2° scale of the dots (no map data could be bundled or
   downloaded). They are a picture of the world, not a map: small islands are missing.
-- Marker positions come from a table of 26 countries; a country outside it would need a row.
+- Marker positions come from a table of 83 countries; a country outside it would need a row.
 - There are no automated tests.
 
 **Not verified**
 
 - The globe has not been run on a device yet: its frame rate on older iPhones, and how the card's
   sideways drag shares the screen with the back swipe.
-- How the pie chart's zoom slider behaves with the demo's flat daily columns (seven equal days).
+- How the pie chart's zoom slider behaves with the estimate's flat daily columns (seven equal days).
+- How the server names the languages graph's columns. The estimate matches English names
+  ("Russian") and ISO codes ("ru"); if the names come localized, languages would not be matched
+  and the section would not appear.
 
 ## How the countries travel (prototype vs. production)
 
 The section is drawn from a `ChannelStatsCountries` value: a list of `{ country code, followers,
-marker coordinate }`. In the prototype, `ChannelStatsCountries.demo(peerId:followers:)` makes one.
+marker coordinate }`. In the prototype, `ChannelStatsCountries.estimated(fromLanguagesGraph:followers:)`
+makes one from the languages graph.
 
 In production, the server would add an aggregated `countries_graph` to `stats.broadcastStats`
 next to `languages_graph`, in the same JSON format, as described in [api.md](api.md). Then:
 
 - `ChannelStats` would carry the new graph, as it carries `languagesGraph`;
-- the countries would be read from that graph instead of `demo(...)`, which goes away together
-  with the badge.
+- the countries would be read from that graph instead of `estimated(...)`, which goes away
+  together with the language table and the note.
 
 The country shares are an aggregate, never a list of followers. A per-follower map is not
 possible on the client, and should not be:
@@ -125,7 +138,7 @@ New files:
 
 | File | Role |
 |---|---|
-| `submodules/StatisticsUI/Sources/ChannelStatsCountries.swift` | The model, marker coordinates, the demo distribution, and the pie chart's graph |
+| `submodules/StatisticsUI/Sources/ChannelStatsCountries.swift` | The model, marker coordinates, the language-to-country table and the estimate, and the pie chart's graph |
 | `submodules/StatisticsUI/Sources/StatsGlobeLand.swift` | The land: a grid of dots 2° apart, one bit each (1.7 KB), and its decoder |
 | `submodules/StatisticsUI/Sources/StatsGlobeView.swift` | The globe: SceneKit sphere, land dots, markers and their rings, labels, turning, coasting and zooming |
 | `submodules/StatisticsUI/Sources/StatsGlobeItem.swift` | The globe card: a list item hosting the globe in the statistics list |
@@ -135,11 +148,12 @@ New files:
 Changed files:
 
 - `submodules/StatisticsUI/Sources/ChannelStatsController.swift`: the section
-  (`StatsSection.countries`), its entries (header with the DEMO badge and the Show Globe / Show
-  Chart action, globe, pie chart), whether the card shows the globe, opening the globe
+  (`StatsSection.countries`), its entries (header with the Show Globe / Show Chart action, globe,
+  pie chart, the estimate note), whether the card shows the globe, opening the globe
   sheet, and the entries after the section moved down four stable ids.
 - `Telegram/Telegram-iOS/en.lproj/Localizable.strings`: `ChannelStats.Countries.Title`,
-  `ChannelStats.Countries.Demo`, `ChannelStats.Countries.ShowGlobe`, `ChannelStats.Countries.ShowChart`,
+  `ChannelStats.Countries.EstimateInfo`, `ChannelStats.Countries.EstimateSubtitle`,
+  `ChannelStats.Countries.ShowGlobe`, `ChannelStats.Countries.ShowChart`,
   `ChannelStats.Countries.ScreenTitle`.
 
 The whole change is one patch against the base commit `16a3d3c5`, without the Xcode 26 build fix:

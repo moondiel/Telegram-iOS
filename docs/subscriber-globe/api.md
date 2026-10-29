@@ -35,6 +35,7 @@ The graph is an aggregate, like the other statistics:
 - `ChannelStats` gains `countriesGraph: StatsGraph`, parsed like `languagesGraph`.
 - `ChannelStatsCountries` is built from that graph: country codes from `names`, counts from the
   columns, marker coordinates from the table in `ChannelStatsCountries.swift`.
-- `ChannelStatsCountries.demo(peerId:followers:)`, and the DEMO badge are removed.
+- `ChannelStatsCountries.estimated(fromLanguagesGraph:followers:)`, its language table and the
+  "Estimated from languages" note and subtitle are removed.
 
 The globe, the markers, the pie chart and the section stay as they are.

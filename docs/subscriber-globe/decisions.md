@@ -17,13 +17,13 @@ are hidden from admins. `peerSettings.phone_country` exists only for a stranger 
 as an anti-spam hint. Collecting it person by person to map a channel's audience would be
 tracking people, not statistics.
 
-**D-003. An aggregate by country, on demo data, with an API proposal. (moondiel)** The feature
+**D-003. An aggregate by country, on demo data, with an API proposal. (moondiel)** The demo part is replaced by D-017. The feature
 shows followers per country, the shape a server statistic would have. Until the server sends it,
 the numbers are a demo, marked with a DEMO badge and a note (the note was dropped in D-015). [api.md](api.md) proposes
 `countries_graph` in `stats.broadcastStats`. A language-to-region estimate from real data was
 offered and not taken.
 
-**D-004. The demo is stable and sums to the real follower count.** It is seeded with the channel's
+**D-004. The demo is stable and sums to the real follower count.** Replaced by D-017. It is seeded with the channel's
 id, so it does not change between visits, and splits the channel's actual follower count.
 
 ## Look (2026-10-29)
@@ -86,7 +86,7 @@ fullscreen globe's turn. Fullscreen, the globe turns any way and zooms (pinch, d
 card it only takes sideways drags, so the list still scrolls over it, and it leaves the left edge
 to the back swipe.
 
-**D-015. No demo note under the card. (moondiel)** The explanation under the section, on the card
+**D-015. No demo note under the card. (moondiel)** Superseded by D-017, which has no demo. The explanation under the section, on the card
 and fullscreen, is gone; the DEMO badge in the header still marks the numbers. Why they are a demo
 is in this write-up and in [api.md](api.md).
 
@@ -97,3 +97,16 @@ does not: a large globe that turns any way and zooms, and the list of countries 
 share and followers, where tapping a country turns the globe to it by the shorter way round. The
 globe opens at the card's turn. A drag that starts on the globe turns it (the globe declines the
 sheet's drag the way `UISlider` declines a scroll view's); anywhere else it pulls the sheet down.
+
+## Real data (2026-10-29)
+
+**D-017. Countries are estimated from the real languages graph, not made up. (moondiel)** The
+API has no country of a follower anywhere a client can reach: not in statistics, not in profiles,
+and `peerSettings.phone_country` only describes strangers who write to you. What is real is the
+languages graph. The estimate takes its latest day, shares the channel's follower count out by
+language, and shares each language out over the countries where Telegram users speak it, from a
+table of rough shares. The result has no made-up numbers, but it is an estimate: a Russian
+speaker in Dubai counts towards Russia. The DEMO badge goes; a note under the card ("Estimated
+from the languages your followers use Telegram in.") and a subtitle under the sheet's title
+("Estimated from languages") say where the numbers come from. A poll in the channel and invite
+links per country were considered as other real sources and not taken.

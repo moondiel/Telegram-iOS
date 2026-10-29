@@ -14,10 +14,10 @@ See where a channel's followers are, on a globe in its statistics.
 ## Links
 
 - [All changes of the feature](https://github.com/moondiel/Telegram-iOS/compare/16a3d3c5...feature/subscriber-globe)
-- [Write-up](docs/subscriber-globe/README.md): building from scratch, what is real and what is a demo, where the code is
+- [Write-up](docs/subscriber-globe/README.md): building from scratch, what is real and what is estimated, where the code is
 - [API proposal](docs/subscriber-globe/api.md) and [decision log](docs/subscriber-globe/decisions.md)
 - [The whole change as one patch](docs/subscriber-globe/subscriber-globe.patch)
 
 ## Status
 
-A client-side prototype on **demo data**, marked as such on screen. Telegram's API has no followers-by-country statistic, so the numbers are a stable sample that adds up to the channel's real follower count. The [API proposal](docs/subscriber-globe/api.md) describes the server change that would make them real. Not built or tested yet.
+A client-side prototype on **real data, estimated**. Telegram's API has no followers-by-country statistic, so the countries are estimated from the channel's real languages graph: each language's followers are shared out over the countries where it is spoken, and the screen says so. The [API proposal](docs/subscriber-globe/api.md) describes the server change that would make them exact. Not built or tested yet.

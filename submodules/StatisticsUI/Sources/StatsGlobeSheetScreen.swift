@@ -220,6 +220,7 @@ private final class StatsGlobeSheetContent: CombinedComponent {
     static var body: Body {
         let closeButton = Child(GlassBarButtonComponent.self)
         let title = Child(MultilineTextComponent.self)
+        let subtitle = Child(MultilineTextComponent.self)
         let globe = Child(StatsGlobeSheetBodyComponent.self)
 
         return { context in
@@ -259,9 +260,29 @@ private final class StatsGlobeSheetContent: CombinedComponent {
                 availableSize: CGSize(width: context.availableSize.width - 140.0, height: 44.0),
                 transition: .immediate
             )
-            context.add(title
-                .position(CGPoint(x: context.availableSize.width / 2.0, y: 16.0 + 22.0))
-            )
+            if component.countries.isEstimate {
+                // Under the title, where the numbers come from.
+                let subtitle = subtitle.update(
+                    component: MultilineTextComponent(
+                        text: .plain(NSAttributedString(string: environment.strings.ChannelStats_Countries_EstimateSubtitle, font: Font.regular(13.0), textColor: theme.actionSheet.secondaryTextColor)),
+                        horizontalAlignment: .center,
+                        maximumNumberOfLines: 1
+                    ),
+                    availableSize: CGSize(width: context.availableSize.width - 140.0, height: 44.0),
+                    transition: .immediate
+                )
+                let titleY: CGFloat = 16.0 + 22.0 - floor(subtitle.size.height / 2.0) - 1.0
+                context.add(title
+                    .position(CGPoint(x: context.availableSize.width / 2.0, y: titleY))
+                )
+                context.add(subtitle
+                    .position(CGPoint(x: context.availableSize.width / 2.0, y: titleY + title.size.height / 2.0 + 1.0 + subtitle.size.height / 2.0))
+                )
+            } else {
+                context.add(title
+                    .position(CGPoint(x: context.availableSize.width / 2.0, y: 16.0 + 22.0))
+                )
+            }
 
             var contentHeight: CGFloat = 68.0
 
