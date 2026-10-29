@@ -1,0 +1,628 @@
+diff --git a/Telegram/Telegram-iOS/en.lproj/Localizable.strings b/Telegram/Telegram-iOS/en.lproj/Localizable.strings
+index 0b086435..0223fa04 100644
+--- a/Telegram/Telegram-iOS/en.lproj/Localizable.strings
++++ b/Telegram/Telegram-iOS/en.lproj/Localizable.strings
+@@ -17106,3 +17106,7 @@ Error: %8$@";
+ "Notification.GramTransfer.UnknownUser" = "UNKNOWN USER";
+ 
+ "Chat.ViewStyle" = "VIEW STYLE";
++
++"ChannelStats.Countries.Title" = "FOLLOWERS BY COUNTRY";
++"ChannelStats.Countries.Demo" = "DEMO";
++"ChannelStats.Countries.DemoInfo" = "Demo data. Telegram does not report where followers are from yet, so this map shows a sample spread. With a country breakdown from the server it would show your channel's audience.";
+diff --git a/submodules/StatisticsUI/Sources/ChannelStatsController.swift b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
+index 618b0f67..5b6e3011 100644
+--- a/submodules/StatisticsUI/Sources/ChannelStatsController.swift
++++ b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
+@@ -98,6 +98,7 @@ private enum StatsSection: Int32 {
+     case viewsBySource
+     case followersBySource
+     case languages
++    case countries
+     case postInteractions
+     case instantPageInteractions
+     case reactionsByEmotion
+@@ -189,6 +190,12 @@ private enum StatsEntry: ItemListNodeEntry {
+     case languagesTitle(PresentationTheme, String)
+     case languagesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
+     
++    // Subscriber Globe: followers by country (see ChannelStatsCountries.swift).
++    case countriesTitle(PresentationTheme, String, String)
++    case countriesGlobe(PresentationTheme, PresentationStrings, ChannelStatsCountries)
++    case countriesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
++    case countriesInfo(PresentationTheme, String)
++    
+     case postInteractionsTitle(PresentationTheme, String)
+     case postInteractionsGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
+ 
+@@ -281,6 +288,8 @@ private enum StatsEntry: ItemListNodeEntry {
+                 return StatsSection.followersBySource.rawValue
+             case .languagesTitle, .languagesGraph:
+                 return StatsSection.languages.rawValue
++            case .countriesTitle, .countriesGlobe, .countriesGraph, .countriesInfo:
++                return StatsSection.countries.rawValue
+             case .postInteractionsTitle, .postInteractionsGraph:
+                 return StatsSection.postInteractions.rawValue
+             case .instantPageInteractionsTitle, .instantPageInteractionsGraph:
+@@ -362,30 +371,38 @@ private enum StatsEntry: ItemListNodeEntry {
+                 return 14
+             case .languagesGraph:
+                 return 15
+-            case .postInteractionsTitle:
++            case .countriesTitle:
+                 return 16
+-            case .postInteractionsGraph:
++            case .countriesGlobe:
+                 return 17
+-            case .instantPageInteractionsTitle:
++            case .countriesGraph:
+                 return 18
+-            case .instantPageInteractionsGraph:
++            case .countriesInfo:
+                 return 19
+-            case .reactionsByEmotionTitle:
++            case .postInteractionsTitle:
+                 return 20
+-            case .reactionsByEmotionGraph:
++            case .postInteractionsGraph:
+                 return 21
+-            case .storyInteractionsTitle:
++            case .instantPageInteractionsTitle:
+                 return 22
+-            case .storyInteractionsGraph:
++            case .instantPageInteractionsGraph:
+                 return 23
+-            case .storyReactionsByEmotionTitle:
++            case .reactionsByEmotionTitle:
+                 return 24
+-            case .storyReactionsByEmotionGraph:
++            case .reactionsByEmotionGraph:
+                 return 25
+-            case .postsTitle:
++            case .storyInteractionsTitle:
+                 return 26
++            case .storyInteractionsGraph:
++                return 27
++            case .storyReactionsByEmotionTitle:
++                return 28
++            case .storyReactionsByEmotionGraph:
++                return 29
++            case .postsTitle:
++                return 30
+             case let .post(index, _, _, _, _, _, _):
+-                return 27 + index
++                return 31 + index
+             case .boostLevel:
+                 return 2000
+             case .boostOverviewTitle:
+@@ -569,6 +586,30 @@ private enum StatsEntry: ItemListNodeEntry {
+                 } else {
+                     return false
+                 }
++            case let .countriesTitle(lhsTheme, lhsText, lhsAccessory):
++                if case let .countriesTitle(rhsTheme, rhsText, rhsAccessory) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsAccessory == rhsAccessory {
++                    return true
++                } else {
++                    return false
++                }
++            case let .countriesGlobe(lhsTheme, lhsStrings, lhsCountries):
++                if case let .countriesGlobe(rhsTheme, rhsStrings, rhsCountries) = rhs, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsCountries == rhsCountries {
++                    return true
++                } else {
++                    return false
++                }
++            case let .countriesGraph(lhsTheme, lhsStrings, lhsDateTimeFormat, lhsGraph, lhsType):
++                if case let .countriesGraph(rhsTheme, rhsStrings, rhsDateTimeFormat, rhsGraph, rhsType) = rhs, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsDateTimeFormat == rhsDateTimeFormat, lhsGraph == rhsGraph, lhsType == rhsType {
++                    return true
++                } else {
++                    return false
++                }
++            case let .countriesInfo(lhsTheme, lhsText):
++                if case let .countriesInfo(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
++                    return true
++                } else {
++                    return false
++                }
+             case let .postInteractionsTitle(lhsTheme, lhsText):
+                 if case let .postInteractionsTitle(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
+                     return true
+@@ -931,6 +972,14 @@ private enum StatsEntry: ItemListNodeEntry {
+                  let .adsCpmInfo(_, text),
+                  let .adsProceedsInfo(_, text):
+                 return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
++            case let .countriesTitle(_, text, accessory):
++                return ItemListSectionHeaderItem(presentationData: presentationData, text: text, badge: accessory, sectionId: self.section)
++            case let .countriesGlobe(_, _, countries):
++                return StatsGlobeItem(presentationData: presentationData, systemStyle: .glass, countries: countries, sectionId: self.section)
++            case let .countriesGraph(_, _, _, graph, type):
++                return StatsGraphItem(presentationData: presentationData, systemStyle: .glass, graph: graph, type: type, sectionId: self.section, style: .blocks)
++            case let .countriesInfo(_, text):
++                return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
+             case let .overview(_, stats):
+                 return StatsOverviewItem(context: arguments.context, presentationData: presentationData, systemStyle: .glass, isGroup: false, stats: stats, sectionId: self.section, style: .blocks)
+             case let .growthGraph(_, _, _, graph, type),
+@@ -1376,6 +1425,15 @@ private func statsEntries(
+         entries.append(.languagesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.languagesGraph, .pie))
+     }
+     
++    // Subscriber Globe: followers by country, on demo data until the server reports countries.
++    if let peer, data.followers.current >= 1.0 {
++        let countries = ChannelStatsCountries.demo(peerId: peer.id, followers: Int(data.followers.current))
++        entries.append(.countriesTitle(presentationData.theme, presentationData.strings.ChannelStats_Countries_Title, presentationData.strings.ChannelStats_Countries_Demo))
++        entries.append(.countriesGlobe(presentationData.theme, presentationData.strings, countries))
++        entries.append(.countriesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, countries.graph(strings: presentationData.strings, period: data.period), .pie))
++        entries.append(.countriesInfo(presentationData.theme, presentationData.strings.ChannelStats_Countries_DemoInfo))
++    }
++    
+     if !data.interactionsGraph.isEmpty {
+         entries.append(.postInteractionsTitle(presentationData.theme, presentationData.strings.Stats_InteractionsTitle))
+         entries.append(.postInteractionsGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.interactionsGraph, .twoAxisStep))
+diff --git a/submodules/StatisticsUI/Sources/ChannelStatsCountries.swift b/submodules/StatisticsUI/Sources/ChannelStatsCountries.swift
+new file mode 100644
+index 00000000..8023894e
+--- /dev/null
++++ b/submodules/StatisticsUI/Sources/ChannelStatsCountries.swift
+@@ -0,0 +1,167 @@
++import Foundation
++import TelegramCore
++import TelegramPresentationData
++import TelegramStringFormatting
++
++// Subscriber Globe: followers of a channel by country, shown on a globe in channel statistics.
++// See docs/subscriber-globe/README.md.
++//
++// Telegram's statistics do not report countries (`stats.broadcastStats` has languages only), so the
++// screen shows a demo distribution, marked as such, until the server sends one. The model is the
++// shape a server aggregate would have: a count per country, never individual followers.
++
++/// One country of a channel's audience.
++struct ChannelStatsCountry: Equatable {
++    /// ISO 3166-1 alpha-2.
++    let code: String
++    let followers: Int
++    /// Where the country's marker sits on the globe.
++    let latitude: Double
++    let longitude: Double
++}
++
++/// A channel's followers by country, most followers first.
++struct ChannelStatsCountries: Equatable {
++    let countries: [ChannelStatsCountry]
++    /// Not the channel's data: a stand-in until the server reports countries.
++    let isDemo: Bool
++
++    var total: Int {
++        return self.countries.reduce(0, { $0 + $1.followers })
++    }
++}
++
++/// Marker positions: each country's capital or largest city.
++private let countryMarkerCoordinates: [String: (Double, Double)] = [
++    "RU": (55.76, 37.62),
++    "UA": (50.45, 30.52),
++    "BY": (53.90, 27.56),
++    "KZ": (43.24, 76.89),
++    "UZ": (41.30, 69.24),
++    "GE": (41.72, 44.79),
++    "AM": (40.18, 44.51),
++    "AZ": (40.41, 49.87),
++    "DE": (52.52, 13.40),
++    "NL": (52.37, 4.90),
++    "PL": (52.23, 21.01),
++    "RS": (44.79, 20.45),
++    "FR": (48.86, 2.35),
++    "ES": (40.42, -3.70),
++    "IT": (41.90, 12.50),
++    "GB": (51.51, -0.13),
++    "TR": (41.01, 28.98),
++    "CY": (34.68, 33.04),
++    "IL": (32.09, 34.78),
++    "AE": (25.20, 55.27),
++    "IN": (28.61, 77.21),
++    "TH": (13.76, 100.50),
++    "ID": (-6.21, 106.85),
++    "US": (40.71, -74.01),
++    "CA": (43.65, -79.38),
++    "BR": (-23.55, -46.63)
++]
++
++extension ChannelStatsCountries {
++    /// A plausible spread of `followers` over a handful of countries, the same for the same channel
++    /// every time. Only for showing the feature: the screen labels it Demo.
++    static func demo(peerId: EnginePeer.Id, followers: Int) -> ChannelStatsCountries {
++        var random = SplitMix64(seed: UInt64(bitPattern: peerId.toInt64()))
++
++        var pool = countryMarkerCoordinates.keys.sorted()
++        for i in stride(from: pool.count - 1, to: 0, by: -1) {
++            pool.swapAt(i, Int(random.next() % UInt64(i + 1)))
++        }
++        let codes = Array(pool.prefix(8))
++
++        // One country dominates, the rest fall off, as audiences usually do.
++        var weights: [Double] = []
++        var weight = 1.0
++        for _ in codes {
++            weights.append(weight * (0.75 + Double(random.next() % 1000) / 2000.0))
++            weight *= 0.55
++        }
++
++        let total = max(followers, 1)
++        let sum = weights.reduce(0.0, +)
++        var counts = weights.map { Int((Double(total) * $0 / sum).rounded(.down)) }
++        // Hand out what rounding left, largest remainders first.
++        let remainders = weights.enumerated().map { ($0.offset, Double(total) * $0.element / sum - Double(counts[$0.offset])) }.sorted(by: { $0.1 > $1.1 })
++        var left = total - counts.reduce(0, +)
++        for (index, _) in remainders where left > 0 {
++            counts[index] += 1
++            left -= 1
++        }
++
++        var countries: [ChannelStatsCountry] = []
++        for (index, code) in codes.enumerated() where counts[index] > 0 {
++            guard let coordinate = countryMarkerCoordinates[code] else {
++                continue
++            }
++            countries.append(ChannelStatsCountry(code: code, followers: counts[index], latitude: coordinate.0, longitude: coordinate.1))
++        }
++        countries.sort(by: { $0.followers > $1.followers })
++        return ChannelStatsCountries(countries: countries, isDemo: true)
++    }
++
++    /// The countries as a statistics graph, in the JSON the server sends for the languages graph,
++    /// so Telegram's own pie chart and legend draw them (`StatsGraphItem`, `.pie`).
++    func graph(strings: PresentationStrings, period: StatsDateRange) -> StatsGraph {
++        let locale = localeWithStrings(strings)
++        // A fixed palette for the demo; with real data the server sends the colours, as it does for
++        // the languages graph.
++        let colors = ["#3497ED", "#2373DB", "#9ED448", "#5FB641", "#F5BD25", "#F79E39", "#E65850", "#5E5DB1"]
++
++        // A column per country with the same value every day: the pie shows the shares.
++        let days = 7
++        let maxDate = Double(period.maxDate)
++        var dates: [Any] = ["x"]
++        for day in 0 ..< days {
++            dates.append((maxDate - Double(days - 1 - day) * 86400.0) * 1000.0)
++        }
++        var columns: [[Any]] = [dates]
++        var types: [String: String] = ["x": "x"]
++        var names: [String: String] = [:]
++        var colorMap: [String: String] = [:]
++        for (index, country) in self.countries.enumerated() {
++            let id = "y\(index)"
++            var column: [Any] = [id]
++            for _ in 0 ..< days {
++                column.append(country.followers)
++            }
++            columns.append(column)
++            types[id] = "area"
++            let name = locale.localizedString(forRegionCode: country.code) ?? country.code
++            names[id] = "\(flagEmoji(countryCode: country.code)) \(name)"
++            colorMap[id] = colors[index % colors.count]
++        }
++        let json: [String: Any] = [
++            "columns": columns,
++            "types": types,
++            "names": names,
++            "colors": colorMap,
++            "percentage": true,
++            "stacked": true
++        ]
++        guard let data = try? JSONSerialization.data(withJSONObject: json), let string = String(data: data, encoding: .utf8) else {
++            return .Empty
++        }
++        return .Loaded(token: nil, data: string)
++    }
++}
++
++/// A small seeded generator, so a channel's demo data does not change between visits.
++private struct SplitMix64 {
++    private var state: UInt64
++
++    init(seed: UInt64) {
++        self.state = seed
++    }
++
++    mutating func next() -> UInt64 {
++        self.state &+= 0x9E3779B97F4A7C15
++        var z = self.state
++        z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
++        z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
++        return z ^ (z >> 31)
++    }
++}
+diff --git a/submodules/StatisticsUI/Sources/StatsGlobeItem.swift b/submodules/StatisticsUI/Sources/StatsGlobeItem.swift
+new file mode 100644
+index 00000000..01af43e9
+--- /dev/null
++++ b/submodules/StatisticsUI/Sources/StatsGlobeItem.swift
+@@ -0,0 +1,290 @@
++import Foundation
++import UIKit
++import MapKit
++import Display
++import AsyncDisplayKit
++import SwiftSignalKit
++import TelegramPresentationData
++import TelegramStringFormatting
++import ItemListUI
++
++// Subscriber Globe: the card with the globe in channel statistics. See docs/subscriber-globe/README.md.
++//
++// The globe is MapKit's satellite map zoomed out, the map Telegram's location screens show in their
++// Satellite mode (`LocationMapNode`, `.satelliteFlyover`): a real globe that turns under the finger,
++// with no texture or renderer of our own. A country is a MapKit marker in the theme's accent
++// colour, carrying the number of followers; markers that overlap merge into one with their sum.
++
++/// The globe card of the "Followers by country" section.
++final class StatsGlobeItem: ListViewItem, ItemListItem {
++    let presentationData: ItemListPresentationData
++    let systemStyle: ItemListSystemStyle
++    let countries: ChannelStatsCountries
++    let sectionId: ItemListSectionId
++
++    init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle, countries: ChannelStatsCountries, sectionId: ItemListSectionId) {
++        self.presentationData = presentationData
++        self.systemStyle = systemStyle
++        self.countries = countries
++        self.sectionId = sectionId
++    }
++
++    func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, neighbors: ListViewItemNeighbors, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
++        async {
++            let node = StatsGlobeItemNode()
++            let (layout, apply) = node.asyncLayout()(self, params, itemListNeighbors(item: self, topFacet: neighbors.previous?.base(ItemListNeighborFacet.self), bottomFacet: neighbors.next?.base(ItemListNeighborFacet.self)))
++
++            node.contentSize = layout.contentSize
++            node.insets = layout.insets
++
++            Queue.mainQueue().async {
++                completion(node, {
++                    return (nil, { _ in apply() })
++                })
++            }
++        }
++    }
++
++    func updateNode(async: @escaping (@escaping () -> Void) -> Void, node: @escaping () -> ListViewItemNode, params: ListViewItemLayoutParams, neighbors: ListViewItemNeighbors, animation: ListViewItemUpdateAnimation, completion: @escaping (ListViewItemNodeLayout, @escaping (ListViewItemApply) -> Void) -> Void) {
++        Queue.mainQueue().async {
++            if let nodeValue = node() as? StatsGlobeItemNode {
++                let makeLayout = nodeValue.asyncLayout()
++                async {
++                    let (layout, apply) = makeLayout(self, params, itemListNeighbors(item: self, topFacet: neighbors.previous?.base(ItemListNeighborFacet.self), bottomFacet: neighbors.next?.base(ItemListNeighborFacet.self)))
++                    Queue.mainQueue().async {
++                        completion(layout, { _ in
++                            apply()
++                        })
++                    }
++                }
++            }
++        }
++    }
++
++    var selectable: Bool = false
++}
++
++/// A country on the globe.
++private final class CountryAnnotation: NSObject, MKAnnotation {
++    let code: String
++    let followers: Int
++    let coordinate: CLLocationCoordinate2D
++    let title: String?
++
++    init(country: ChannelStatsCountry, title: String) {
++        self.code = country.code
++        self.followers = country.followers
++        self.coordinate = CLLocationCoordinate2D(latitude: country.latitude, longitude: country.longitude)
++        self.title = title
++    }
++}
++
++private let countryReuseIdentifier = "country"
++private let clusterReuseIdentifier = "countryCluster"
++private let countryClusteringIdentifier = "countries"
++
++/// MapKit calls back into an `NSObject`; the node stays a plain node, as `LocationMapNode` does.
++private final class GlobeMapDelegate: NSObject, MKMapViewDelegate {
++    var accentColor: UIColor = .systemBlue
++
++    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
++        if let cluster = annotation as? MKClusterAnnotation {
++            let view = (mapView.dequeueReusableAnnotationView(withIdentifier: clusterReuseIdentifier) as? MKMarkerAnnotationView) ?? MKMarkerAnnotationView(annotation: cluster, reuseIdentifier: clusterReuseIdentifier)
++            view.annotation = cluster
++            let followers = cluster.memberAnnotations.reduce(0, { $0 + (($1 as? CountryAnnotation)?.followers ?? 0) })
++            view.glyphText = compactNumericCountString(followers)
++            view.markerTintColor = self.accentColor
++            view.titleVisibility = .hidden
++            view.subtitleVisibility = .hidden
++            view.canShowCallout = false
++            return view
++        }
++        guard let country = annotation as? CountryAnnotation else {
++            return nil
++        }
++        let view = (mapView.dequeueReusableAnnotationView(withIdentifier: countryReuseIdentifier) as? MKMarkerAnnotationView) ?? MKMarkerAnnotationView(annotation: country, reuseIdentifier: countryReuseIdentifier)
++        view.annotation = country
++        view.glyphText = compactNumericCountString(country.followers)
++        view.markerTintColor = self.accentColor
++        view.titleVisibility = .adaptive
++        view.subtitleVisibility = .hidden
++        view.canShowCallout = false
++        view.clusteringIdentifier = countryClusteringIdentifier
++        // The biggest audiences stay visible when markers crowd.
++        view.displayPriority = MKFeatureDisplayPriority(rawValue: min(1000.0, 500.0 + Float(country.followers)))
++        return view
++    }
++
++    func mapView(_ mapView: MKMapView, clusterAnnotationForMemberAnnotations memberAnnotations: [MKAnnotation]) -> MKClusterAnnotation {
++        let cluster = MKClusterAnnotation(memberAnnotations: memberAnnotations)
++        cluster.title = nil
++        cluster.subtitle = nil
++        return cluster
++    }
++}
++
++final class StatsGlobeItemNode: ListViewItemNode {
++    private let backgroundNode: ASDisplayNode
++    private let topStripeNode: ASDisplayNode
++    private let bottomStripeNode: ASDisplayNode
++    private let maskNode: ASImageNode
++    private let mapNode: ASDisplayNode
++    private let mapDelegate = GlobeMapDelegate()
++
++    private var item: StatsGlobeItem?
++    private var shownCountries: ChannelStatsCountries?
++    private var isMapConfigured = false
++
++    init() {
++        self.backgroundNode = ASDisplayNode()
++        self.backgroundNode.isLayerBacked = true
++
++        self.topStripeNode = ASDisplayNode()
++        self.topStripeNode.isLayerBacked = true
++
++        self.bottomStripeNode = ASDisplayNode()
++        self.bottomStripeNode.isLayerBacked = true
++
++        self.maskNode = ASImageNode()
++        self.maskNode.isUserInteractionEnabled = false
++
++        self.mapNode = ASDisplayNode()
++        self.mapNode.setViewBlock({
++            return MKMapView()
++        })
++
++        super.init(layerBacked: false)
++
++        self.addSubnode(self.backgroundNode)
++        self.addSubnode(self.mapNode)
++        self.addSubnode(self.topStripeNode)
++        self.addSubnode(self.bottomStripeNode)
++        self.addSubnode(self.maskNode)
++    }
++
++    /// The map, set up on first use: the first layout can be applied before the node has loaded.
++    private func configuredMapView() -> MKMapView? {
++        guard let mapView = self.mapNode.view as? MKMapView else {
++            return nil
++        }
++        if self.isMapConfigured {
++            return mapView
++        }
++        self.isMapConfigured = true
++        // As on the location screens: the map takes horizontal drags except at the left edge,
++        // where the back swipe stays.
++        mapView.interactiveTransitionGestureRecognizerTest = { point in
++            return point.x > 44.0
++        }
++        mapView.delegate = self.mapDelegate
++        mapView.mapType = .satelliteFlyover
++        mapView.pointOfInterestFilter = .excludingAll
++        mapView.showsCompass = false
++        mapView.showsScale = false
++        mapView.isPitchEnabled = false
++        mapView.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: countryReuseIdentifier)
++        mapView.register(MKMarkerAnnotationView.self, forAnnotationViewWithReuseIdentifier: clusterReuseIdentifier)
++        // From the whole globe down to a region; never to street level.
++        mapView.setCameraZoomRange(MKMapView.CameraZoomRange(minCenterCoordinateDistance: 1_500_000.0, maxCenterCoordinateDistance: 40_000_000.0), animated: false)
++        return mapView
++    }
++
++    func asyncLayout() -> (_ item: StatsGlobeItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
++        let currentItem = self.item
++
++        return { [weak self] item, params, neighbors in
++            let leftInset = params.leftInset
++            let rightInset = params.rightInset
++            let separatorHeight = UIScreenPixel
++
++            let updatedTheme = currentItem?.presentationData.theme !== item.presentationData.theme
++            let itemBackgroundColor = item.presentationData.theme.list.itemBlocksBackgroundColor
++            let itemSeparatorColor = item.presentationData.theme.list.itemBlocksSeparatorColor
++
++            let contentSize = CGSize(width: params.width, height: 340.0)
++            let insets = itemListNeighborsGroupedInsets(neighbors, params)
++            let layout = ListViewItemNodeLayout(contentSize: contentSize, insets: insets)
++
++            return (layout, { [weak self] in
++                guard let self else {
++                    return
++                }
++                self.item = item
++
++                if updatedTheme {
++                    self.topStripeNode.backgroundColor = itemSeparatorColor
++                    self.bottomStripeNode.backgroundColor = itemSeparatorColor
++                    self.backgroundNode.backgroundColor = itemBackgroundColor
++                    self.mapDelegate.accentColor = item.presentationData.theme.list.itemAccentColor
++                    self.configuredMapView()?.overrideUserInterfaceStyle = item.presentationData.theme.overallDarkAppearance ? .dark : .light
++                }
++
++                let hasCorners = itemListHasRoundedBlockLayout(params)
++                var hasTopCorners = false
++                var hasBottomCorners = false
++                switch neighbors.top {
++                case .sameSection(false):
++                    self.topStripeNode.isHidden = true
++                default:
++                    hasTopCorners = true
++                    self.topStripeNode.isHidden = hasCorners
++                }
++                let bottomStripeInset: CGFloat
++                switch neighbors.bottom {
++                case .sameSection(false):
++                    bottomStripeInset = leftInset
++                    self.bottomStripeNode.isHidden = false
++                default:
++                    bottomStripeInset = 0.0
++                    hasBottomCorners = true
++                    self.bottomStripeNode.isHidden = hasCorners
++                }
++
++                self.maskNode.image = hasCorners ? PresentationResourcesItemList.cornersImage(item.presentationData.theme, top: hasTopCorners, bottom: hasBottomCorners, glass: item.systemStyle == .glass) : nil
++                self.backgroundNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
++                self.maskNode.frame = self.backgroundNode.frame.inset(by: UIEdgeInsets(top: 0.0, left: leftInset, bottom: 0.0, right: rightInset))
++                self.mapNode.frame = CGRect(origin: CGPoint(x: leftInset, y: 0.0), size: CGSize(width: params.width - leftInset - rightInset, height: contentSize.height))
++                self.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: separatorHeight))
++                self.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height - separatorHeight), size: CGSize(width: params.width - bottomStripeInset, height: separatorHeight))
++
++                // Markers take the accent colour when they are created: a new theme recreates them.
++                if self.shownCountries != item.countries || updatedTheme {
++                    self.shownCountries = item.countries
++                    self.updateAnnotations(countries: item.countries, strings: item.presentationData.strings)
++                }
++            })
++        }
++    }
++
++    private func updateAnnotations(countries: ChannelStatsCountries, strings: PresentationStrings) {
++        guard let mapView = self.configuredMapView() else {
++            return
++        }
++        mapView.removeAnnotations(mapView.annotations)
++
++        let locale = localeWithStrings(strings)
++        let annotations = countries.countries.map { country -> CountryAnnotation in
++            let name = locale.localizedString(forRegionCode: country.code) ?? country.code
++            return CountryAnnotation(country: country, title: "\(flagEmoji(countryCode: country.code)) \(name)")
++        }
++        mapView.addAnnotations(annotations)
++
++        // The globe opens over the largest audience, whole and upright.
++        if let top = countries.countries.first {
++            let center = CLLocationCoordinate2D(latitude: max(-50.0, min(50.0, top.latitude)), longitude: top.longitude)
++            mapView.setCamera(MKMapCamera(lookingAtCenter: center, fromDistance: 25_000_000.0, pitch: 0.0, heading: 0.0), animated: false)
++        }
++    }
++
++    override func animateInsertion(_ currentTimestamp: Double, duration: Double, options: ListViewItemAnimationOptions) {
++        self.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.4)
++    }
++
++    override func animateAdded(_ currentTimestamp: Double, duration: Double) {
++        self.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.2)
++    }
++
++    override func animateRemoved(_ currentTimestamp: Double, duration: Double) {
++        self.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
++    }
++}
