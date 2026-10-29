@@ -36,6 +36,9 @@ struct ChannelStatsCountries: Equatable {
     let countries: [ChannelStatsCountry]
     /// Estimated from languages rather than reported by the server.
     let isEstimate: Bool
+    /// The countries day by day, as a statistics graph in the languages graph's own JSON, so the
+    /// pie chart behaves exactly as the Languages one: same days, range slider, legend and details.
+    let graph: StatsGraph
 
     var total: Int {
         return self.countries.reduce(0, { $0 + $1.followers })
@@ -256,11 +259,12 @@ private func languageCode(forColumnName name: String) -> String? {
 }
 
 extension ChannelStatsCountries {
-    /// The channel's followers by country, estimated from its languages graph: each language's
-    /// latest share of followers is shared out over the countries where it is spoken. Languages the
-    /// table does not know are left out. Nil until the languages graph has loaded.
-    static func estimated(fromLanguagesGraph graph: StatsGraph, followers: Int) -> ChannelStatsCountries? {
-        guard case let .Loaded(_, data) = graph, followers > 0 else {
+    /// The channel's followers by country, estimated from its languages graph: every day of it,
+    /// each language's followers are shared out over the countries where it is spoken. The counts
+    /// are scaled so the last day adds up to the channel's follower count. Languages the table does
+    /// not know are left out. Nil until the languages graph has loaded.
+    static func estimated(fromLanguagesGraph languagesGraph: StatsGraph, followers: Int, strings: PresentationStrings) -> ChannelStatsCountries? {
+        guard case let .Loaded(_, data) = languagesGraph, followers > 0 else {
             return nil
         }
         guard let jsonData = data.data(using: .utf8), let json = (try? JSONSerialization.jsonObject(with: jsonData)) as? [String: Any] else {
@@ -272,51 +276,63 @@ extension ChannelStatsCountries {
         let types = json["types"] as? [String: String] ?? [:]
         let languageColors = json["colors"] as? [String: String] ?? [:]
 
-        // The latest value of every language, the graph's last day, with its colour in the chart.
-        var languageValues: [(code: String?, value: Double, color: String?)] = []
+        // The days, as the languages graph has them, and every language's value on each day.
+        var dates: [Any]?
+        var languages: [(code: String?, values: [Double], color: String?)] = []
         for column in columns {
-            guard let id = column.first as? String, id != "x", types[id] != "x" else {
+            guard let id = column.first as? String else {
                 continue
             }
-            guard let last = column.last as? NSNumber, column.count > 1 else {
+            if id == "x" || types[id] == "x" {
+                dates = Array(column.dropFirst())
                 continue
             }
-            let value = last.doubleValue
-            if value <= 0.0 {
+            let values = column.dropFirst().map { ($0 as? NSNumber)?.doubleValue ?? 0.0 }
+            if values.isEmpty {
                 continue
             }
-            languageValues.append((names[id].flatMap(languageCode(forColumnName:)), value, languageColors[id]))
+            languages.append((names[id].flatMap(languageCode(forColumnName:)), values, languageColors[id]))
         }
-        let languagesTotal = languageValues.reduce(0.0, { $0 + $1.value })
-        if languagesTotal <= 0.0 {
+        guard let dates, !dates.isEmpty else {
             return nil
         }
+        let dayCount = dates.count
+        let lastTotal = languages.reduce(0.0, { $0 + ($1.values.count == dayCount ? $1.values[dayCount - 1] : 0.0) })
+        if lastTotal <= 0.0 {
+            return nil
+        }
+        let scale = Double(followers) / lastTotal
 
-        var estimates: [String: Double] = [:]
-        // The language that brings each country the most followers, and that language's colour.
+        var daily: [String: [Double]] = [:]
+        // The language that brings each country the most followers on the last day, and its colour.
         var mainLanguage: [String: (followers: Double, color: String?)] = [:]
-        for (code, value, color) in languageValues {
-            guard let code, let shares = languageCountryShares[code] else {
+        for language in languages where language.values.count == dayCount {
+            guard let code = language.code, let shares = languageCountryShares[code] else {
                 continue
             }
-            let languageFollowers = Double(followers) * value / languagesTotal
             for (country, share) in shares {
-                let countryFollowers = languageFollowers * share
-                estimates[country, default: 0.0] += countryFollowers
-                if countryFollowers > (mainLanguage[country]?.followers ?? 0.0) {
-                    mainLanguage[country] = (countryFollowers, color)
+                var values = daily[country] ?? Array(repeating: 0.0, count: dayCount)
+                for day in 0 ..< dayCount {
+                    values[day] += language.values[day] * share * scale
+                }
+                daily[country] = values
+                let lastDay = language.values[dayCount - 1] * share * scale
+                if lastDay > (mainLanguage[country]?.followers ?? 0.0) {
+                    mainLanguage[country] = (lastDay, language.color)
                 }
             }
         }
 
-        // The largest countries, enough to read on a globe. Each takes the colour its main
-        // language has in the Languages chart, so Russia is the colour of Russian; a country whose
-        // language's colour a larger one already took gets the next colour statistics graphs use.
+        // The largest countries on the last day, enough to read on a globe. Each takes the colour
+        // its main language has in the Languages chart, so Russia is the colour of Russian; a
+        // country whose language's colour a larger one already took gets the next colour statistics
+        // graphs use.
         var countries: [ChannelStatsCountry] = []
+        var countryDaily: [[Int]] = []
         var usedColors = Set<String>()
         var spareColors = statisticsGraphColors.makeIterator()
-        for (code, estimate) in estimates.sorted(by: { $0.value > $1.value }).prefix(10) {
-            let count = Int(estimate.rounded())
+        for (code, values) in daily.sorted(by: { $0.value[dayCount - 1] > $1.value[dayCount - 1] }).prefix(10) {
+            let count = Int(values[dayCount - 1].rounded())
             guard count > 0, let coordinate = countryMarkerCoordinates[code] else {
                 continue
             }
@@ -332,52 +348,43 @@ extension ChannelStatsCountries {
             let resolvedColor = color ?? statisticsGraphColors[countries.count % statisticsGraphColors.count]
             usedColors.insert(colorKey(resolvedColor))
             countries.append(ChannelStatsCountry(code: code, followers: count, latitude: coordinate.0, longitude: coordinate.1, color: resolvedColor))
+            countryDaily.append(values.map { Int($0.rounded()) })
         }
         if countries.isEmpty {
             return nil
         }
-        return ChannelStatsCountries(countries: countries, isEstimate: true)
-    }
 
-    /// The countries as a statistics graph, in the JSON the server sends for the languages graph,
-    /// so Telegram's own pie chart and legend draw them (`StatsGraphItem`, `.pie`).
-    func graph(strings: PresentationStrings, period: StatsDateRange) -> StatsGraph {
+        // The graph: the languages graph's JSON with the countries in place of the languages, so
+        // every other setting the server sent (percentage, stacking and the rest) carries over.
         let locale = localeWithStrings(strings)
-
-        // A column per country with the same value every day: the pie shows the shares.
-        let days = 7
-        let maxDate = Double(period.maxDate)
-        var dates: [Any] = ["x"]
-        for day in 0 ..< days {
-            dates.append((maxDate - Double(days - 1 - day) * 86400.0) * 1000.0)
-        }
-        var columns: [[Any]] = [dates]
-        var types: [String: String] = ["x": "x"]
-        var names: [String: String] = [:]
-        var colorMap: [String: String] = [:]
-        for (index, country) in self.countries.enumerated() {
+        var xColumn: [Any] = ["x"]
+        xColumn.append(contentsOf: dates)
+        var graphColumns: [[Any]] = [xColumn]
+        var graphTypes: [String: String] = ["x": "x"]
+        var graphNames: [String: String] = [:]
+        var graphColors: [String: String] = [:]
+        let areaType = types.first(where: { $0.key != "x" && $0.value != "x" })?.value ?? "area"
+        for (index, country) in countries.enumerated() {
             let id = "y\(index)"
             var column: [Any] = [id]
-            for _ in 0 ..< days {
-                column.append(country.followers)
-            }
-            columns.append(column)
-            types[id] = "area"
-            names[id] = locale.localizedString(forRegionCode: country.code) ?? country.code
-            colorMap[id] = country.color
+            column.append(contentsOf: countryDaily[index].map { $0 as Any })
+            graphColumns.append(column)
+            graphTypes[id] = areaType
+            graphNames[id] = locale.localizedString(forRegionCode: country.code) ?? country.code
+            graphColors[id] = country.color
         }
-        let json: [String: Any] = [
-            "columns": columns,
-            "types": types,
-            "names": names,
-            "colors": colorMap,
-            "percentage": true,
-            "stacked": true
-        ]
+        var graphJson = json
+        graphJson["columns"] = graphColumns
+        graphJson["types"] = graphTypes
+        graphJson["names"] = graphNames
+        graphJson["colors"] = graphColors
+        let graph: StatsGraph
         // Sorted keys: the same countries always give the same string, so the chart is not rebuilt.
-        guard let data = try? JSONSerialization.data(withJSONObject: json, options: [.sortedKeys]), let string = String(data: data, encoding: .utf8) else {
-            return .Empty
+        if let graphData = try? JSONSerialization.data(withJSONObject: graphJson, options: [.sortedKeys]), let string = String(data: graphData, encoding: .utf8) {
+            graph = .Loaded(token: nil, data: string)
+        } else {
+            graph = .Empty
         }
-        return .Loaded(token: nil, data: string)
+        return ChannelStatsCountries(countries: countries, isEstimate: true, graph: graph)
     }
 }

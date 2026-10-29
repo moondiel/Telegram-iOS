@@ -209,3 +209,13 @@ this order: the four sides and then the four corners with its name; the same eig
 short form, the colour dot and the share ("3%"); and only then the same again allowed to cover
 another country's marker, never another label and never past the card. Its current place and form
 are tried first so it does not hop, and it glides when it moves.
+
+**D-032. The countries chart behaves exactly as the Languages chart. (moondiel)** It used to be
+seven equal days, so its range slider moved nothing. The estimate now runs on every day of the
+languages graph, scaled so the last day adds up to the follower count, and the countries' graph is
+the languages graph's own JSON with the countries in place of the languages: the same days, the
+same settings the server sent (percentage, stacking and any others), the same column type. The
+chart is set up as the Languages card sets its own (`.pie`, initial zoom, no details loader), and
+scrolling the list closes its details as it closes every statistics chart's. So the range slider,
+the legend's toggles, the details on a tap and the zoom all work as they do for Languages, and the
+shares move with the selected days.

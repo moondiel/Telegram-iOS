@@ -148,6 +148,11 @@ final class StatsCountriesItemNode: ListViewItemNode {
         }
     }
 
+    /// As the chart card does: scrolling the list closes the chart's details.
+    func resetInteraction() {
+        self.chartNode.resetInteraction()
+    }
+
     func asyncLayout() -> (_ item: StatsCountriesItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, (Bool) -> Void) {
         let currentItem = self.item
         let currentVisibilityHeight = self.visibilityHeight
@@ -160,8 +165,9 @@ final class StatsCountriesItemNode: ListViewItemNode {
             let updatedTheme = currentItem?.presentationData.theme !== item.presentationData.theme
             var updatedController: BaseChartController?
             if currentItem?.graph != item.graph, case let .Loaded(_, data) = item.graph {
-                updatedController = createChartController(data, type: .pie, getDetailsData: { _, completion in
-                    completion(nil)
+                // Set up exactly as the Languages card (`StatsGraphItem`, `.pie`, no details loader:
+                // a request for a day's details is left unanswered, as there).
+                updatedController = createChartController(data, type: .pie, getDetailsData: { _, _ in
                 })
             }
 

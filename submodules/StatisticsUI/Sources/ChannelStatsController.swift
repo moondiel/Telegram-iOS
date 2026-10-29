@@ -1434,10 +1434,10 @@ private func statsEntries(
     
     // Subscriber Globe: followers by country, estimated from the languages graph until the server
     // reports countries. One card holding the pie chart and the globe, switched by the tabs above it.
-    if let countries = ChannelStatsCountries.estimated(fromLanguagesGraph: data.languagesGraph, followers: Int(data.followers.current)) {
+    if let countries = ChannelStatsCountries.estimated(fromLanguagesGraph: data.languagesGraph, followers: Int(data.followers.current), strings: presentationData.strings) {
         entries.append(.countriesTitle(presentationData.theme, presentationData.strings.ChannelStats_Countries_Title))
         entries.append(.countriesTabs(presentationData.theme, presentationData.strings.ChannelStats_Countries_TabChart, presentationData.strings.ChannelStats_Countries_TabGlobe, countriesShowGlobe))
-        entries.append(.countriesCard(presentationData.theme, presentationData.strings, countries, countries.graph(strings: presentationData.strings, period: data.period), countriesShowGlobe))
+        entries.append(.countriesCard(presentationData.theme, presentationData.strings, countries, countries.graph, countriesShowGlobe))
         entries.append(.countriesInfo(presentationData.theme, presentationData.strings.ChannelStats_Countries_EstimateInfo))
     }
     
@@ -2384,6 +2384,8 @@ public func channelStatsController(
     controller.contentOffsetChanged = { [weak controller] _, _ in
         controller?.forEachItemNode({ itemNode in
             if let itemNode = itemNode as? StatsGraphItemNode {
+                itemNode.resetInteraction()
+            } else if let itemNode = itemNode as? StatsCountriesItemNode {
                 itemNode.resetInteraction()
             }
         })

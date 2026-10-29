@@ -17,7 +17,8 @@ replaces one function.
    from it.
 2. The card opens with Telegram's statistics tabs, **Chart** and **Globe**, the same tabs item
    (`BoostsTabsItem`) that switches Boosts / Gifts and TON / Stars. **Chart** shows a pie chart
-   with a legend of every country in its colour, the same chart and legend as **Languages**. A
+   with a legend of every country in its colour, the same chart and legend as **Languages**,
+   behaving as it does: the same days and range slider, legend toggles and details on a tap. A
    country takes the colour its main language has in the Languages chart (Russia that of Russian);
    when that colour is taken, the next of the colours statistics graphs use.
 3. **Globe** switches the same card to the globe. The two are pages side by side inside the
@@ -91,7 +92,7 @@ Statistics are only available for channels with enough followers; the server dec
 **Limited**
 
 - **The countries are an estimate.** They start from real numbers: the channel's follower count
-  and the latest day of its languages graph. Each language's followers are then shared out over
+  and every day of its languages graph. Each language's followers are then shared out over
   the countries where Telegram users speak it, from a table of rough shares in
   `ChannelStatsCountries.swift` (Russian: 70% Russia, 7% Ukraine, 7% Kazakhstan…; English spread
   over India, the US, Nigeria, the UK and others). So a Russian speaker in Dubai counts towards
@@ -107,7 +108,6 @@ Statistics are only available for channels with enough followers; the server dec
 
 - The globe has not been run on a device yet: its frame rate on older iPhones, and how the card's
   sideways drag shares the screen with the back swipe.
-- How the pie chart's zoom slider behaves with the estimate's flat daily columns (seven equal days).
 - How the server names the languages graph's columns. The estimate matches English names
   ("Russian") and ISO codes ("ru"); if the names come localized, languages would not be matched
   and the section would not appear.
