@@ -9,7 +9,7 @@ import ItemListUI
 // Subscriber Globe: the globe card in channel statistics. See docs/subscriber-globe/README.md.
 //
 // The "Followers by country" card shows either Telegram's pie chart or this globe, switched from
-// the section header. The globe turns under a sideways drag and opens fullscreen on a tap.
+// the section header. The globe turns under a sideways drag and opens in a sheet on a tap.
 
 /// The globe card of the "Followers by country" section.
 final class StatsGlobeItem: ListViewItem, ItemListItem {
@@ -161,7 +161,7 @@ final class StatsGlobeItemNode: ListViewItemNode {
                     globeView.updateColors(colors)
                 } else {
                     self.globeView?.removeFromSuperview()
-                    globeView = StatsGlobeView(countries: item.countries, colors: colors, strings: item.presentationData.strings, isFullscreen: false)
+                    globeView = StatsGlobeView(countries: item.countries, colors: colors, strings: item.presentationData.strings, isExpanded: false)
                     self.globeView = globeView
                     // Over the background and stripes, which are layers, under the icon and corners.
                     self.view.insertSubview(globeView, belowSubview: self.expandIconNode.view)

@@ -17,7 +17,7 @@ import TelegramStringFormatting
 
 /// The colours of the globe, from the theme.
 struct StatsGlobeColors: Equatable {
-    /// What the globe sits on: the card's colour, which the fullscreen globe keeps.
+    /// What the globe sits on, so its edge can fade into it.
     let background: UIColor
     let sea: UIColor
     let land: UIColor
@@ -26,8 +26,9 @@ struct StatsGlobeColors: Equatable {
     let labelText: UIColor
     let labelSecondaryText: UIColor
 
-    init(theme: PresentationTheme) {
-        let background = theme.list.itemBlocksBackgroundColor
+    /// `background` is what the globe sits on: the statistics card by default, or the sheet.
+    init(theme: PresentationTheme, background: UIColor? = nil) {
+        let background = background ?? theme.list.itemBlocksBackgroundColor
         let accent = theme.list.itemAccentColor
         self.background = background
         self.accent = accent
@@ -107,7 +108,7 @@ private func flatMaterial(color: UIColor) -> SCNMaterial {
     return material
 }
 
-/// A country's label: its flag and followers, and in fullscreen its name.
+/// A country's label: its flag and followers, and in the sheet its name.
 private final class GlobeLabelView: UIView {
     let label: UILabel
     /// Whether the label has room, eased so labels do not pop when they start to overlap.
@@ -150,15 +151,15 @@ private final class GlobeLabelView: UIView {
     }
 }
 
-/// The globe: drag to turn it, and in fullscreen pinch or double-tap to zoom.
+/// The globe: drag to turn it, and in the sheet pinch or double-tap to zoom.
 final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     let countries: ChannelStatsCountries
     private(set) var colors: StatsGlobeColors
-    /// Fullscreen: labels carry the country's name, the globe zooms, and drags go any way. In the
+    /// In the sheet: labels carry the country's name, the globe zooms, and drags go any way. In the
     /// card the globe only takes horizontal drags, so the list still scrolls over it.
-    let isFullscreen: Bool
+    let isExpanded: Bool
 
-    /// Called on a tap; the card opens the fullscreen globe.
+    /// Called on a tap; the card opens the globe sheet.
     var tapped: (() -> Void)?
 
     private let glowLayer: CAGradientLayer
@@ -196,13 +197,14 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     private var spinFactor: CGFloat = 1.0
     private var zoomAtPinchStart: CGFloat = 1.0
     private var zoomAnimation: (from: CGFloat, to: CGFloat, start: Double)?
+    private var turnAnimation: (from: StatsGlobeOrientation, to: StatsGlobeOrientation, start: Double)?
 
     private var displayLink: SharedDisplayLinkDriver.Link?
 
-    init(countries: ChannelStatsCountries, colors: StatsGlobeColors, strings: PresentationStrings, isFullscreen: Bool, orientation: StatsGlobeOrientation? = nil) {
+    init(countries: ChannelStatsCountries, colors: StatsGlobeColors, strings: PresentationStrings, isExpanded: Bool, orientation: StatsGlobeOrientation? = nil) {
         self.countries = countries
         self.colors = colors
-        self.isFullscreen = isFullscreen
+        self.isExpanded = isExpanded
 
         // The globe opens over the largest audience.
         if let orientation {
@@ -262,7 +264,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
 
         super.init(frame: CGRect())
 
-        self.clipsToBounds = !isFullscreen
+        self.clipsToBounds = true
         self.layer.addSublayer(self.glowLayer)
         self.addSubview(self.sceneView)
         self.layer.addSublayer(self.shadeLayer)
@@ -276,7 +278,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         self.addGestureRecognizer(pan)
         let tap = UITapGestureRecognizer(target: self, action: #selector(self.tapGesture(_:)))
         self.addGestureRecognizer(tap)
-        if isFullscreen {
+        if isExpanded {
             let pinch = UIPinchGestureRecognizer(target: self, action: #selector(self.pinchGesture(_:)))
             self.addGestureRecognizer(pinch)
             let doubleTap = UITapGestureRecognizer(target: self, action: #selector(self.doubleTapGesture(_:)))
@@ -337,7 +339,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
             self.markerNodes.append(marker)
 
             let labelView = GlobeLabelView()
-            let name: String? = self.isFullscreen ? (locale.localizedString(forRegionCode: country.code) ?? country.code) : nil
+            let name: String? = self.isExpanded ? (locale.localizedString(forRegionCode: country.code) ?? country.code) : nil
             let _ = labelView.update(country: country, name: name, colors: self.colors)
             labelView.alpha = 0.0
             self.labelNames.append(name)
@@ -486,7 +488,18 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
             }
         }
 
-        if !self.isTracking {
+        if let turnAnimation = self.turnAnimation {
+            let t = min(1.0, CGFloat((now - turnAnimation.start) / 0.6))
+            let eased = t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0
+            self.orientation = StatsGlobeOrientation(
+                latitude: turnAnimation.from.latitude + (turnAnimation.to.latitude - turnAnimation.from.latitude) * eased,
+                longitude: turnAnimation.from.longitude + (turnAnimation.to.longitude - turnAnimation.from.longitude) * eased
+            )
+            if t >= 1.0 {
+                self.turnAnimation = nil
+            }
+            self.noteInteraction()
+        } else if !self.isTracking {
             // Coasting after a flick.
             if abs(self.velocity.x) > 0.001 || abs(self.velocity.y) > 0.001 {
                 self.orientation.longitude += self.velocity.x * deltaTime
@@ -511,6 +524,20 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         self.updateGeometry()
     }
 
+    /// Turns the globe, by the shorter way round, so a country faces the viewer.
+    func focus(on country: ChannelStatsCountry) {
+        let latitude = max(-maxLatitude, min(maxLatitude, CGFloat(country.latitude * Double.pi / 180.0) - 0.1))
+        var longitude = CGFloat(country.longitude * Double.pi / 180.0)
+        while longitude - self.orientation.longitude > CGFloat.pi {
+            longitude -= 2.0 * CGFloat.pi
+        }
+        while longitude - self.orientation.longitude < -CGFloat.pi {
+            longitude += 2.0 * CGFloat.pi
+        }
+        self.velocity = CGPoint()
+        self.turnAnimation = (self.orientation, StatsGlobeOrientation(latitude: latitude, longitude: longitude), CACurrentMediaTime())
+    }
+
     private func noteInteraction() {
         self.lastInteraction = CACurrentMediaTime()
         self.spinFactor = 0.0
@@ -522,6 +549,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         switch recognizer.state {
         case .began:
             self.isTracking = true
+            self.turnAnimation = nil
             self.velocity = CGPoint()
             self.noteInteraction()
         case .changed:
@@ -574,19 +602,17 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
-    /// Zooms in or out by animation, as the fullscreen globe does while it opens and closes.
-    func setZoom(_ zoom: CGFloat, animated: Bool) {
-        if animated {
-            self.zoomAnimation = (self.zoom, zoom, CACurrentMediaTime())
-        } else {
-            self.zoomAnimation = nil
-            self.zoom = zoom
-            self.setNeedsLayout()
-        }
-    }
-
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        if !self.isFullscreen, let pan = gestureRecognizer as? UIPanGestureRecognizer {
+        guard let pan = gestureRecognizer as? UIPanGestureRecognizer else {
+            return true
+        }
+        if pan.view !== self {
+            // UIKit also asks the touched view about its ancestors' drags, as UISlider uses it. In
+            // the sheet a drag that starts on the globe turns it rather than dragging the sheet down;
+            // in the card the list's scroll stays as it is.
+            return !self.isExpanded
+        }
+        if !self.isExpanded {
             // In the card only sideways drags turn the globe; the rest scroll the list.
             let velocity = pan.velocity(in: self)
             return abs(velocity.x) > abs(velocity.y) * 1.2
@@ -595,6 +621,6 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        return self.isFullscreen && otherGestureRecognizer is UIPinchGestureRecognizer
+        return self.isExpanded && otherGestureRecognizer is UIPinchGestureRecognizer
     }
 }

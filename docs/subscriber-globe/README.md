@@ -2,8 +2,8 @@
 
 Subscriber Globe adds a **Followers by country** card to a channel's statistics. The card shows a
 pie chart of the countries or, switched from the section header, a dotted globe in the theme's
-colours with a marker per country carrying its number of followers. A tap opens the globe
-fullscreen.
+colours with a marker per country carrying its number of followers. A tap opens the globe in a
+sheet.
 
 Telegram's statistics do not report countries yet: `stats.broadcastStats` breaks followers down
 by language only. The section therefore shows a demo distribution, labelled **DEMO** in the
@@ -22,9 +22,11 @@ in [api.md](api.md). The client is built so that real data only replaces one fun
    carrying its flag and number of followers. When two labels would overlap, the larger audience
    keeps its label. A sideways drag turns the globe and lets it coast; up-and-down drags scroll
    the list.
-5. A tap on the globe dives into it: the globe grows from the card to fill the screen. There the
-   labels also name the country, the globe turns any way and zooms with a pinch or a double tap.
-   **Close** shrinks it back onto the card, which carries on from where it was turned to.
+5. A tap on the globe opens Telegram's glass sheet with a glass close button, as statistics'
+   transaction info does. It holds a large globe at the card's turn, whose labels also name the
+   country, which turns any way and zooms with a pinch or a double tap. Under it is the list of
+   countries with flag, name, share and followers; tapping one turns the globe to it. A drag that
+   starts on the globe turns the globe; anywhere else it pulls the sheet down.
 
 ## Requirements
 
@@ -77,9 +79,9 @@ Statistics are only available for channels with enough followers; the server dec
   the section header with a badge and an action, the glass card, the pie chart.
 - The globe: a sphere with the land as about 3,000 dots, drawn with SceneKit in the theme's
   colours, light or dark. It turns under the finger, coasts, and turns slowly when left alone.
-- Markers sized by share, labels with flags, follower counts and (fullscreen) country names in the
+- Markers sized by share, labels with flags, follower counts and (in the sheet) country names in the
   app's language, and labels that give way to larger audiences.
-- The fullscreen globe and the dive into it and back.
+- The globe sheet with the country list, and turning to a tapped country.
 
 **Limited**
 
@@ -127,15 +129,15 @@ New files:
 | `submodules/StatisticsUI/Sources/StatsGlobeLand.swift` | The land: a grid of dots 2° apart, one bit each (1.7 KB), and its decoder |
 | `submodules/StatisticsUI/Sources/StatsGlobeView.swift` | The globe: SceneKit sphere, land dots, markers and their rings, labels, turning, coasting and zooming |
 | `submodules/StatisticsUI/Sources/StatsGlobeItem.swift` | The globe card: a list item hosting the globe in the statistics list |
-| `submodules/StatisticsUI/Sources/StatsGlobeScreen.swift` | The fullscreen globe and the dive into it from the card and back |
+| `submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift` | The globe sheet: Telegram's glass sheet with a large globe and the country list |
 | `docs/subscriber-globe/*` | This write-up, the decision log and the API proposal |
 
 Changed files:
 
 - `submodules/StatisticsUI/Sources/ChannelStatsController.swift`: the section
   (`StatsSection.countries`), its entries (header with the DEMO badge and the Show Globe / Show
-  Chart action, globe, pie chart), whether the card shows the globe, opening the fullscreen
-  globe, and the entries after the section moved down four stable ids.
+  Chart action, globe, pie chart), whether the card shows the globe, opening the globe
+  sheet, and the entries after the section moved down four stable ids.
 - `Telegram/Telegram-iOS/en.lproj/Localizable.strings`: `ChannelStats.Countries.Title`,
   `ChannelStats.Countries.Demo`, `ChannelStats.Countries.ShowGlobe`, `ChannelStats.Countries.ShowChart`,
   `ChannelStats.Countries.ScreenTitle`.

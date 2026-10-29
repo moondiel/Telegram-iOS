@@ -2190,8 +2190,7 @@ public func channelStatsController(
         countriesShowGlobePromise.set(showGlobe)
     },
     openCountriesGlobe: { view in
-        let presentationData = updatedPresentationData?.initial ?? context.sharedContext.currentPresentationData.with { $0 }
-        presentImpl?(StatsGlobeScreen(presentationData: presentationData, sourceView: view))
+        pushImpl?(StatsGlobeSheetScreen(context: context, countries: view.countries, orientation: view.orientation))
     })
     
     let messageView = context.account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: nil), index: .upperBound, anchorIndex: .upperBound, count: 200, fixedCombinedReadStates: nil)

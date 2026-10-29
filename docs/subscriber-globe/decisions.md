@@ -70,7 +70,7 @@ spaced up to the poles.
 
 **D-012. Countries are accent dots with a pinging ring and a label.** A dot's area follows the
 country's share. Its ring grows and fades in turn with the others, so the globe reads as live.
-Labels show the flag and the follower count, and in fullscreen the country's name. They fade out
+Labels show the flag and the follower count, and in the sheet the country's name. They fade out
 as their country turns towards the edge, and when two would overlap the larger audience keeps its
 label. This replaces MapKit's clustering.
 
@@ -79,7 +79,7 @@ sits above the chart. The section header's action, **Show Globe** / **Show Chart
 card, as other Telegram headers carry an action (folder names' Enable Animations). The chart is
 shown first; the choice lasts while the screen is open.
 
-**D-014. A tap dives into the globe. (moondiel)** The fullscreen globe starts exactly over the
+**D-014. A tap dives into the globe. (moondiel)** Replaced by D-016. The fullscreen globe starts exactly over the
 card's globe, at its size and turn, and grows to fill the screen with a slight overshoot; the
 card's globe hides meanwhile. Close shrinks it back onto the card, which carries on from the
 fullscreen globe's turn. Fullscreen, the globe turns any way and zooms (pinch, double tap). In the
@@ -89,3 +89,11 @@ to the back swipe.
 **D-015. No demo note under the card. (moondiel)** The explanation under the section, on the card
 and fullscreen, is gone; the DEMO badge in the header still marks the numbers. Why they are a demo
 is in this write-up and in [api.md](api.md).
+
+**D-016. A tap opens the globe in a sheet. (moondiel)** Instead of the fullscreen dive, the card
+opens Telegram's glass sheet (`SheetComponent`, `.glass`, with a `GlassBarButtonComponent` close
+button), built as statistics' `TransactionInfoScreen` is. The sheet has room for what the card
+does not: a large globe that turns any way and zooms, and the list of countries with flag, name,
+share and followers, where tapping a country turns the globe to it by the shorter way round. The
+globe opens at the card's turn. A drag that starts on the globe turns it (the globe declines the
+sheet's drag the way `UISlider` declines a scroll view's); anywhere else it pulls the sheet down.
