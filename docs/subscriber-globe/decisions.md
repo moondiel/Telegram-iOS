@@ -193,3 +193,11 @@ responding. A drag now belongs to the globe when it starts on the sphere (any di
 tilts as well as turns) or goes sideways anywhere on the card; only an up-and-down drag that starts
 beside the sphere, or on the tabs and the note, scrolls the list. The list's scroll still gets
 exactly the drags the globe does not, by the same test.
+
+**D-030. A label tries four sides of its marker before it hides.** A label used to have one place,
+above its marker, and hid when a larger country's label was there, so a country between two
+larger ones (Germany between the United Kingdom and Ukraine) had none even when pinched closer.
+Labels are still placed largest audience first, but each tries above, below, right and left,
+keeping its current side first so it does not hop, and takes the first side that overlaps no
+placed label, covers no other visible marker and stays inside the card. Only a label with no free
+side hides. When a label changes sides it glides there; one that was hidden appears in place.

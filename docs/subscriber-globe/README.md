@@ -26,8 +26,8 @@ replaces one function.
    settles. The card keeps its height on both pages, so the list does not move.
 4. The globe opens over the country with the most followers and turns slowly on its own. Land is
    dots, each country is a dot in its colour from the chart whose ring pings outward, sized by its
-   share, with a label carrying a dot of that colour, its name and share. When two labels would overlap, the larger audience
-   keeps its label. A drag that starts on the sphere turns and tilts it, in any direction, and
+   share, with a label carrying a dot of that colour, its name and share. A label sits above its marker, or below, right or left
+   when that is taken; only when all four would overlap does the smaller audience lose its label. A drag that starts on the sphere turns and tilts it, in any direction, and
    lets it coast; an up-and-down drag beside the sphere scrolls the list. A pinch draws it up to three times closer, which spreads crowded countries apart so
    their labels show, and it springs back when the fingers lift, as a photo in a chat does.
 5. A note under the card says: "Estimated from the languages your followers use Telegram in."
@@ -84,7 +84,7 @@ Statistics are only available for channels with enough followers; the server dec
 - The globe: a sphere with the land as about 3,000 dots, drawn with SceneKit in the theme's
   colours, light or dark. It turns under the finger, coasts, and turns slowly when left alone.
 - Markers sized by share and coloured as in the chart, labels with country names in the app's
-  language and shares, and labels that give way to larger audiences.
+  language and shares, placed on whichever side of their marker is free.
 - The chart and globe pages sliding inside one card.
 
 **Limited**
