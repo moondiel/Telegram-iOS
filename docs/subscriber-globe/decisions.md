@@ -74,7 +74,7 @@ Labels show the flag and the follower count, and in the sheet the country's name
 as their country turns towards the edge, and when two would overlap the larger audience keeps its
 label. This replaces MapKit's clustering.
 
-**D-013. One card, switched between the chart and the globe. (moondiel)** The globe no longer
+**D-013. One card, switched between the chart and the globe. (moondiel)** The header action is replaced by D-018's tabs. The globe no longer
 sits above the chart. The section header's action, **Show Globe** / **Show Chart**, switches the
 card, as other Telegram headers carry an action (folder names' Enable Animations). The chart is
 shown first; the choice lasts while the screen is open.
@@ -110,3 +110,22 @@ speaker in Dubai counts towards Russia. The DEMO badge goes; a note under the ca
 from the languages your followers use Telegram in.") and a subtitle under the sheet's title
 ("Estimated from languages") say where the numbers come from. A poll in the channel and invite
 links per country were considered as other real sources and not taken.
+
+## Telegram's tabs and colours (2026-10-29)
+
+**D-018. The card switches with Telegram's statistics tabs. (moondiel)** Telegram switches what a
+statistics card shows with a row of tabs at its top: Boosts / Gifts, TON / Stars
+(`BoostsTabsItem`). The countries card uses that same item with **Chart** / **Globe**, in place of
+the header's Show Globe action, so the switch lives inside the card. The globe card is as tall as
+the pie chart (361 pt), so switching does not move the list.
+
+**D-019. Countries are told apart by colour, not flags. (moondiel)** As the Languages chart colours
+its languages, each country gets one colour by rank, used by the pie chart, its marker and ring on
+the globe, the dot on its label and the dot in the sheet's list. Flags are gone everywhere; labels
+read "Russia 49%".
+
+**D-020. The globe stays cheap while it turns.** Found after the sheet stuttered: the radial
+gradients were reassigned on every frame (each assignment redraws them), and the labels' shadows
+had no path (an off-screen pass per label per frame). The gradients now change only when the
+globe moves or grows, and the labels carry a shadow path. SceneKit prepares each globe's scene off
+the main thread before it is shown, and the card's globe stops while the sheet covers it.

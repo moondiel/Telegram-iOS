@@ -110,7 +110,7 @@ final class StatsGlobeItemNode: ListViewItemNode {
             let itemBackgroundColor = item.presentationData.theme.list.itemBlocksBackgroundColor
             let itemSeparatorColor = item.presentationData.theme.list.itemBlocksSeparatorColor
 
-            let contentSize = CGSize(width: params.width, height: 300.0)
+            let contentSize = CGSize(width: params.width, height: 361.0)
             let insets = itemListNeighborsGroupedInsets(neighbors, params)
             let layout = ListViewItemNodeLayout(contentSize: contentSize, insets: insets)
 
@@ -176,7 +176,7 @@ final class StatsGlobeItemNode: ListViewItemNode {
                 if globeView.frame != globeFrame {
                     globeView.frame = globeFrame
                 }
-                globeView.radius = floor(min(globeFrame.width, globeFrame.height) / 2.0 - 26.0)
+                globeView.radius = floor(min(globeFrame.width, globeFrame.height) / 2.0 - 34.0)
 
                 if let image = self.expandIconNode.image {
                     self.expandIconNode.frame = CGRect(origin: CGPoint(x: params.width - rightInset - 12.0 - image.size.width, y: 12.0), size: image.size)

@@ -1,4 +1,6 @@
 import Foundation
+import UIKit
+import Display
 import TelegramCore
 import TelegramPresentationData
 import TelegramStringFormatting
@@ -30,6 +32,14 @@ struct ChannelStatsCountries: Equatable {
     var total: Int {
         return self.countries.reduce(0, { $0 + $1.followers })
     }
+}
+
+/// One colour per country, by rank, shared by the pie chart, the globe's markers and the sheet's
+/// list, so a country is the same colour everywhere, as languages are in the Languages chart.
+private let channelStatsCountryColorValues: [UInt32] = [0x3497ED, 0x9ED448, 0xF5BD25, 0xE65850, 0x5E5DB1, 0x45B8C9, 0xF79E39, 0x5FB641, 0xA65EB3, 0x2373DB]
+
+func channelStatsCountryColor(at index: Int) -> UIColor {
+    return UIColor(rgb: channelStatsCountryColorValues[index % channelStatsCountryColorValues.count])
 }
 
 /// Marker positions: each country's capital or largest city.
@@ -271,8 +281,6 @@ extension ChannelStatsCountries {
     /// so Telegram's own pie chart and legend draw them (`StatsGraphItem`, `.pie`).
     func graph(strings: PresentationStrings, period: StatsDateRange) -> StatsGraph {
         let locale = localeWithStrings(strings)
-        // With real data the server sends the colours, as it does for the languages graph.
-        let colors = ["#3497ED", "#2373DB", "#9ED448", "#5FB641", "#F5BD25", "#F79E39", "#E65850", "#5E5DB1", "#45B8C9", "#A65EB3"]
 
         // A column per country with the same value every day: the pie shows the shares.
         let days = 7
@@ -293,9 +301,8 @@ extension ChannelStatsCountries {
             }
             columns.append(column)
             types[id] = "area"
-            let name = locale.localizedString(forRegionCode: country.code) ?? country.code
-            names[id] = "\(flagEmoji(countryCode: country.code)) \(name)"
-            colorMap[id] = colors[index % colors.count]
+            names[id] = locale.localizedString(forRegionCode: country.code) ?? country.code
+            colorMap[id] = String(format: "#%06X", channelStatsCountryColorValues[index % channelStatsCountryColorValues.count])
         }
         let json: [String: Any] = [
             "columns": columns,

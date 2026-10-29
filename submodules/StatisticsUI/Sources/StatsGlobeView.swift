@@ -108,13 +108,16 @@ private func flatMaterial(color: UIColor) -> SCNMaterial {
     return material
 }
 
-/// A country's label: its flag and followers, and in the sheet its name.
+/// A country's label: a dot in the country's colour, as in the chart's legend, its name and share.
 private final class GlobeLabelView: UIView {
-    let label: UILabel
+    private let dotView: UIView
+    private let label: UILabel
     /// Whether the label has room, eased so labels do not pop when they start to overlap.
     var visibility: CGFloat = 0.0
 
     override init(frame: CGRect) {
+        self.dotView = UIView()
+        self.dotView.layer.cornerRadius = 4.0
         self.label = UILabel()
         self.label.numberOfLines = 1
 
@@ -125,6 +128,7 @@ private final class GlobeLabelView: UIView {
         self.layer.shadowRadius = 4.0
         self.layer.shadowOpacity = 0.18
         self.layer.shadowColor = UIColor.black.cgColor
+        self.addSubview(self.dotView)
         self.addSubview(self.label)
     }
 
@@ -132,22 +136,22 @@ private final class GlobeLabelView: UIView {
         preconditionFailure()
     }
 
-    func update(country: ChannelStatsCountry, name: String?, colors: StatsGlobeColors) -> CGSize {
+    func update(name: String, share: Int, color: UIColor, colors: StatsGlobeColors) {
         let text = NSMutableAttributedString()
-        text.append(NSAttributedString(string: "\(flagEmoji(countryCode: country.code)) ", attributes: [.font: Font.semibold(12.0)]))
-        if let name {
-            text.append(NSAttributedString(string: "\(name)  ", attributes: [.font: Font.regular(12.0), .foregroundColor: colors.labelSecondaryText]))
-        }
-        text.append(NSAttributedString(string: compactNumericCountString(country.followers), attributes: [.font: Font.semibold(12.0), .foregroundColor: colors.labelText]))
+        text.append(NSAttributedString(string: name, attributes: [.font: Font.medium(12.0), .foregroundColor: colors.labelText]))
+        text.append(NSAttributedString(string: "  \(share)%", attributes: [.font: Font.regular(12.0), .foregroundColor: colors.labelSecondaryText]))
         self.label.attributedText = text
+        self.dotView.backgroundColor = color
 
         let textSize = self.label.sizeThatFits(CGSize(width: 240.0, height: 40.0))
-        let size = CGSize(width: ceil(textSize.width) + 14.0, height: 22.0)
-        self.label.frame = CGRect(origin: CGPoint(x: 7.0, y: floor((size.height - textSize.height) / 2.0)), size: textSize)
+        let size = CGSize(width: ceil(textSize.width) + 8.0 + 6.0 + 9.0, height: 22.0)
+        self.dotView.frame = CGRect(x: 8.0, y: floor((size.height - 8.0) / 2.0), width: 8.0, height: 8.0)
+        self.label.frame = CGRect(origin: CGPoint(x: 8.0 + 8.0 + 6.0, y: floor((size.height - textSize.height) / 2.0)), size: textSize)
         self.backgroundColor = colors.labelBackground
         self.layer.cornerRadius = size.height / 2.0
         self.bounds = CGRect(origin: CGPoint(), size: size)
-        return size
+        // A fixed path, so the moving labels do not render their shadow off-screen every frame.
+        self.layer.shadowPath = UIBezierPath(roundedRect: CGRect(origin: CGPoint(), size: size), cornerRadius: size.height / 2.0).cgPath
     }
 }
 
@@ -155,8 +159,8 @@ private final class GlobeLabelView: UIView {
 final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     let countries: ChannelStatsCountries
     private(set) var colors: StatsGlobeColors
-    /// In the sheet: labels carry the country's name, the globe zooms, and drags go any way. In the
-    /// card the globe only takes horizontal drags, so the list still scrolls over it.
+    /// In the sheet the globe zooms and drags go any way. In the card it only takes horizontal
+    /// drags, so the list still scrolls over it.
     let isExpanded: Bool
 
     /// Called on a tap; the card opens the globe sheet.
@@ -167,7 +171,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     private let shadeLayer: CAGradientLayer
     private let labelsView: UIView
     private var labelViews: [GlobeLabelView] = []
-    private var labelNames: [String?] = []
+    private var labelNames: [String] = []
 
     private let globeNode: SCNNode
     private let seaNode: SCNNode
@@ -178,12 +182,6 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
 
     /// Points from the globe's centre to its edge at zoom 1.
     var radius: CGFloat = 100.0 {
-        didSet {
-            self.setNeedsLayout()
-        }
-    }
-    /// Where the globe's centre is, relative to the view's centre.
-    var centerOffset: CGPoint = CGPoint() {
         didSet {
             self.setNeedsLayout()
         }
@@ -200,6 +198,17 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     private var turnAnimation: (from: StatsGlobeOrientation, to: StatsGlobeOrientation, start: Double)?
 
     private var displayLink: SharedDisplayLinkDriver.Link?
+    /// The globe's circle the halo and the edge shading were last laid out for.
+    private var shadedGlobeFrame: CGRect?
+
+    /// Stops the globe, for example while a sheet with another globe covers it.
+    var isPaused = false {
+        didSet {
+            if self.isPaused != oldValue {
+                self.updateIsRunning()
+            }
+        }
+    }
 
     init(countries: ChannelStatsCountries, colors: StatsGlobeColors, strings: PresentationStrings, isExpanded: Bool, orientation: StatsGlobeOrientation? = nil) {
         self.countries = countries
@@ -259,9 +268,6 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         self.cameraNode.position = SCNVector3(0.0, 0.0, 3.0)
         scene.rootNode.addChildNode(self.cameraNode)
 
-        self.sceneView.scene = scene
-        self.sceneView.pointOfView = self.cameraNode
-
         super.init(frame: CGRect())
 
         self.clipsToBounds = true
@@ -272,6 +278,26 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
 
         self.addMarkers(strings: strings)
         self.applyColors()
+
+        // SceneKit uploads the geometry and compiles its shaders off the main thread first, so
+        // opening the sheet or scrolling to the card does not stall on it; the globe fades in.
+        self.sceneView.alpha = 0.0
+        self.labelsView.alpha = 0.0
+        let cameraNode = self.cameraNode
+        self.sceneView.prepare([scene], completionHandler: { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self else {
+                    return
+                }
+                self.sceneView.scene = scene
+                self.sceneView.pointOfView = cameraNode
+                self.updateIsRunning()
+                UIView.animate(withDuration: 0.2, animations: {
+                    self.sceneView.alpha = 1.0
+                    self.labelsView.alpha = 1.0
+                })
+            }
+        })
 
         let pan = UIPanGestureRecognizer(target: self, action: #selector(self.panGesture(_:)))
         pan.delegate = self
@@ -305,6 +331,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         let total = max(1, self.countries.total)
         let locale = localeWithStrings(strings)
         for (index, country) in self.countries.countries.enumerated() {
+            let color = channelStatsCountryColor(at: index)
             let center = unitVector(latitude: Float(country.latitude * Double.pi / 180.0), longitude: Float(country.longitude * Double.pi / 180.0))
             let orientation = simd_quatf(from: SIMD3<Float>(0.0, 1.0, 0.0), to: center)
             // Bigger audiences get bigger dots, by area.
@@ -339,8 +366,8 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
             self.markerNodes.append(marker)
 
             let labelView = GlobeLabelView()
-            let name: String? = self.isExpanded ? (locale.localizedString(forRegionCode: country.code) ?? country.code) : nil
-            let _ = labelView.update(country: country, name: name, colors: self.colors)
+            let name = locale.localizedString(forRegionCode: country.code) ?? country.code
+            labelView.update(name: name, share: Int((share * 100.0).rounded()), color: color, colors: self.colors)
             labelView.alpha = 0.0
             self.labelNames.append(name)
             self.labelsView.addSubview(labelView)
@@ -352,11 +379,12 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         let colors = self.colors
         self.seaNode.geometry?.materials = [flatMaterial(color: colors.sea)]
         self.landNode.geometry?.materials = [flatMaterial(color: colors.land)]
-        for node in self.markerNodes {
-            node.geometry?.materials = [flatMaterial(color: colors.accent)]
+        // Each country in its colour from the chart.
+        for (index, node) in self.markerNodes.enumerated() {
+            node.geometry?.materials = [flatMaterial(color: channelStatsCountryColor(at: index))]
         }
-        for node in self.ringNodes {
-            let material = flatMaterial(color: colors.accent)
+        for (index, node) in self.ringNodes.enumerated() {
+            let material = flatMaterial(color: channelStatsCountryColor(at: index))
             material.writesToDepthBuffer = false
             node.geometry?.materials = [material]
         }
@@ -373,9 +401,12 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         }
         self.colors = colors
         self.applyColors()
+        let total = max(1, self.countries.total)
         for (index, labelView) in self.labelViews.enumerated() where index < self.countries.countries.count {
-            let _ = labelView.update(country: self.countries.countries[index], name: self.labelNames[index], colors: colors)
+            let share = Int((Double(self.countries.countries[index].followers) * 100.0 / Double(total)).rounded())
+            labelView.update(name: self.labelNames[index], share: share, color: channelStatsCountryColor(at: index), colors: colors)
         }
+        self.shadedGlobeFrame = nil
     }
 
     // MARK: Layout
@@ -383,7 +414,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     /// The globe's circle in this view's coordinates, at the current zoom.
     var globeFrame: CGRect {
         let radius = self.radius * self.zoom
-        let center = CGPoint(x: self.bounds.midX + self.centerOffset.x, y: self.bounds.midY + self.centerOffset.y)
+        let center = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
         return CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2.0, height: radius * 2.0)
     }
 
@@ -405,21 +436,28 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         let radius = max(1.0, self.radius * self.zoom)
 
         // An orthographic scale is half the visible height, in scene units: the sphere's radius of 1
-        // comes out at exactly `radius` points. Moving the camera moves the picture the other way.
+        // comes out at exactly `radius` points.
         if let camera = self.cameraNode.camera {
-            camera.orthographicScale = Double(size.height / 2.0 / radius)
+            let scale = Double(size.height / 2.0 / radius)
+            if camera.orthographicScale != scale {
+                camera.orthographicScale = scale
+            }
         }
-        self.cameraNode.position = SCNVector3(Float(-self.centerOffset.x / radius), Float(self.centerOffset.y / radius), 3.0)
 
+        // The gradients are redrawn whenever they are touched, so only when the globe moves or
+        // grows, not on every frame of its turn.
         let globeFrame = self.globeFrame
-        let glowRadius = radius * 1.2
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        self.glowLayer.frame = CGRect(x: globeFrame.midX - glowRadius, y: globeFrame.midY - glowRadius, width: glowRadius * 2.0, height: glowRadius * 2.0)
-        self.glowLayer.locations = [NSNumber(value: Double(radius / glowRadius)), 1.0]
-        self.shadeLayer.frame = globeFrame
-        self.shadeLayer.cornerRadius = radius
-        CATransaction.commit()
+        if self.shadedGlobeFrame != globeFrame {
+            self.shadedGlobeFrame = globeFrame
+            let glowRadius = radius * 1.2
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            self.glowLayer.frame = CGRect(x: globeFrame.midX - glowRadius, y: globeFrame.midY - glowRadius, width: glowRadius * 2.0, height: glowRadius * 2.0)
+            self.glowLayer.locations = [NSNumber(value: Double(radius / glowRadius)), 1.0]
+            self.shadeLayer.frame = globeFrame
+            self.shadeLayer.cornerRadius = radius
+            CATransaction.commit()
+        }
 
         self.globeNode.simdOrientation = simd_quatf(angle: Float(self.orientation.latitude), axis: SIMD3<Float>(1.0, 0.0, 0.0)) * simd_quatf(angle: Float(-self.orientation.longitude), axis: SIMD3<Float>(0.0, 1.0, 0.0))
 
@@ -461,7 +499,14 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     override func didMoveToWindow() {
         super.didMoveToWindow()
 
-        if self.window != nil {
+        self.updateIsRunning()
+    }
+
+    /// The globe turns and renders only while it is on screen, its scene is ready and nothing
+    /// paused it.
+    private func updateIsRunning() {
+        let isRunning = self.window != nil && !self.isPaused && self.sceneView.scene != nil
+        if isRunning {
             self.sceneView.isPlaying = true
             if self.displayLink == nil {
                 self.displayLink = SharedDisplayLinkDriver.shared.add(framesPerSecond: .fps(60), { [weak self] deltaTime in

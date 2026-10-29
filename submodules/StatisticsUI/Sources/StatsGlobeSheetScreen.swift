@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import Display
 import ComponentFlow
+import SwiftSignalKit
 import AccountContext
 import TelegramPresentationData
 import TelegramStringFormatting
@@ -17,9 +18,11 @@ import GlassBarButtonComponent
 // uses it (`TransactionInfoScreen`). It holds a large globe, opened at the card's turn, and the list
 // of countries; tapping a country turns the globe to it.
 
-/// A country of the list under the globe: flag and name, share and followers.
+/// A country of the list under the globe: a dot in its colour, as in the chart's legend, its name,
+/// share and followers.
 private final class StatsGlobeCountryRowView: UIView {
     private let highlightView: UIView
+    private let dotView: UIView
     private let nameLabel: UILabel
     private let valueLabel: UILabel
     private let separatorView: UIView
@@ -29,6 +32,8 @@ private final class StatsGlobeCountryRowView: UIView {
     override init(frame: CGRect) {
         self.highlightView = UIView()
         self.highlightView.alpha = 0.0
+        self.dotView = UIView()
+        self.dotView.layer.cornerRadius = 5.0
         self.nameLabel = UILabel()
         self.valueLabel = UILabel()
         self.valueLabel.textAlignment = .right
@@ -37,6 +42,7 @@ private final class StatsGlobeCountryRowView: UIView {
         super.init(frame: frame)
 
         self.addSubview(self.highlightView)
+        self.addSubview(self.dotView)
         self.addSubview(self.nameLabel)
         self.addSubview(self.valueLabel)
         self.addSubview(self.separatorView)
@@ -58,9 +64,10 @@ private final class StatsGlobeCountryRowView: UIView {
         }
     }
 
-    func update(country: ChannelStatsCountry, total: Int, theme: PresentationTheme, locale: Locale, hasSeparator: Bool, size: CGSize) {
+    func update(country: ChannelStatsCountry, color: UIColor, total: Int, theme: PresentationTheme, locale: Locale, hasSeparator: Bool, size: CGSize) {
         let name = locale.localizedString(forRegionCode: country.code) ?? country.code
-        self.nameLabel.attributedText = NSAttributedString(string: "\(flagEmoji(countryCode: country.code))  \(name)", font: Font.regular(17.0), textColor: theme.list.itemPrimaryTextColor)
+        self.nameLabel.attributedText = NSAttributedString(string: name, font: Font.regular(17.0), textColor: theme.list.itemPrimaryTextColor)
+        self.dotView.backgroundColor = color
 
         let share = Int((Double(country.followers) * 100.0 / Double(max(1, total))).rounded())
         let value = NSMutableAttributedString()
@@ -76,10 +83,12 @@ private final class StatsGlobeCountryRowView: UIView {
         let valueSize = self.valueLabel.sizeThatFits(CGSize(width: size.width / 2.0, height: size.height))
         self.highlightView.frame = CGRect(origin: CGPoint(), size: size)
         self.valueLabel.frame = CGRect(x: size.width - sideInset - valueSize.width, y: floor((size.height - valueSize.height) / 2.0), width: valueSize.width, height: valueSize.height)
-        let nameWidth = max(0.0, size.width - sideInset * 2.0 - valueSize.width - 8.0)
+        self.dotView.frame = CGRect(x: sideInset, y: floor((size.height - 10.0) / 2.0), width: 10.0, height: 10.0)
+        let nameX = sideInset + 10.0 + 12.0
+        let nameWidth = max(0.0, size.width - nameX - sideInset - valueSize.width - 8.0)
         let nameSize = self.nameLabel.sizeThatFits(CGSize(width: nameWidth, height: size.height))
-        self.nameLabel.frame = CGRect(x: sideInset, y: floor((size.height - nameSize.height) / 2.0), width: min(nameWidth, nameSize.width), height: nameSize.height)
-        self.separatorView.frame = CGRect(x: sideInset, y: size.height - UIScreenPixel, width: size.width - sideInset, height: UIScreenPixel)
+        self.nameLabel.frame = CGRect(x: nameX, y: floor((size.height - nameSize.height) / 2.0), width: min(nameWidth, nameSize.width), height: nameSize.height)
+        self.separatorView.frame = CGRect(x: nameX, y: size.height - UIScreenPixel, width: size.width - nameX, height: UIScreenPixel)
     }
 }
 
@@ -171,7 +180,7 @@ private final class StatsGlobeSheetBodyComponent: Component {
             for (index, country) in countries.enumerated() {
                 let rowView = self.rowViews[index]
                 rowView.frame = CGRect(x: 0.0, y: CGFloat(index) * rowHeight, width: sectionWidth, height: rowHeight)
-                rowView.update(country: country, total: component.countries.total, theme: component.theme, locale: locale, hasSeparator: index != countries.count - 1, size: rowView.bounds.size)
+                rowView.update(country: country, color: channelStatsCountryColor(at: index), total: component.countries.total, theme: component.theme, locale: locale, hasSeparator: index != countries.count - 1, size: rowView.bounds.size)
                 rowView.tapped = { [weak globeView] in
                     globeView?.focus(on: country)
                 }
@@ -417,12 +426,17 @@ private final class StatsGlobeSheetContainerComponent: CombinedComponent {
 
 /// The globe sheet. It opens at the turn of the card's globe it was opened from.
 final class StatsGlobeSheetScreen: ViewControllerComponentContainer {
-    init(context: AccountContext, countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?) {
+    /// The card's globe: it stops while the sheet covers it, so two globes do not render at once.
+    private weak var sourceView: StatsGlobeView?
+
+    init(context: AccountContext, sourceView: StatsGlobeView) {
+        self.sourceView = sourceView
+
         super.init(
             context: context,
             component: StatsGlobeSheetContainerComponent(
-                countries: countries,
-                orientation: orientation
+                countries: sourceView.countries,
+                orientation: sourceView.orientation
             ),
             navigationBarAppearance: .none,
             statusBarStyle: .ignore,
@@ -430,6 +444,18 @@ final class StatsGlobeSheetScreen: ViewControllerComponentContainer {
         )
 
         self.navigationPresentation = .flatModal
+        sourceView.isPaused = true
+    }
+
+    required public init(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        let sourceView = self.sourceView
+        Queue.mainQueue().async {
+            sourceView?.isPaused = false
+        }
     }
 
     override func viewDidLoad() {
@@ -439,7 +465,9 @@ final class StatsGlobeSheetScreen: ViewControllerComponentContainer {
         self.view.disablesInteractiveModalDismiss = true
     }
 
-    required public init(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+
+        self.sourceView?.isPaused = false
     }
 }

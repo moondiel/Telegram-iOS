@@ -14,20 +14,21 @@ replaces one function.
 ## The flow
 
 1. Open a channel you admin, then Statistics. Below **Languages** there is a new section,
-   **FOLLOWERS BY COUNTRY**, with **Show Globe** on the right. It appears once the Languages
-   graph has loaded, since it is computed from it.
-2. The card first shows a pie chart with a legend of every country and its share, the same chart
-   and legend as **Languages**.
-3. **Show Globe** switches the card to the globe; the header then reads **Show Chart**.
+   **FOLLOWERS BY COUNTRY**. It appears once the Languages graph has loaded, since it is computed
+   from it.
+2. The card opens with Telegram's statistics tabs, **Chart** and **Globe**, the same tabs item
+   (`BoostsTabsItem`) that switches Boosts / Gifts and TON / Stars. **Chart** shows a pie chart
+   with a legend of every country in its colour, the same chart and legend as **Languages**.
+3. **Globe** switches the same card, at the same height, to the globe.
 4. The globe opens over the country with the most followers and turns slowly on its own. Land is
-   dots, each country is an accent dot whose ring pings outward, sized by its share, with a label
-   carrying its flag and number of followers. When two labels would overlap, the larger audience
+   dots, each country is a dot in its colour from the chart whose ring pings outward, sized by its
+   share, with a label carrying a dot of that colour, its name and share. When two labels would overlap, the larger audience
    keeps its label. A sideways drag turns the globe and lets it coast; up-and-down drags scroll
    the list.
 5. A tap on the globe opens Telegram's glass sheet with a glass close button, as statistics'
-   transaction info does. It holds a large globe at the card's turn, whose labels also name the
-   country, which turns any way and zooms with a pinch or a double tap. Under it is the list of
-   countries with flag, name, share and followers; tapping one turns the globe to it. A drag that
+   transaction info does. It holds a large globe at the card's turn, which turns any way and zooms
+   with a pinch or a double tap. Under it is the list of countries, each with a dot in its colour,
+   name, share and followers; tapping one turns the globe to it. A drag that
    starts on the globe turns the globe; anywhere else it pulls the sheet down. The sheet's title
    reads "Estimated from languages" underneath.
 6. A note under the card says: "Estimated from the languages your followers use Telegram in."
@@ -83,8 +84,8 @@ Statistics are only available for channels with enough followers; the server dec
   the section header with an action, the glass card, the pie chart, the footer note.
 - The globe: a sphere with the land as about 3,000 dots, drawn with SceneKit in the theme's
   colours, light or dark. It turns under the finger, coasts, and turns slowly when left alone.
-- Markers sized by share, labels with flags, follower counts and (in the sheet) country names in the
-  app's language, and labels that give way to larger audiences.
+- Markers sized by share and coloured as in the chart, labels with country names in the app's
+  language and shares, and labels that give way to larger audiences.
 - The globe sheet with the country list, and turning to a tapped country.
 
 **Limited**
@@ -148,12 +149,12 @@ New files:
 Changed files:
 
 - `submodules/StatisticsUI/Sources/ChannelStatsController.swift`: the section
-  (`StatsSection.countries`), its entries (header with the Show Globe / Show Chart action, globe,
-  pie chart, the estimate note), whether the card shows the globe, opening the globe
-  sheet, and the entries after the section moved down four stable ids.
+  (`StatsSection.countries`), its entries (header, Chart / Globe tabs, pie chart, globe, the
+  estimate note), which tab is selected, opening the globe sheet, and the entries after the
+  section moved down five stable ids.
 - `Telegram/Telegram-iOS/en.lproj/Localizable.strings`: `ChannelStats.Countries.Title`,
   `ChannelStats.Countries.EstimateInfo`, `ChannelStats.Countries.EstimateSubtitle`,
-  `ChannelStats.Countries.ShowGlobe`, `ChannelStats.Countries.ShowChart`,
+  `ChannelStats.Countries.TabChart`, `ChannelStats.Countries.TabGlobe`,
   `ChannelStats.Countries.ScreenTitle`.
 
 The whole change is one patch against the base commit `16a3d3c5`, without the Xcode 26 build fix:

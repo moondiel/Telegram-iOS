@@ -58,10 +58,10 @@ private final class ChannelStatsControllerArguments {
     let presentCpmLocked: () -> Void
     let openEarnStars: () -> Void
     let dismissInput: () -> Void
-    let toggleCountriesGlobe: () -> Void
+    let setCountriesGlobeSelected: (Bool) -> Void
     let openCountriesGlobe: (StatsGlobeView) -> Void
     
-    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void, toggleCountriesGlobe: @escaping () -> Void, openCountriesGlobe: @escaping (StatsGlobeView) -> Void) {
+    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void, setCountriesGlobeSelected: @escaping (Bool) -> Void, openCountriesGlobe: @escaping (StatsGlobeView) -> Void) {
         self.context = context
         self.loadDetailedGraph = loadDetailedGraph
         self.openPostStats = openPostStats
@@ -88,7 +88,7 @@ private final class ChannelStatsControllerArguments {
         self.presentCpmLocked = presentCpmLocked
         self.openEarnStars = openEarnStars
         self.dismissInput = dismissInput
-        self.toggleCountriesGlobe = toggleCountriesGlobe
+        self.setCountriesGlobeSelected = setCountriesGlobeSelected
         self.openCountriesGlobe = openCountriesGlobe
     }
 }
@@ -195,7 +195,8 @@ private enum StatsEntry: ItemListNodeEntry {
     case languagesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
     
     // Subscriber Globe: followers by country (see ChannelStatsCountries.swift).
-    case countriesTitle(PresentationTheme, String, String)
+    case countriesTitle(PresentationTheme, String)
+    case countriesTabs(PresentationTheme, String, String, Bool)
     case countriesGlobe(PresentationTheme, PresentationStrings, ChannelStatsCountries)
     case countriesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
     case countriesInfo(PresentationTheme, String)
@@ -292,7 +293,7 @@ private enum StatsEntry: ItemListNodeEntry {
                 return StatsSection.followersBySource.rawValue
             case .languagesTitle, .languagesGraph:
                 return StatsSection.languages.rawValue
-            case .countriesTitle, .countriesGlobe, .countriesGraph, .countriesInfo:
+            case .countriesTitle, .countriesTabs, .countriesGlobe, .countriesGraph, .countriesInfo:
                 return StatsSection.countries.rawValue
             case .postInteractionsTitle, .postInteractionsGraph:
                 return StatsSection.postInteractions.rawValue
@@ -377,36 +378,38 @@ private enum StatsEntry: ItemListNodeEntry {
                 return 15
             case .countriesTitle:
                 return 16
-            case .countriesGlobe:
+            case .countriesTabs:
                 return 17
             case .countriesGraph:
                 return 18
-            case .countriesInfo:
+            case .countriesGlobe:
                 return 19
-            case .postInteractionsTitle:
+            case .countriesInfo:
                 return 20
-            case .postInteractionsGraph:
+            case .postInteractionsTitle:
                 return 21
-            case .instantPageInteractionsTitle:
+            case .postInteractionsGraph:
                 return 22
-            case .instantPageInteractionsGraph:
+            case .instantPageInteractionsTitle:
                 return 23
-            case .reactionsByEmotionTitle:
+            case .instantPageInteractionsGraph:
                 return 24
-            case .reactionsByEmotionGraph:
+            case .reactionsByEmotionTitle:
                 return 25
-            case .storyInteractionsTitle:
+            case .reactionsByEmotionGraph:
                 return 26
-            case .storyInteractionsGraph:
+            case .storyInteractionsTitle:
                 return 27
-            case .storyReactionsByEmotionTitle:
+            case .storyInteractionsGraph:
                 return 28
-            case .storyReactionsByEmotionGraph:
+            case .storyReactionsByEmotionTitle:
                 return 29
-            case .postsTitle:
+            case .storyReactionsByEmotionGraph:
                 return 30
+            case .postsTitle:
+                return 31
             case let .post(index, _, _, _, _, _, _):
-                return 31 + index
+                return 32 + index
             case .boostLevel:
                 return 2000
             case .boostOverviewTitle:
@@ -590,8 +593,14 @@ private enum StatsEntry: ItemListNodeEntry {
                 } else {
                     return false
                 }
-            case let .countriesTitle(lhsTheme, lhsText, lhsAction):
-                if case let .countriesTitle(rhsTheme, rhsText, rhsAction) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsAction == rhsAction {
+            case let .countriesTitle(lhsTheme, lhsText):
+                if case let .countriesTitle(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
+                    return true
+                } else {
+                    return false
+                }
+            case let .countriesTabs(lhsTheme, lhsChartText, lhsGlobeText, lhsGlobeSelected):
+                if case let .countriesTabs(rhsTheme, rhsChartText, rhsGlobeText, rhsGlobeSelected) = rhs, lhsTheme === rhsTheme, lhsChartText == rhsChartText, lhsGlobeText == rhsGlobeText, lhsGlobeSelected == rhsGlobeSelected {
                     return true
                 } else {
                     return false
@@ -976,10 +985,14 @@ private enum StatsEntry: ItemListNodeEntry {
                  let .adsCpmInfo(_, text),
                  let .adsProceedsInfo(_, text):
                 return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
-            case let .countriesTitle(_, text, action):
-                return ItemListSectionHeaderItem(presentationData: presentationData, text: text, actionText: action, action: {
-                    arguments.toggleCountriesGlobe()
-                }, sectionId: self.section)
+            case let .countriesTitle(_, text):
+                return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
+            case let .countriesTabs(_, chartText, globeText, globeSelected):
+                // Telegram's own tabs at the top of a statistics card, as Boosts / Gifts and
+                // TON / Stars switch theirs: the card below shows the chart or the globe.
+                return BoostsTabsItem(theme: presentationData.theme, boostsText: chartText, giftsText: globeText, selectedTab: globeSelected ? .gifts : .boosts, sectionId: self.section, selectionUpdated: { tab in
+                    arguments.setCountriesGlobeSelected(tab == .gifts)
+                })
             case let .countriesGlobe(_, _, countries):
                 return StatsGlobeItem(presentationData: presentationData, systemStyle: .glass, countries: countries, sectionId: self.section, open: { view in
                     arguments.openCountriesGlobe(view)
@@ -1437,8 +1450,8 @@ private func statsEntries(
     // Subscriber Globe: followers by country, estimated from the languages graph until the server
     // reports countries. One card, showing the pie chart or the globe; the header switches between them.
     if let countries = ChannelStatsCountries.estimated(fromLanguagesGraph: data.languagesGraph, followers: Int(data.followers.current)) {
-        let toggleText = countriesShowGlobe ? presentationData.strings.ChannelStats_Countries_ShowChart : presentationData.strings.ChannelStats_Countries_ShowGlobe
-        entries.append(.countriesTitle(presentationData.theme, presentationData.strings.ChannelStats_Countries_Title, toggleText))
+        entries.append(.countriesTitle(presentationData.theme, presentationData.strings.ChannelStats_Countries_Title))
+        entries.append(.countriesTabs(presentationData.theme, presentationData.strings.ChannelStats_Countries_TabChart, presentationData.strings.ChannelStats_Countries_TabGlobe, countriesShowGlobe))
         if countriesShowGlobe {
             entries.append(.countriesGlobe(presentationData.theme, presentationData.strings, countries))
         } else {
@@ -2000,7 +2013,6 @@ public func channelStatsController(
     var dismissInputImpl: (() -> Void)?
     
     // Subscriber Globe: whether the countries card shows the globe instead of the pie chart.
-    let countriesShowGlobeValue = Atomic<Bool>(value: false)
     let countriesShowGlobePromise = ValuePromise<Bool>(false, ignoreRepeated: true)
     let previousCountriesShowGlobe = Atomic<Bool?>(value: nil)
     
@@ -2196,12 +2208,11 @@ public func channelStatsController(
     dismissInput: {
         dismissInputImpl?()
     },
-    toggleCountriesGlobe: {
-        let showGlobe = countriesShowGlobeValue.modify { !$0 }
-        countriesShowGlobePromise.set(showGlobe)
+    setCountriesGlobeSelected: { globeSelected in
+        countriesShowGlobePromise.set(globeSelected)
     },
     openCountriesGlobe: { view in
-        pushImpl?(StatsGlobeSheetScreen(context: context, countries: view.countries, orientation: view.orientation))
+        pushImpl?(StatsGlobeSheetScreen(context: context, sourceView: view))
     })
     
     let messageView = context.account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: nil), index: .upperBound, anchorIndex: .upperBound, count: 200, fixedCombinedReadStates: nil)
