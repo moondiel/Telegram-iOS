@@ -106,11 +106,9 @@ Statistics are only available for channels with enough followers; the server dec
 
 **Not verified**
 
-- The globe has not been run on a device yet: its frame rate on older iPhones, and how the card's
-  sideways drag shares the screen with the back swipe.
-- How the server names the languages graph's columns. The estimate matches English names
-  ("Russian") and ISO codes ("ru"); if the names come localized, languages would not be matched
-  and the section would not appear.
+- Frame rate on older iPhones; it was checked on a recent one.
+- Languages graphs whose column names come localized rather than in English ("Russian") or as
+  ISO codes ("ru"): such languages would not be matched, and the section would not appear.
 
 ## How the countries travel (prototype vs. production)
 

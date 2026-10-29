@@ -6,10 +6,10 @@ This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-i
 
 ## What it does
 
-1. Channel Statistics gets a **Followers by country** card under Languages. At the top of the card, Telegram's statistics tabs (**Chart** / **Globe**, as Boosts / Gifts switch theirs) switch the same card between a pie chart and a globe.
-2. The globe is drawn in the theme's colours: land as dots, each country as a dot in its colour from the chart with a ring that pings outward, and a label with its name and share. It turns slowly on its own and under a sideways drag.
-3. Switching slides the chart and the globe like a profile's tabs, and the globe arrives spinning. The globe turns right in the card: drag it sideways, flick it, or leave it to turn on its own; pinch to look closer, and it springs back when you let go.
-4. It is built from Telegram's own pieces: the statistics section, tabs and pie chart, SceneKit as the Premium star uses it, and country names as giveaways show them.
+1. Channel Statistics gets a **Followers by Country** card under Languages, with Telegram's statistics tabs at its top: **Chart** and **Globe**, the tabs that switch Boosts / Gifts.
+2. **Chart** is the same pie chart as Languages and behaves as it does: the same days and range slider, legend toggles and details on a tap. Each country takes the colour its main language has in the Languages chart.
+3. **Globe** slides in like a profile's tabs and arrives spinning: a dotted Earth in the theme's colours, each country a dot in its colour with a ring that pings outward and a label with its name and share. Drag it to turn it, flick it to let it coast, pinch to look closer; it springs back and turns slowly on its own.
+4. Everything is built from Telegram's own components: the statistics tabs and pie chart, SceneKit as the Premium star uses it, and the edge effect of the glass bars.
 
 ## Links
 
@@ -20,4 +20,4 @@ This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-i
 
 ## Status
 
-A client-side prototype on **real data, estimated**. Telegram's API has no followers-by-country statistic, so the countries are estimated from the channel's real languages graph: each language's followers are shared out over the countries where it is spoken, and the screen says so. The [API proposal](docs/subscriber-globe/api.md) describes the server change that would make them exact. Not built or tested yet.
+A client-side prototype, checked by hand on a device; there are no automated tests. Telegram's API has no followers-by-country statistic, so the countries are estimated from the channel's real languages graph, and the screen says so; production would need the server change in the [API proposal](docs/subscriber-globe/api.md). Limits are listed in the write-up.
