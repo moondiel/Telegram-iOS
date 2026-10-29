@@ -1,4 +1,4 @@
-# Subscriber Globe for Telegram iOS
+# Followers by Country for Telegram iOS
 
 See where a channel's followers are, on a globe in its statistics.
 
