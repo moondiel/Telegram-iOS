@@ -19,7 +19,7 @@ tracking people, not statistics.
 
 **D-003. An aggregate by country, on demo data, with an API proposal. (moondiel)** The feature
 shows followers per country, the shape a server statistic would have. Until the server sends it,
-the numbers are a demo, marked with a DEMO badge and a note. [api.md](api.md) proposes
+the numbers are a demo, marked with a DEMO badge and a note (the note was dropped in D-015). [api.md](api.md) proposes
 `countries_graph` in `stats.broadcastStats`. A language-to-region estimate from real data was
 offered and not taken.
 
@@ -85,3 +85,7 @@ card's globe hides meanwhile. Close shrinks it back onto the card, which carries
 fullscreen globe's turn. Fullscreen, the globe turns any way and zooms (pinch, double tap). In the
 card it only takes sideways drags, so the list still scrolls over it, and it leaves the left edge
 to the back swipe.
+
+**D-015. No demo note under the card. (moondiel)** The explanation under the section, on the card
+and fullscreen, is gone; the DEMO badge in the header still marks the numbers. Why they are a demo
+is in this write-up and in [api.md](api.md).

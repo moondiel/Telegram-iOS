@@ -74,7 +74,6 @@ private final class StatsGlobeScreenNode: ASDisplayNode {
     private let globeView: StatsGlobeView
     private let titleNode: ImmediateTextNode
     private let closeButton: HighlightableButtonNode
-    private let infoNode: ImmediateTextNode
 
     var close: (() -> Void)?
 
@@ -105,22 +104,16 @@ private final class StatsGlobeScreenNode: ASDisplayNode {
         self.closeButton.setTitle(presentationData.strings.Common_Close, with: Font.regular(17.0), with: presentationData.theme.list.itemAccentColor, for: .normal)
         self.closeButton.hitTestSlop = UIEdgeInsets(top: -8.0, left: -8.0, bottom: -8.0, right: -8.0)
 
-        self.infoNode = ImmediateTextNode()
-        self.infoNode.maximumNumberOfLines = 0
-        self.infoNode.textAlignment = .center
-        self.infoNode.attributedText = NSAttributedString(string: countries.isDemo ? presentationData.strings.ChannelStats_Countries_DemoInfo : "", font: Font.regular(13.0), textColor: presentationData.theme.list.freeTextColor)
-
         super.init()
 
         self.addSubnode(self.backgroundNode)
         self.addSubnode(self.titleNode)
         self.addSubnode(self.closeButton)
-        self.addSubnode(self.infoNode)
 
         self.closeButton.addTarget(self, action: #selector(self.closePressed), forControlEvents: .touchUpInside)
 
         // Nothing shows until the dive starts, which places the globe over the card first.
-        for node in [self.backgroundNode, self.titleNode, self.closeButton, self.infoNode] as [ASDisplayNode] {
+        for node in [self.backgroundNode, self.titleNode, self.closeButton] as [ASDisplayNode] {
             node.alpha = 0.0
         }
         self.globeView.alpha = 0.0
@@ -153,13 +146,10 @@ private final class StatsGlobeScreenNode: ASDisplayNode {
         transition.updateFrame(node: self.titleNode, frame: CGRect(origin: CGPoint(x: floor((size.width - titleSize.width) / 2.0), y: topInset + floor((barHeight - titleSize.height) / 2.0)), size: titleSize))
 
         let bottomInset = max(layout.intrinsicInsets.bottom, layout.safeInsets.bottom) + 16.0
-        let infoSize = self.infoNode.updateLayout(CGSize(width: size.width - sideInset * 2.0 - 16.0, height: 200.0))
-        let infoFrame = CGRect(origin: CGPoint(x: floor((size.width - infoSize.width) / 2.0), y: size.height - bottomInset - infoSize.height), size: infoSize)
-        transition.updateFrame(node: self.infoNode, frame: infoFrame)
 
         // The globe takes the space between the bar and the note, with room for its halo.
         let top = topInset + barHeight
-        let bottom = infoFrame.minY - 12.0
+        let bottom = size.height - bottomInset
         let available = CGRect(x: 0.0, y: top, width: size.width, height: max(0.0, bottom - top))
         self.restingRadius = floor(max(60.0, min(available.width - 48.0, available.height - 48.0) / 2.0))
         self.restingOffset = CGPoint(x: available.midX - size.width / 2.0, y: available.midY - size.height / 2.0)
@@ -216,7 +206,7 @@ private final class StatsGlobeScreenNode: ASDisplayNode {
 
         self.backgroundNode.alpha = 1.0
         self.backgroundNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3)
-        for node in [self.titleNode, self.closeButton, self.infoNode] as [ASDisplayNode] {
+        for node in [self.titleNode, self.closeButton] as [ASDisplayNode] {
             node.alpha = 1.0
             node.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3, delay: 0.1)
         }
@@ -252,7 +242,7 @@ private final class StatsGlobeScreenNode: ASDisplayNode {
         let current = (center: CGPoint(x: size.width / 2.0 + self.globeView.centerOffset.x, y: size.height / 2.0 + self.globeView.centerOffset.y), radius: shownRadius)
 
         self.backgroundNode.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, removeOnCompletion: false)
-        for node in [self.titleNode, self.closeButton, self.infoNode] as [ASDisplayNode] {
+        for node in [self.titleNode, self.closeButton] as [ASDisplayNode] {
             node.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
         }
 

@@ -6,8 +6,8 @@ colours with a marker per country carrying its number of followers. A tap opens 
 fullscreen.
 
 Telegram's statistics do not report countries yet: `stats.broadcastStats` breaks followers down
-by language only. The section therefore shows a demo distribution, labelled **DEMO** with a note
-below it, until the server sends a country breakdown. The change that would take on the server is
+by language only. The section therefore shows a demo distribution, labelled **DEMO** in the
+section header, until the server sends a country breakdown. The change that would take on the server is
 in [api.md](api.md). The client is built so that real data only replaces one function.
 
 ## The flow
@@ -25,7 +25,6 @@ in [api.md](api.md). The client is built so that real data only replaces one fun
 5. A tap on the globe dives into it: the globe grows from the card to fill the screen. There the
    labels also name the country, the globe turns any way and zooms with a pinch or a double tap.
    **Close** shrinks it back onto the card, which carries on from where it was turned to.
-6. A note under the section says the data is a demo and why.
 
 ## Requirements
 
@@ -75,7 +74,7 @@ Statistics are only available for channels with enough followers; the server dec
 **Works for real**
 
 - The section, its card styling and its place in Statistics, built from Telegram's own items:
-  the section header with a badge and an action, the glass card, the pie chart, the footer note.
+  the section header with a badge and an action, the glass card, the pie chart.
 - The globe: a sphere with the land as about 3,000 dots, drawn with SceneKit in the theme's
   colours, light or dark. It turns under the finger, coasts, and turns slowly when left alone.
 - Markers sized by share, labels with flags, follower counts and (fullscreen) country names in the
@@ -108,7 +107,7 @@ next to `languages_graph`, in the same JSON format, as described in [api.md](api
 
 - `ChannelStats` would carry the new graph, as it carries `languagesGraph`;
 - the countries would be read from that graph instead of `demo(...)`, which goes away together
-  with the badge and the note.
+  with the badge.
 
 The country shares are an aggregate, never a list of followers. A per-follower map is not
 possible on the client, and should not be:
@@ -135,11 +134,10 @@ Changed files:
 
 - `submodules/StatisticsUI/Sources/ChannelStatsController.swift`: the section
   (`StatsSection.countries`), its entries (header with the DEMO badge and the Show Globe / Show
-  Chart action, globe, pie chart, note), whether the card shows the globe, opening the fullscreen
+  Chart action, globe, pie chart), whether the card shows the globe, opening the fullscreen
   globe, and the entries after the section moved down four stable ids.
 - `Telegram/Telegram-iOS/en.lproj/Localizable.strings`: `ChannelStats.Countries.Title`,
-  `ChannelStats.Countries.Demo`, `ChannelStats.Countries.DemoInfo`,
-  `ChannelStats.Countries.ShowGlobe`, `ChannelStats.Countries.ShowChart`,
+  `ChannelStats.Countries.Demo`, `ChannelStats.Countries.ShowGlobe`, `ChannelStats.Countries.ShowChart`,
   `ChannelStats.Countries.ScreenTitle`.
 
 The whole change is one patch against the base commit `16a3d3c5`, without the Xcode 26 build fix:

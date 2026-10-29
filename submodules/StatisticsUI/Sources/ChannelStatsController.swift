@@ -198,7 +198,6 @@ private enum StatsEntry: ItemListNodeEntry {
     case countriesTitle(PresentationTheme, String, String, String)
     case countriesGlobe(PresentationTheme, PresentationStrings, ChannelStatsCountries)
     case countriesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
-    case countriesInfo(PresentationTheme, String)
     
     case postInteractionsTitle(PresentationTheme, String)
     case postInteractionsGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
@@ -292,7 +291,7 @@ private enum StatsEntry: ItemListNodeEntry {
                 return StatsSection.followersBySource.rawValue
             case .languagesTitle, .languagesGraph:
                 return StatsSection.languages.rawValue
-            case .countriesTitle, .countriesGlobe, .countriesGraph, .countriesInfo:
+            case .countriesTitle, .countriesGlobe, .countriesGraph:
                 return StatsSection.countries.rawValue
             case .postInteractionsTitle, .postInteractionsGraph:
                 return StatsSection.postInteractions.rawValue
@@ -381,8 +380,6 @@ private enum StatsEntry: ItemListNodeEntry {
                 return 17
             case .countriesGraph:
                 return 18
-            case .countriesInfo:
-                return 19
             case .postInteractionsTitle:
                 return 20
             case .postInteractionsGraph:
@@ -604,12 +601,6 @@ private enum StatsEntry: ItemListNodeEntry {
                 }
             case let .countriesGraph(lhsTheme, lhsStrings, lhsDateTimeFormat, lhsGraph, lhsType):
                 if case let .countriesGraph(rhsTheme, rhsStrings, rhsDateTimeFormat, rhsGraph, rhsType) = rhs, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsDateTimeFormat == rhsDateTimeFormat, lhsGraph == rhsGraph, lhsType == rhsType {
-                    return true
-                } else {
-                    return false
-                }
-            case let .countriesInfo(lhsTheme, lhsText):
-                if case let .countriesInfo(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
                     return true
                 } else {
                     return false
@@ -986,8 +977,6 @@ private enum StatsEntry: ItemListNodeEntry {
                 })
             case let .countriesGraph(_, _, _, graph, type):
                 return StatsGraphItem(presentationData: presentationData, systemStyle: .glass, graph: graph, type: type, sectionId: self.section, style: .blocks)
-            case let .countriesInfo(_, text):
-                return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
             case let .overview(_, stats):
                 return StatsOverviewItem(context: arguments.context, presentationData: presentationData, systemStyle: .glass, isGroup: false, stats: stats, sectionId: self.section, style: .blocks)
             case let .growthGraph(_, _, _, graph, type),
@@ -1445,7 +1434,6 @@ private func statsEntries(
         } else {
             entries.append(.countriesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, countries.graph(strings: presentationData.strings, period: data.period), .pie))
         }
-        entries.append(.countriesInfo(presentationData.theme, presentationData.strings.ChannelStats_Countries_DemoInfo))
     }
     
     if !data.interactionsGraph.isEmpty {
