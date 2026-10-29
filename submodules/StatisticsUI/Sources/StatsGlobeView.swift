@@ -155,7 +155,8 @@ private final class GlobeLabelView: UIView {
     }
 }
 
-/// The globe: a sideways drag turns it; the list still scrolls over it.
+/// The globe: a sideways drag turns it, a pinch looks closer and springs back; the list still
+/// scrolls over it.
 final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     let countries: ChannelStatsCountries
     private(set) var colors: StatsGlobeColors
@@ -185,6 +186,11 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     private var isTracking = false
     private var lastInteraction: Double = 0.0
     private var spinFactor: CGFloat = 1.0
+    /// How much closer the globe is drawn while pinched; 1 at rest.
+    private var zoom: CGFloat = 1.0
+    private var zoomVelocity: CGFloat = 0.0
+    private var zoomAtPinchStart: CGFloat = 1.0
+    private var isPinching = false
     private var turnAnimation: (from: StatsGlobeOrientation, to: StatsGlobeOrientation, start: Double, duration: Double)?
 
     private var displayLink: SharedDisplayLinkDriver.Link?
@@ -287,6 +293,11 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
                 })
             }
         })
+
+        // As a photo in a chat: pinch to look closer, let go and it springs back.
+        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(self.pinchGesture(_:)))
+        pinch.delegate = self
+        self.addGestureRecognizer(pinch)
 
         let pan = UIPanGestureRecognizer(target: self, action: #selector(self.panGesture(_:)))
         pan.delegate = self
@@ -391,7 +402,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
 
     /// The globe's circle in this view's coordinates.
     var globeFrame: CGRect {
-        let radius = self.radius
+        let radius = self.radius * self.zoom
         let center = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
         return CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2.0, height: radius * 2.0)
     }
@@ -411,7 +422,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         guard size.width > 0.0, size.height > 0.0 else {
             return
         }
-        let radius = max(1.0, self.radius)
+        let radius = max(1.0, self.radius * self.zoom)
 
         // An orthographic scale is half the visible height, in scene units: the sphere's radius of 1
         // comes out at exactly `radius` points.
@@ -502,6 +513,24 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         let deltaTime = min(deltaTime, 1.0 / 20.0)
         let now = CACurrentMediaTime()
 
+        if !self.isPinching && (abs(self.zoom - 1.0) > 0.0005 || abs(self.zoomVelocity) > 0.005) {
+            // Back to rest on a spring, as a pinched photo returns.
+            let stiffness: CGFloat = 320.0
+            let damping: CGFloat = 2.0 * sqrt(stiffness) * 0.82
+            var remaining = deltaTime
+            while remaining > 0.0 {
+                let step = min(remaining, 1.0 / 240.0)
+                let acceleration = -stiffness * (self.zoom - 1.0) - damping * self.zoomVelocity
+                self.zoomVelocity += acceleration * step
+                self.zoom += self.zoomVelocity * step
+                remaining -= step
+            }
+            if abs(self.zoom - 1.0) <= 0.0005 && abs(self.zoomVelocity) <= 0.005 {
+                self.zoom = 1.0
+                self.zoomVelocity = 0.0
+            }
+        }
+
         if let turnAnimation = self.turnAnimation {
             let t = min(1.0, CGFloat((now - turnAnimation.start) / turnAnimation.duration))
             let eased = 1.0 - pow(1.0 - t, 3.0)
@@ -526,7 +555,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
             // Then the slow turn, eased back in.
             if now - self.lastInteraction > idleSpinDelay {
                 self.spinFactor = min(1.0, self.spinFactor + deltaTime * 0.5)
-                self.orientation.longitude += idleSpinSpeed * self.spinFactor * deltaTime
+                self.orientation.longitude += idleSpinSpeed * self.spinFactor * deltaTime / self.zoom
             }
         }
         if self.orientation.longitude > CGFloat.pi {
@@ -555,7 +584,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
 
     @objc private func panGesture(_ recognizer: UIPanGestureRecognizer) {
         // The surface follows the finger: a drag across the globe's width is about half a turn.
-        let scale = max(1.0, self.radius)
+        let scale = max(1.0, self.radius * self.zoom)
         switch recognizer.state {
         case .began:
             self.isTracking = true
@@ -578,6 +607,36 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
+    @objc private func pinchGesture(_ recognizer: UIPinchGestureRecognizer) {
+        switch recognizer.state {
+        case .began:
+            self.isPinching = true
+            self.zoomAtPinchStart = self.zoom
+            self.zoomVelocity = 0.0
+            self.noteInteraction()
+        case .changed:
+            // Closer up to three times; pinching in past rest gives a little, then holds.
+            let value = self.zoomAtPinchStart * recognizer.scale
+            if value >= 1.0 {
+                self.zoom = min(3.0, value)
+            } else {
+                self.zoom = 1.0 - (1.0 - value) * 0.25
+            }
+            self.noteInteraction()
+        case .ended, .cancelled, .failed:
+            self.isPinching = false
+            self.zoomVelocity = 0.0
+            self.noteInteraction()
+        default:
+            break
+        }
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Turning while pinching, as the two fingers move together.
+        return gestureRecognizer.view === self && otherGestureRecognizer.view === self
+    }
+
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         guard let pan = gestureRecognizer as? UIPanGestureRecognizer else {
             return true
@@ -589,6 +648,10 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
             return isSideways
         }
         if pan.view is UIScrollView {
+            // Two fingers on the globe pinch it; they never scroll the list.
+            if self.isPinching || pan.numberOfTouches > 1 {
+                return false
+            }
             // UIKit also asks the touched view about its ancestors' drags, as UISlider uses it.
             // The list's scroll takes the up-and-down drags and the globe the sideways ones, by
             // the same test, so a drag never moves both and there is no angle where neither

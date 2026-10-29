@@ -28,7 +28,8 @@ replaces one function.
    dots, each country is a dot in its colour from the chart whose ring pings outward, sized by its
    share, with a label carrying a dot of that colour, its name and share. When two labels would overlap, the larger audience
    keeps its label. A sideways drag turns the globe and lets it coast; up-and-down drags scroll
-   the list.
+   the list. A pinch draws it up to three times closer, which spreads crowded countries apart so
+   their labels show, and it springs back when the fingers lift, as a photo in a chat does.
 5. A note under the card says: "Estimated from the languages your followers use Telegram in."
 
 ## Requirements
@@ -139,7 +140,7 @@ New files:
 |---|---|
 | `submodules/StatisticsUI/Sources/ChannelStatsCountries.swift` | The model, marker coordinates, the language-to-country table and the estimate, and the pie chart's graph |
 | `submodules/StatisticsUI/Sources/StatsGlobeLand.swift` | The land: a grid of dots 2° apart, one bit each (1.7 KB), and its decoder |
-| `submodules/StatisticsUI/Sources/StatsGlobeView.swift` | The globe: SceneKit sphere, land dots, markers and their rings, labels, turning and coasting |
+| `submodules/StatisticsUI/Sources/StatsGlobeView.swift` | The globe: SceneKit sphere, land dots, markers and their rings, labels, turning, coasting and the springing pinch |
 | `submodules/StatisticsUI/Sources/StatsCountriesItem.swift` | The countries card: one list item with the pie chart and the globe as pages that slide |
 | `docs/subscriber-globe/*` | This write-up, the decision log and the API proposal |
 

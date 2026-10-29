@@ -143,7 +143,7 @@ on both pages. The globe stops when its page is off screen.
 globe is gone (it repeated the chart's legend); the globe takes the room, up to 460 pt tall.
 Replaces the list part of D-016.
 
-**D-023. No sheet: the globe is turned in the card. (moondiel)** The globe does not open anywhere;
+**D-023. No sheet: the globe is turned in the card. (moondiel)** Its "zoom went with the sheet" is replaced by D-026. The globe does not open anywhere;
 the card is where it is looked at and turned. A sideways drag turns it (and, once turning, tilts
 it), a flick lets it coast, and left alone it turns slowly. Up-and-down drags still scroll the
 list, and the back swipe keeps the screen's left edge. Zoom went with the sheet.
@@ -166,3 +166,11 @@ country has yet, so no two countries share a colour. The colour strings go into 
 graph unchanged, so the chart resolves them exactly as it resolves the Languages chart's; the globe
 resolves them the same way (GraphCore's `GColor(hexString:)` cannot be called from StatisticsUI,
 since Display declares a `UIColor(hexString:)` with the same signature).
+
+**D-026. A pinch looks closer and springs back. (moondiel)** Telegram already has this gesture: a
+photo pinched in a chat grows and springs back on release. The globe does the same inside its card:
+up to three times closer (pinching in past rest gives a quarter and holds), back to rest on a
+spring when the fingers lift. It earns its place because neighbouring countries (Germany, Poland,
+the Netherlands) hide each other's labels at rest and come apart when closer. It does not stay
+zoomed, so the card never sits in a mode of its own inside the list. Two fingers on the globe
+never scroll the list, and the drag turns the globe while pinching.
