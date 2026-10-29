@@ -9,6 +9,8 @@ import TelegramPresentationData
 import ItemListUI
 import GraphCore
 import GraphUI
+import ComponentFlow
+import EdgeEffect
 
 // Subscriber Globe: the "Followers by country" card. See docs/subscriber-globe/README.md.
 //
@@ -80,6 +82,10 @@ final class StatsCountriesItemNode: ListViewItemNode {
     private let chartContainerNode: ASDisplayNode
     private let chartNode: ChartNode
     private let globePageView: UIView
+    /// Telegram's edge effect (the fade and blur under glass bars, as on the location screen's
+    /// map), on all four sides of the globe page: where the globe reaches the card's edge, it
+    /// dissolves into the card instead of being cut off.
+    private let globeEdgeViews: [EdgeEffectView]
     private var globeView: StatsGlobeView?
 
     private var item: StatsCountriesItem?
@@ -106,6 +112,11 @@ final class StatsCountriesItemNode: ListViewItemNode {
         self.chartNode = ChartNode()
 
         self.globePageView = UIView()
+        self.globeEdgeViews = (0 ..< 4).map { _ in
+            let view = EdgeEffectView()
+            view.isUserInteractionEnabled = false
+            return view
+        }
 
         super.init(layerBacked: false)
 
@@ -123,6 +134,9 @@ final class StatsCountriesItemNode: ListViewItemNode {
         super.didLoad()
 
         self.pagesNode.view.addSubview(self.globePageView)
+        for view in self.globeEdgeViews {
+            self.globePageView.addSubview(view)
+        }
 
         // As the chart card does: the back swipe keeps the left edge, and on the chart also the
         // range slider's strip.
@@ -236,6 +250,7 @@ final class StatsCountriesItemNode: ListViewItemNode {
                 if globeView.frame != globeFrame {
                     globeView.frame = globeFrame
                 }
+                self.updateGlobeEdges(size: pageSize, color: theme.list.itemBlocksBackgroundColor)
                 globeView.radius = floor(min(pageSize.width, pageSize.height) / 2.0 - 34.0)
 
                 // The pages, side by side in tab order: the chart, then the globe.
@@ -268,6 +283,26 @@ final class StatsCountriesItemNode: ListViewItemNode {
                     globeView.isPaused = true
                 }
             })
+        }
+    }
+
+    /// Top and bottom are Telegram's top and bottom edge effects; the sides are the top one turned
+    /// a quarter, since the effect only knows top and bottom.
+    private func updateGlobeEdges(size: CGSize, color: UIColor) {
+        let edgeSize: CGFloat = 26.0
+        let edges: [(edge: EdgeEffectView.Edge, length: CGFloat, center: CGPoint, angle: CGFloat)] = [
+            (.top, size.width, CGPoint(x: size.width / 2.0, y: edgeSize / 2.0), 0.0),
+            (.bottom, size.width, CGPoint(x: size.width / 2.0, y: size.height - edgeSize / 2.0), 0.0),
+            (.top, size.height, CGPoint(x: edgeSize / 2.0, y: size.height / 2.0), -CGFloat.pi / 2.0),
+            (.top, size.height, CGPoint(x: size.width - edgeSize / 2.0, y: size.height / 2.0), CGFloat.pi / 2.0)
+        ]
+        for (index, edge) in edges.enumerated() where index < self.globeEdgeViews.count {
+            let view = self.globeEdgeViews[index]
+            let rect = CGRect(origin: CGPoint(), size: CGSize(width: edge.length, height: edgeSize))
+            view.transform = CGAffineTransform(rotationAngle: edge.angle)
+            view.bounds = rect
+            view.center = edge.center
+            view.update(content: color, blur: true, alpha: 0.75, rect: rect, edge: edge.edge, edgeSize: edgeSize, transition: .immediate)
         }
     }
 

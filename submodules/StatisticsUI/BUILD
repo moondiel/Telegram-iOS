@@ -58,6 +58,7 @@ swift_library(
         "//submodules/TelegramUI/Components/PremiumPeerShortcutComponent",
         "//submodules/TelegramUI/Components/AlertComponent",
         "//submodules/TelegramUI/Components/AlertComponent/AlertInputFieldComponent",
+        "//submodules/TelegramUI/Components/EdgeEffect",
     ],
     visibility = [
         "//visibility:public",

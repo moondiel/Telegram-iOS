@@ -174,3 +174,15 @@ spring when the fingers lift. It earns its place because neighbouring countries 
 the Netherlands) hide each other's labels at rest and come apart when closer. It does not stay
 zoomed, so the card never sits in a mode of its own inside the list. Two fingers on the globe
 never scroll the list, and the drag turns the globe while pinching.
+
+**D-027. The globe dissolves at the card's edges, with Telegram's edge effect.** Pinched closer,
+the globe ran into the card's edges and was cut off flat. The globe page now carries
+`EdgeEffectView`, the fade-and-blur Telegram puts under glass bars (the location screen's map uses
+it at its top), on all four sides; the effect knows only top and bottom, so the sides are the top
+one turned a quarter. At rest the globe stays clear of the edges and the effect shows nothing.
+
+**D-028. Label padding and round dots, from a device screenshot.** The labels are drawn here, not
+taken from a Telegram component (the nearest is the chart legend's chips). Their width left out
+the colour dot, so the text ended 1 pt from the right edge; it now ends 10 pt from it (the dot
+sits 8 pt in). The land dots had six sides, which showed as hexagons when pinched closer; they
+have twelve.

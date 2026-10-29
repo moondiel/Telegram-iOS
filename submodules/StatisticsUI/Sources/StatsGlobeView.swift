@@ -97,7 +97,8 @@ private func makeSurfaceDiscs(centers: [SIMD3<Float>], radius: Float, elevation:
 private let landGeometry: SCNGeometry = {
     let centers = statsGlobeLandDots.map { unitVector(latitude: $0.latitude, longitude: $0.longitude) }
     // A third of the space between dots, so the grid reads as dots and not as a mesh.
-    return makeSurfaceDiscs(centers: centers, radius: 0.0105, elevation: 1.002, segments: 6)
+    // Twelve sides, so the dots stay round when the globe is pinched closer.
+    return makeSurfaceDiscs(centers: centers, radius: 0.0105, elevation: 1.002, segments: 12)
 }()
 
 private func flatMaterial(color: UIColor) -> SCNMaterial {
@@ -144,7 +145,9 @@ private final class GlobeLabelView: UIView {
         self.dotView.backgroundColor = color
 
         let textSize = self.label.sizeThatFits(CGSize(width: 240.0, height: 40.0))
-        let size = CGSize(width: ceil(textSize.width) + 8.0 + 6.0 + 9.0, height: 22.0)
+        // Dot inset 8, dot 8, gap 6, text, then 10 to the end: a little more than the dot's inset,
+        // since the text ends on a figure and a percent sign rather than a round dot.
+        let size = CGSize(width: 8.0 + 8.0 + 6.0 + ceil(textSize.width) + 10.0, height: 22.0)
         self.dotView.frame = CGRect(x: 8.0, y: floor((size.height - 8.0) / 2.0), width: 8.0, height: 8.0)
         self.label.frame = CGRect(origin: CGPoint(x: 8.0 + 8.0 + 6.0, y: floor((size.height - textSize.height) / 2.0)), size: textSize)
         self.backgroundColor = colors.labelBackground
