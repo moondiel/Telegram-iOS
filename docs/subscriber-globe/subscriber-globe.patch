@@ -1,5 +1,5 @@
 diff --git a/Telegram/Telegram-iOS/en.lproj/Localizable.strings b/Telegram/Telegram-iOS/en.lproj/Localizable.strings
-index 0b086435..8952cbde 100644
+index 0b086435..72bf2088 100644
 --- a/Telegram/Telegram-iOS/en.lproj/Localizable.strings
 +++ b/Telegram/Telegram-iOS/en.lproj/Localizable.strings
 @@ -17106,3 +17106,10 @@ Error: %8$@";
@@ -10,22 +10,22 @@ index 0b086435..8952cbde 100644
 +"ChannelStats.Countries.Title" = "FOLLOWERS BY COUNTRY";
 +"ChannelStats.Countries.EstimateInfo" = "Estimated from the languages your followers use Telegram in.";
 +"ChannelStats.Countries.EstimateSubtitle" = "Estimated from languages";
-+"ChannelStats.Countries.ShowGlobe" = "Show Globe";
-+"ChannelStats.Countries.ShowChart" = "Show Chart";
++"ChannelStats.Countries.TabChart" = "Chart";
++"ChannelStats.Countries.TabGlobe" = "Globe";
 +"ChannelStats.Countries.ScreenTitle" = "Followers by Country";
 diff --git a/submodules/StatisticsUI/Sources/ChannelStatsController.swift b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
-index 618b0f67..d3499377 100644
+index 618b0f67..2a0c1b16 100644
 --- a/submodules/StatisticsUI/Sources/ChannelStatsController.swift
 +++ b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
 @@ -58,8 +58,10 @@ private final class ChannelStatsControllerArguments {
      let presentCpmLocked: () -> Void
      let openEarnStars: () -> Void
      let dismissInput: () -> Void
-+    let toggleCountriesGlobe: () -> Void
++    let setCountriesGlobeSelected: (Bool) -> Void
 +    let openCountriesGlobe: (StatsGlobeView) -> Void
      
 -    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void) {
-+    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void, toggleCountriesGlobe: @escaping () -> Void, openCountriesGlobe: @escaping (StatsGlobeView) -> Void) {
++    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void, setCountriesGlobeSelected: @escaping (Bool) -> Void, openCountriesGlobe: @escaping (StatsGlobeView) -> Void) {
          self.context = context
          self.loadDetailedGraph = loadDetailedGraph
          self.openPostStats = openPostStats
@@ -33,7 +33,7 @@ index 618b0f67..d3499377 100644
          self.presentCpmLocked = presentCpmLocked
          self.openEarnStars = openEarnStars
          self.dismissInput = dismissInput
-+        self.toggleCountriesGlobe = toggleCountriesGlobe
++        self.setCountriesGlobeSelected = setCountriesGlobeSelected
 +        self.openCountriesGlobe = openCountriesGlobe
      }
  }
@@ -46,12 +46,13 @@ index 618b0f67..d3499377 100644
      case postInteractions
      case instantPageInteractions
      case reactionsByEmotion
-@@ -189,6 +194,12 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -189,6 +194,13 @@ private enum StatsEntry: ItemListNodeEntry {
      case languagesTitle(PresentationTheme, String)
      case languagesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
      
 +    // Subscriber Globe: followers by country (see ChannelStatsCountries.swift).
-+    case countriesTitle(PresentationTheme, String, String)
++    case countriesTitle(PresentationTheme, String)
++    case countriesTabs(PresentationTheme, String, String, Bool)
 +    case countriesGlobe(PresentationTheme, PresentationStrings, ChannelStatsCountries)
 +    case countriesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
 +    case countriesInfo(PresentationTheme, String)
@@ -59,16 +60,16 @@ index 618b0f67..d3499377 100644
      case postInteractionsTitle(PresentationTheme, String)
      case postInteractionsGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
  
-@@ -281,6 +292,8 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -281,6 +293,8 @@ private enum StatsEntry: ItemListNodeEntry {
                  return StatsSection.followersBySource.rawValue
              case .languagesTitle, .languagesGraph:
                  return StatsSection.languages.rawValue
-+            case .countriesTitle, .countriesGlobe, .countriesGraph, .countriesInfo:
++            case .countriesTitle, .countriesTabs, .countriesGlobe, .countriesGraph, .countriesInfo:
 +                return StatsSection.countries.rawValue
              case .postInteractionsTitle, .postInteractionsGraph:
                  return StatsSection.postInteractions.rawValue
              case .instantPageInteractionsTitle, .instantPageInteractionsGraph:
-@@ -362,30 +375,38 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -362,30 +376,40 @@ private enum StatsEntry: ItemListNodeEntry {
                  return 14
              case .languagesGraph:
                  return 15
@@ -76,55 +77,63 @@ index 618b0f67..d3499377 100644
 +            case .countriesTitle:
                  return 16
 -            case .postInteractionsGraph:
-+            case .countriesGlobe:
++            case .countriesTabs:
                  return 17
 -            case .instantPageInteractionsTitle:
 +            case .countriesGraph:
                  return 18
 -            case .instantPageInteractionsGraph:
-+            case .countriesInfo:
++            case .countriesGlobe:
                  return 19
 -            case .reactionsByEmotionTitle:
-+            case .postInteractionsTitle:
++            case .countriesInfo:
                  return 20
 -            case .reactionsByEmotionGraph:
-+            case .postInteractionsGraph:
++            case .postInteractionsTitle:
                  return 21
 -            case .storyInteractionsTitle:
-+            case .instantPageInteractionsTitle:
++            case .postInteractionsGraph:
                  return 22
 -            case .storyInteractionsGraph:
-+            case .instantPageInteractionsGraph:
++            case .instantPageInteractionsTitle:
                  return 23
 -            case .storyReactionsByEmotionTitle:
-+            case .reactionsByEmotionTitle:
++            case .instantPageInteractionsGraph:
                  return 24
 -            case .storyReactionsByEmotionGraph:
-+            case .reactionsByEmotionGraph:
++            case .reactionsByEmotionTitle:
                  return 25
 -            case .postsTitle:
-+            case .storyInteractionsTitle:
++            case .reactionsByEmotionGraph:
                  return 26
-+            case .storyInteractionsGraph:
++            case .storyInteractionsTitle:
 +                return 27
-+            case .storyReactionsByEmotionTitle:
++            case .storyInteractionsGraph:
 +                return 28
-+            case .storyReactionsByEmotionGraph:
++            case .storyReactionsByEmotionTitle:
 +                return 29
-+            case .postsTitle:
++            case .storyReactionsByEmotionGraph:
 +                return 30
++            case .postsTitle:
++                return 31
              case let .post(index, _, _, _, _, _, _):
 -                return 27 + index
-+                return 31 + index
++                return 32 + index
              case .boostLevel:
                  return 2000
              case .boostOverviewTitle:
-@@ -569,6 +590,30 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -569,6 +593,36 @@ private enum StatsEntry: ItemListNodeEntry {
                  } else {
                      return false
                  }
-+            case let .countriesTitle(lhsTheme, lhsText, lhsAction):
-+                if case let .countriesTitle(rhsTheme, rhsText, rhsAction) = rhs, lhsTheme === rhsTheme, lhsText == rhsText, lhsAction == rhsAction {
++            case let .countriesTitle(lhsTheme, lhsText):
++                if case let .countriesTitle(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
++                    return true
++                } else {
++                    return false
++                }
++            case let .countriesTabs(lhsTheme, lhsChartText, lhsGlobeText, lhsGlobeSelected):
++                if case let .countriesTabs(rhsTheme, rhsChartText, rhsGlobeText, rhsGlobeSelected) = rhs, lhsTheme === rhsTheme, lhsChartText == rhsChartText, lhsGlobeText == rhsGlobeText, lhsGlobeSelected == rhsGlobeSelected {
 +                    return true
 +                } else {
 +                    return false
@@ -150,14 +159,18 @@ index 618b0f67..d3499377 100644
              case let .postInteractionsTitle(lhsTheme, lhsText):
                  if case let .postInteractionsTitle(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
                      return true
-@@ -931,6 +976,18 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -931,6 +985,22 @@ private enum StatsEntry: ItemListNodeEntry {
                   let .adsCpmInfo(_, text),
                   let .adsProceedsInfo(_, text):
                  return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
-+            case let .countriesTitle(_, text, action):
-+                return ItemListSectionHeaderItem(presentationData: presentationData, text: text, actionText: action, action: {
-+                    arguments.toggleCountriesGlobe()
-+                }, sectionId: self.section)
++            case let .countriesTitle(_, text):
++                return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
++            case let .countriesTabs(_, chartText, globeText, globeSelected):
++                // Telegram's own tabs at the top of a statistics card, as Boosts / Gifts and
++                // TON / Stars switch theirs: the card below shows the chart or the globe.
++                return BoostsTabsItem(theme: presentationData.theme, boostsText: chartText, giftsText: globeText, selectedTab: globeSelected ? .gifts : .boosts, sectionId: self.section, selectionUpdated: { tab in
++                    arguments.setCountriesGlobeSelected(tab == .gifts)
++                })
 +            case let .countriesGlobe(_, _, countries):
 +                return StatsGlobeItem(presentationData: presentationData, systemStyle: .glass, countries: countries, sectionId: self.section, open: { view in
 +                    arguments.openCountriesGlobe(view)
@@ -169,7 +182,7 @@ index 618b0f67..d3499377 100644
              case let .overview(_, stats):
                  return StatsOverviewItem(context: arguments.context, presentationData: presentationData, systemStyle: .glass, isGroup: false, stats: stats, sectionId: self.section, style: .blocks)
              case let .growthGraph(_, _, _, graph, type),
-@@ -1331,7 +1388,8 @@ private func statsEntries(
+@@ -1331,7 +1401,8 @@ private func statsEntries(
      peer: EnginePeer?,
      messages: [Message]?,
      stories: StoryListContext.State?,
@@ -179,15 +192,15 @@ index 618b0f67..d3499377 100644
  ) -> [StatsEntry] {
      var entries: [StatsEntry] = []
      
-@@ -1376,6 +1434,19 @@ private func statsEntries(
+@@ -1376,6 +1447,19 @@ private func statsEntries(
          entries.append(.languagesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.languagesGraph, .pie))
      }
      
 +    // Subscriber Globe: followers by country, estimated from the languages graph until the server
 +    // reports countries. One card, showing the pie chart or the globe; the header switches between them.
 +    if let countries = ChannelStatsCountries.estimated(fromLanguagesGraph: data.languagesGraph, followers: Int(data.followers.current)) {
-+        let toggleText = countriesShowGlobe ? presentationData.strings.ChannelStats_Countries_ShowChart : presentationData.strings.ChannelStats_Countries_ShowGlobe
-+        entries.append(.countriesTitle(presentationData.theme, presentationData.strings.ChannelStats_Countries_Title, toggleText))
++        entries.append(.countriesTitle(presentationData.theme, presentationData.strings.ChannelStats_Countries_Title))
++        entries.append(.countriesTabs(presentationData.theme, presentationData.strings.ChannelStats_Countries_TabChart, presentationData.strings.ChannelStats_Countries_TabGlobe, countriesShowGlobe))
 +        if countriesShowGlobe {
 +            entries.append(.countriesGlobe(presentationData.theme, presentationData.strings, countries))
 +        } else {
@@ -199,7 +212,7 @@ index 618b0f67..d3499377 100644
      if !data.interactionsGraph.isEmpty {
          entries.append(.postInteractionsTitle(presentationData.theme, presentationData.strings.Stats_InteractionsTitle))
          entries.append(.postInteractionsGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.interactionsGraph, .twoAxisStep))
-@@ -1781,7 +1852,8 @@ private func channelStatsControllerEntries(
+@@ -1781,7 +1865,8 @@ private func channelStatsControllerEntries(
      monetizationConfiguration: MonetizationConfiguration,
      canViewRevenue: Bool,
      canViewStarsRevenue: Bool,
@@ -209,7 +222,7 @@ index 618b0f67..d3499377 100644
  ) -> [StatsEntry] {
      switch state.section {
      case .stats:
-@@ -1792,7 +1864,8 @@ private func channelStatsControllerEntries(
+@@ -1792,7 +1877,8 @@ private func channelStatsControllerEntries(
                  peer: peer,
                  messages: messages,
                  stories: stories,
@@ -219,33 +232,31 @@ index 618b0f67..d3499377 100644
              )
          }
      case .boosts:
-@@ -1926,6 +1999,11 @@ public func channelStatsController(
+@@ -1926,6 +2012,10 @@ public func channelStatsController(
      var updateStatusBarImpl: ((StatusBarStyle) -> Void)?
      var dismissInputImpl: (() -> Void)?
      
 +    // Subscriber Globe: whether the countries card shows the globe instead of the pie chart.
-+    let countriesShowGlobeValue = Atomic<Bool>(value: false)
 +    let countriesShowGlobePromise = ValuePromise<Bool>(false, ignoreRepeated: true)
 +    let previousCountriesShowGlobe = Atomic<Bool?>(value: nil)
 +    
      let arguments = ChannelStatsControllerArguments(context: context, loadDetailedGraph: { graph, x -> Signal<StatsGraph?, NoError> in
          return statsContext.loadDetailedGraph(graph, x: x)
      }, openPostStats: { peer, item in
-@@ -2117,6 +2195,13 @@ public func channelStatsController(
+@@ -2117,6 +2207,12 @@ public func channelStatsController(
      },
      dismissInput: {
          dismissInputImpl?()
 +    },
-+    toggleCountriesGlobe: {
-+        let showGlobe = countriesShowGlobeValue.modify { !$0 }
-+        countriesShowGlobePromise.set(showGlobe)
++    setCountriesGlobeSelected: { globeSelected in
++        countriesShowGlobePromise.set(globeSelected)
 +    },
 +    openCountriesGlobe: { view in
-+        pushImpl?(StatsGlobeSheetScreen(context: context, countries: view.countries, orientation: view.orientation))
++        pushImpl?(StatsGlobeSheetScreen(context: context, sourceView: view))
      })
      
      let messageView = context.account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: nil), index: .upperBound, anchorIndex: .upperBound, count: 200, fixedCombinedReadStates: nil)
-@@ -2152,7 +2237,7 @@ public func channelStatsController(
+@@ -2152,7 +2248,7 @@ public func channelStatsController(
      let presentationData = updatedPresentationData?.signal ?? context.sharedContext.presentationData
      let signal = combineLatest(
          presentationData,
@@ -254,7 +265,7 @@ index 618b0f67..d3499377 100644
          peer.get(),
          dataPromise.get(),
          messagesPromise.get(),
-@@ -2168,7 +2253,11 @@ public func channelStatsController(
+@@ -2168,7 +2264,11 @@ public func channelStatsController(
          longLoadingSignal
      )
      |> deliverOnMainQueue
@@ -267,7 +278,7 @@ index 618b0f67..d3499377 100644
          let (canViewStats, adsRestricted, _, _) = peerData
          var canViewRevenue = peerData.2
          var canViewStarsRevenue = peerData.3
-@@ -2290,7 +2379,7 @@ public func channelStatsController(
+@@ -2290,7 +2390,7 @@ public func channelStatsController(
          }
          
          let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: title, leftNavigationButton: leftNavigationButton, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: true)
@@ -278,11 +289,13 @@ index 618b0f67..d3499377 100644
      }
 diff --git a/submodules/StatisticsUI/Sources/ChannelStatsCountries.swift b/submodules/StatisticsUI/Sources/ChannelStatsCountries.swift
 new file mode 100644
-index 00000000..474e5e6b
+index 00000000..ef25ad1f
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/ChannelStatsCountries.swift
-@@ -0,0 +1,313 @@
+@@ -0,0 +1,320 @@
 +import Foundation
++import UIKit
++import Display
 +import TelegramCore
 +import TelegramPresentationData
 +import TelegramStringFormatting
@@ -314,6 +327,14 @@ index 00000000..474e5e6b
 +    var total: Int {
 +        return self.countries.reduce(0, { $0 + $1.followers })
 +    }
++}
++
++/// One colour per country, by rank, shared by the pie chart, the globe's markers and the sheet's
++/// list, so a country is the same colour everywhere, as languages are in the Languages chart.
++private let channelStatsCountryColorValues: [UInt32] = [0x3497ED, 0x9ED448, 0xF5BD25, 0xE65850, 0x5E5DB1, 0x45B8C9, 0xF79E39, 0x5FB641, 0xA65EB3, 0x2373DB]
++
++func channelStatsCountryColor(at index: Int) -> UIColor {
++    return UIColor(rgb: channelStatsCountryColorValues[index % channelStatsCountryColorValues.count])
 +}
 +
 +/// Marker positions: each country's capital or largest city.
@@ -555,8 +576,6 @@ index 00000000..474e5e6b
 +    /// so Telegram's own pie chart and legend draw them (`StatsGraphItem`, `.pie`).
 +    func graph(strings: PresentationStrings, period: StatsDateRange) -> StatsGraph {
 +        let locale = localeWithStrings(strings)
-+        // With real data the server sends the colours, as it does for the languages graph.
-+        let colors = ["#3497ED", "#2373DB", "#9ED448", "#5FB641", "#F5BD25", "#F79E39", "#E65850", "#5E5DB1", "#45B8C9", "#A65EB3"]
 +
 +        // A column per country with the same value every day: the pie shows the shares.
 +        let days = 7
@@ -577,9 +596,8 @@ index 00000000..474e5e6b
 +            }
 +            columns.append(column)
 +            types[id] = "area"
-+            let name = locale.localizedString(forRegionCode: country.code) ?? country.code
-+            names[id] = "\(flagEmoji(countryCode: country.code)) \(name)"
-+            colorMap[id] = colors[index % colors.count]
++            names[id] = locale.localizedString(forRegionCode: country.code) ?? country.code
++            colorMap[id] = String(format: "#%06X", channelStatsCountryColorValues[index % channelStatsCountryColorValues.count])
 +        }
 +        let json: [String: Any] = [
 +            "columns": columns,
@@ -597,7 +615,7 @@ index 00000000..474e5e6b
 +}
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeItem.swift b/submodules/StatisticsUI/Sources/StatsGlobeItem.swift
 new file mode 100644
-index 00000000..87b5503d
+index 00000000..ba807448
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeItem.swift
 @@ -0,0 +1,199 @@
@@ -713,7 +731,7 @@ index 00000000..87b5503d
 +            let itemBackgroundColor = item.presentationData.theme.list.itemBlocksBackgroundColor
 +            let itemSeparatorColor = item.presentationData.theme.list.itemBlocksSeparatorColor
 +
-+            let contentSize = CGSize(width: params.width, height: 300.0)
++            let contentSize = CGSize(width: params.width, height: 361.0)
 +            let insets = itemListNeighborsGroupedInsets(neighbors, params)
 +            let layout = ListViewItemNodeLayout(contentSize: contentSize, insets: insets)
 +
@@ -779,7 +797,7 @@ index 00000000..87b5503d
 +                if globeView.frame != globeFrame {
 +                    globeView.frame = globeFrame
 +                }
-+                globeView.radius = floor(min(globeFrame.width, globeFrame.height) / 2.0 - 26.0)
++                globeView.radius = floor(min(globeFrame.width, globeFrame.height) / 2.0 - 34.0)
 +
 +                if let image = self.expandIconNode.image {
 +                    self.expandIconNode.frame = CGRect(origin: CGPoint(x: params.width - rightInset - 12.0 - image.size.width, y: 12.0), size: image.size)
@@ -872,14 +890,15 @@ index 00000000..525fcb4d
 +}()
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift b/submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift
 new file mode 100644
-index 00000000..d7da47c5
+index 00000000..929a38db
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift
-@@ -0,0 +1,445 @@
+@@ -0,0 +1,473 @@
 +import Foundation
 +import UIKit
 +import Display
 +import ComponentFlow
++import SwiftSignalKit
 +import AccountContext
 +import TelegramPresentationData
 +import TelegramStringFormatting
@@ -895,9 +914,11 @@ index 00000000..d7da47c5
 +// uses it (`TransactionInfoScreen`). It holds a large globe, opened at the card's turn, and the list
 +// of countries; tapping a country turns the globe to it.
 +
-+/// A country of the list under the globe: flag and name, share and followers.
++/// A country of the list under the globe: a dot in its colour, as in the chart's legend, its name,
++/// share and followers.
 +private final class StatsGlobeCountryRowView: UIView {
 +    private let highlightView: UIView
++    private let dotView: UIView
 +    private let nameLabel: UILabel
 +    private let valueLabel: UILabel
 +    private let separatorView: UIView
@@ -907,6 +928,8 @@ index 00000000..d7da47c5
 +    override init(frame: CGRect) {
 +        self.highlightView = UIView()
 +        self.highlightView.alpha = 0.0
++        self.dotView = UIView()
++        self.dotView.layer.cornerRadius = 5.0
 +        self.nameLabel = UILabel()
 +        self.valueLabel = UILabel()
 +        self.valueLabel.textAlignment = .right
@@ -915,6 +938,7 @@ index 00000000..d7da47c5
 +        super.init(frame: frame)
 +
 +        self.addSubview(self.highlightView)
++        self.addSubview(self.dotView)
 +        self.addSubview(self.nameLabel)
 +        self.addSubview(self.valueLabel)
 +        self.addSubview(self.separatorView)
@@ -936,9 +960,10 @@ index 00000000..d7da47c5
 +        }
 +    }
 +
-+    func update(country: ChannelStatsCountry, total: Int, theme: PresentationTheme, locale: Locale, hasSeparator: Bool, size: CGSize) {
++    func update(country: ChannelStatsCountry, color: UIColor, total: Int, theme: PresentationTheme, locale: Locale, hasSeparator: Bool, size: CGSize) {
 +        let name = locale.localizedString(forRegionCode: country.code) ?? country.code
-+        self.nameLabel.attributedText = NSAttributedString(string: "\(flagEmoji(countryCode: country.code))  \(name)", font: Font.regular(17.0), textColor: theme.list.itemPrimaryTextColor)
++        self.nameLabel.attributedText = NSAttributedString(string: name, font: Font.regular(17.0), textColor: theme.list.itemPrimaryTextColor)
++        self.dotView.backgroundColor = color
 +
 +        let share = Int((Double(country.followers) * 100.0 / Double(max(1, total))).rounded())
 +        let value = NSMutableAttributedString()
@@ -954,10 +979,12 @@ index 00000000..d7da47c5
 +        let valueSize = self.valueLabel.sizeThatFits(CGSize(width: size.width / 2.0, height: size.height))
 +        self.highlightView.frame = CGRect(origin: CGPoint(), size: size)
 +        self.valueLabel.frame = CGRect(x: size.width - sideInset - valueSize.width, y: floor((size.height - valueSize.height) / 2.0), width: valueSize.width, height: valueSize.height)
-+        let nameWidth = max(0.0, size.width - sideInset * 2.0 - valueSize.width - 8.0)
++        self.dotView.frame = CGRect(x: sideInset, y: floor((size.height - 10.0) / 2.0), width: 10.0, height: 10.0)
++        let nameX = sideInset + 10.0 + 12.0
++        let nameWidth = max(0.0, size.width - nameX - sideInset - valueSize.width - 8.0)
 +        let nameSize = self.nameLabel.sizeThatFits(CGSize(width: nameWidth, height: size.height))
-+        self.nameLabel.frame = CGRect(x: sideInset, y: floor((size.height - nameSize.height) / 2.0), width: min(nameWidth, nameSize.width), height: nameSize.height)
-+        self.separatorView.frame = CGRect(x: sideInset, y: size.height - UIScreenPixel, width: size.width - sideInset, height: UIScreenPixel)
++        self.nameLabel.frame = CGRect(x: nameX, y: floor((size.height - nameSize.height) / 2.0), width: min(nameWidth, nameSize.width), height: nameSize.height)
++        self.separatorView.frame = CGRect(x: nameX, y: size.height - UIScreenPixel, width: size.width - nameX, height: UIScreenPixel)
 +    }
 +}
 +
@@ -1049,7 +1076,7 @@ index 00000000..d7da47c5
 +            for (index, country) in countries.enumerated() {
 +                let rowView = self.rowViews[index]
 +                rowView.frame = CGRect(x: 0.0, y: CGFloat(index) * rowHeight, width: sectionWidth, height: rowHeight)
-+                rowView.update(country: country, total: component.countries.total, theme: component.theme, locale: locale, hasSeparator: index != countries.count - 1, size: rowView.bounds.size)
++                rowView.update(country: country, color: channelStatsCountryColor(at: index), total: component.countries.total, theme: component.theme, locale: locale, hasSeparator: index != countries.count - 1, size: rowView.bounds.size)
 +                rowView.tapped = { [weak globeView] in
 +                    globeView?.focus(on: country)
 +                }
@@ -1295,12 +1322,17 @@ index 00000000..d7da47c5
 +
 +/// The globe sheet. It opens at the turn of the card's globe it was opened from.
 +final class StatsGlobeSheetScreen: ViewControllerComponentContainer {
-+    init(context: AccountContext, countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?) {
++    /// The card's globe: it stops while the sheet covers it, so two globes do not render at once.
++    private weak var sourceView: StatsGlobeView?
++
++    init(context: AccountContext, sourceView: StatsGlobeView) {
++        self.sourceView = sourceView
++
 +        super.init(
 +            context: context,
 +            component: StatsGlobeSheetContainerComponent(
-+                countries: countries,
-+                orientation: orientation
++                countries: sourceView.countries,
++                orientation: sourceView.orientation
 +            ),
 +            navigationBarAppearance: .none,
 +            statusBarStyle: .ignore,
@@ -1308,6 +1340,18 @@ index 00000000..d7da47c5
 +        )
 +
 +        self.navigationPresentation = .flatModal
++        sourceView.isPaused = true
++    }
++
++    required public init(coder aDecoder: NSCoder) {
++        fatalError("init(coder:) has not been implemented")
++    }
++
++    deinit {
++        let sourceView = self.sourceView
++        Queue.mainQueue().async {
++            sourceView?.isPaused = false
++        }
 +    }
 +
 +    override func viewDidLoad() {
@@ -1317,16 +1361,18 @@ index 00000000..d7da47c5
 +        self.view.disablesInteractiveModalDismiss = true
 +    }
 +
-+    required public init(coder aDecoder: NSCoder) {
-+        fatalError("init(coder:) has not been implemented")
++    override func viewDidDisappear(_ animated: Bool) {
++        super.viewDidDisappear(animated)
++
++        self.sourceView?.isPaused = false
 +    }
 +}
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeView.swift b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
 new file mode 100644
-index 00000000..89743b24
+index 00000000..82ffd580
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
-@@ -0,0 +1,626 @@
+@@ -0,0 +1,671 @@
 +import Foundation
 +import UIKit
 +import SceneKit
@@ -1437,13 +1483,16 @@ index 00000000..89743b24
 +    return material
 +}
 +
-+/// A country's label: its flag and followers, and in the sheet its name.
++/// A country's label: a dot in the country's colour, as in the chart's legend, its name and share.
 +private final class GlobeLabelView: UIView {
-+    let label: UILabel
++    private let dotView: UIView
++    private let label: UILabel
 +    /// Whether the label has room, eased so labels do not pop when they start to overlap.
 +    var visibility: CGFloat = 0.0
 +
 +    override init(frame: CGRect) {
++        self.dotView = UIView()
++        self.dotView.layer.cornerRadius = 4.0
 +        self.label = UILabel()
 +        self.label.numberOfLines = 1
 +
@@ -1454,6 +1503,7 @@ index 00000000..89743b24
 +        self.layer.shadowRadius = 4.0
 +        self.layer.shadowOpacity = 0.18
 +        self.layer.shadowColor = UIColor.black.cgColor
++        self.addSubview(self.dotView)
 +        self.addSubview(self.label)
 +    }
 +
@@ -1461,22 +1511,22 @@ index 00000000..89743b24
 +        preconditionFailure()
 +    }
 +
-+    func update(country: ChannelStatsCountry, name: String?, colors: StatsGlobeColors) -> CGSize {
++    func update(name: String, share: Int, color: UIColor, colors: StatsGlobeColors) {
 +        let text = NSMutableAttributedString()
-+        text.append(NSAttributedString(string: "\(flagEmoji(countryCode: country.code)) ", attributes: [.font: Font.semibold(12.0)]))
-+        if let name {
-+            text.append(NSAttributedString(string: "\(name)  ", attributes: [.font: Font.regular(12.0), .foregroundColor: colors.labelSecondaryText]))
-+        }
-+        text.append(NSAttributedString(string: compactNumericCountString(country.followers), attributes: [.font: Font.semibold(12.0), .foregroundColor: colors.labelText]))
++        text.append(NSAttributedString(string: name, attributes: [.font: Font.medium(12.0), .foregroundColor: colors.labelText]))
++        text.append(NSAttributedString(string: "  \(share)%", attributes: [.font: Font.regular(12.0), .foregroundColor: colors.labelSecondaryText]))
 +        self.label.attributedText = text
++        self.dotView.backgroundColor = color
 +
 +        let textSize = self.label.sizeThatFits(CGSize(width: 240.0, height: 40.0))
-+        let size = CGSize(width: ceil(textSize.width) + 14.0, height: 22.0)
-+        self.label.frame = CGRect(origin: CGPoint(x: 7.0, y: floor((size.height - textSize.height) / 2.0)), size: textSize)
++        let size = CGSize(width: ceil(textSize.width) + 8.0 + 6.0 + 9.0, height: 22.0)
++        self.dotView.frame = CGRect(x: 8.0, y: floor((size.height - 8.0) / 2.0), width: 8.0, height: 8.0)
++        self.label.frame = CGRect(origin: CGPoint(x: 8.0 + 8.0 + 6.0, y: floor((size.height - textSize.height) / 2.0)), size: textSize)
 +        self.backgroundColor = colors.labelBackground
 +        self.layer.cornerRadius = size.height / 2.0
 +        self.bounds = CGRect(origin: CGPoint(), size: size)
-+        return size
++        // A fixed path, so the moving labels do not render their shadow off-screen every frame.
++        self.layer.shadowPath = UIBezierPath(roundedRect: CGRect(origin: CGPoint(), size: size), cornerRadius: size.height / 2.0).cgPath
 +    }
 +}
 +
@@ -1484,8 +1534,8 @@ index 00000000..89743b24
 +final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
 +    let countries: ChannelStatsCountries
 +    private(set) var colors: StatsGlobeColors
-+    /// In the sheet: labels carry the country's name, the globe zooms, and drags go any way. In the
-+    /// card the globe only takes horizontal drags, so the list still scrolls over it.
++    /// In the sheet the globe zooms and drags go any way. In the card it only takes horizontal
++    /// drags, so the list still scrolls over it.
 +    let isExpanded: Bool
 +
 +    /// Called on a tap; the card opens the globe sheet.
@@ -1496,7 +1546,7 @@ index 00000000..89743b24
 +    private let shadeLayer: CAGradientLayer
 +    private let labelsView: UIView
 +    private var labelViews: [GlobeLabelView] = []
-+    private var labelNames: [String?] = []
++    private var labelNames: [String] = []
 +
 +    private let globeNode: SCNNode
 +    private let seaNode: SCNNode
@@ -1507,12 +1557,6 @@ index 00000000..89743b24
 +
 +    /// Points from the globe's centre to its edge at zoom 1.
 +    var radius: CGFloat = 100.0 {
-+        didSet {
-+            self.setNeedsLayout()
-+        }
-+    }
-+    /// Where the globe's centre is, relative to the view's centre.
-+    var centerOffset: CGPoint = CGPoint() {
 +        didSet {
 +            self.setNeedsLayout()
 +        }
@@ -1529,6 +1573,17 @@ index 00000000..89743b24
 +    private var turnAnimation: (from: StatsGlobeOrientation, to: StatsGlobeOrientation, start: Double)?
 +
 +    private var displayLink: SharedDisplayLinkDriver.Link?
++    /// The globe's circle the halo and the edge shading were last laid out for.
++    private var shadedGlobeFrame: CGRect?
++
++    /// Stops the globe, for example while a sheet with another globe covers it.
++    var isPaused = false {
++        didSet {
++            if self.isPaused != oldValue {
++                self.updateIsRunning()
++            }
++        }
++    }
 +
 +    init(countries: ChannelStatsCountries, colors: StatsGlobeColors, strings: PresentationStrings, isExpanded: Bool, orientation: StatsGlobeOrientation? = nil) {
 +        self.countries = countries
@@ -1588,9 +1643,6 @@ index 00000000..89743b24
 +        self.cameraNode.position = SCNVector3(0.0, 0.0, 3.0)
 +        scene.rootNode.addChildNode(self.cameraNode)
 +
-+        self.sceneView.scene = scene
-+        self.sceneView.pointOfView = self.cameraNode
-+
 +        super.init(frame: CGRect())
 +
 +        self.clipsToBounds = true
@@ -1601,6 +1653,26 @@ index 00000000..89743b24
 +
 +        self.addMarkers(strings: strings)
 +        self.applyColors()
++
++        // SceneKit uploads the geometry and compiles its shaders off the main thread first, so
++        // opening the sheet or scrolling to the card does not stall on it; the globe fades in.
++        self.sceneView.alpha = 0.0
++        self.labelsView.alpha = 0.0
++        let cameraNode = self.cameraNode
++        self.sceneView.prepare([scene], completionHandler: { [weak self] _ in
++            DispatchQueue.main.async {
++                guard let self else {
++                    return
++                }
++                self.sceneView.scene = scene
++                self.sceneView.pointOfView = cameraNode
++                self.updateIsRunning()
++                UIView.animate(withDuration: 0.2, animations: {
++                    self.sceneView.alpha = 1.0
++                    self.labelsView.alpha = 1.0
++                })
++            }
++        })
 +
 +        let pan = UIPanGestureRecognizer(target: self, action: #selector(self.panGesture(_:)))
 +        pan.delegate = self
@@ -1634,6 +1706,7 @@ index 00000000..89743b24
 +        let total = max(1, self.countries.total)
 +        let locale = localeWithStrings(strings)
 +        for (index, country) in self.countries.countries.enumerated() {
++            let color = channelStatsCountryColor(at: index)
 +            let center = unitVector(latitude: Float(country.latitude * Double.pi / 180.0), longitude: Float(country.longitude * Double.pi / 180.0))
 +            let orientation = simd_quatf(from: SIMD3<Float>(0.0, 1.0, 0.0), to: center)
 +            // Bigger audiences get bigger dots, by area.
@@ -1668,8 +1741,8 @@ index 00000000..89743b24
 +            self.markerNodes.append(marker)
 +
 +            let labelView = GlobeLabelView()
-+            let name: String? = self.isExpanded ? (locale.localizedString(forRegionCode: country.code) ?? country.code) : nil
-+            let _ = labelView.update(country: country, name: name, colors: self.colors)
++            let name = locale.localizedString(forRegionCode: country.code) ?? country.code
++            labelView.update(name: name, share: Int((share * 100.0).rounded()), color: color, colors: self.colors)
 +            labelView.alpha = 0.0
 +            self.labelNames.append(name)
 +            self.labelsView.addSubview(labelView)
@@ -1681,11 +1754,12 @@ index 00000000..89743b24
 +        let colors = self.colors
 +        self.seaNode.geometry?.materials = [flatMaterial(color: colors.sea)]
 +        self.landNode.geometry?.materials = [flatMaterial(color: colors.land)]
-+        for node in self.markerNodes {
-+            node.geometry?.materials = [flatMaterial(color: colors.accent)]
++        // Each country in its colour from the chart.
++        for (index, node) in self.markerNodes.enumerated() {
++            node.geometry?.materials = [flatMaterial(color: channelStatsCountryColor(at: index))]
 +        }
-+        for node in self.ringNodes {
-+            let material = flatMaterial(color: colors.accent)
++        for (index, node) in self.ringNodes.enumerated() {
++            let material = flatMaterial(color: channelStatsCountryColor(at: index))
 +            material.writesToDepthBuffer = false
 +            node.geometry?.materials = [material]
 +        }
@@ -1702,9 +1776,12 @@ index 00000000..89743b24
 +        }
 +        self.colors = colors
 +        self.applyColors()
++        let total = max(1, self.countries.total)
 +        for (index, labelView) in self.labelViews.enumerated() where index < self.countries.countries.count {
-+            let _ = labelView.update(country: self.countries.countries[index], name: self.labelNames[index], colors: colors)
++            let share = Int((Double(self.countries.countries[index].followers) * 100.0 / Double(total)).rounded())
++            labelView.update(name: self.labelNames[index], share: share, color: channelStatsCountryColor(at: index), colors: colors)
 +        }
++        self.shadedGlobeFrame = nil
 +    }
 +
 +    // MARK: Layout
@@ -1712,7 +1789,7 @@ index 00000000..89743b24
 +    /// The globe's circle in this view's coordinates, at the current zoom.
 +    var globeFrame: CGRect {
 +        let radius = self.radius * self.zoom
-+        let center = CGPoint(x: self.bounds.midX + self.centerOffset.x, y: self.bounds.midY + self.centerOffset.y)
++        let center = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
 +        return CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2.0, height: radius * 2.0)
 +    }
 +
@@ -1734,21 +1811,28 @@ index 00000000..89743b24
 +        let radius = max(1.0, self.radius * self.zoom)
 +
 +        // An orthographic scale is half the visible height, in scene units: the sphere's radius of 1
-+        // comes out at exactly `radius` points. Moving the camera moves the picture the other way.
++        // comes out at exactly `radius` points.
 +        if let camera = self.cameraNode.camera {
-+            camera.orthographicScale = Double(size.height / 2.0 / radius)
++            let scale = Double(size.height / 2.0 / radius)
++            if camera.orthographicScale != scale {
++                camera.orthographicScale = scale
++            }
 +        }
-+        self.cameraNode.position = SCNVector3(Float(-self.centerOffset.x / radius), Float(self.centerOffset.y / radius), 3.0)
 +
++        // The gradients are redrawn whenever they are touched, so only when the globe moves or
++        // grows, not on every frame of its turn.
 +        let globeFrame = self.globeFrame
-+        let glowRadius = radius * 1.2
-+        CATransaction.begin()
-+        CATransaction.setDisableActions(true)
-+        self.glowLayer.frame = CGRect(x: globeFrame.midX - glowRadius, y: globeFrame.midY - glowRadius, width: glowRadius * 2.0, height: glowRadius * 2.0)
-+        self.glowLayer.locations = [NSNumber(value: Double(radius / glowRadius)), 1.0]
-+        self.shadeLayer.frame = globeFrame
-+        self.shadeLayer.cornerRadius = radius
-+        CATransaction.commit()
++        if self.shadedGlobeFrame != globeFrame {
++            self.shadedGlobeFrame = globeFrame
++            let glowRadius = radius * 1.2
++            CATransaction.begin()
++            CATransaction.setDisableActions(true)
++            self.glowLayer.frame = CGRect(x: globeFrame.midX - glowRadius, y: globeFrame.midY - glowRadius, width: glowRadius * 2.0, height: glowRadius * 2.0)
++            self.glowLayer.locations = [NSNumber(value: Double(radius / glowRadius)), 1.0]
++            self.shadeLayer.frame = globeFrame
++            self.shadeLayer.cornerRadius = radius
++            CATransaction.commit()
++        }
 +
 +        self.globeNode.simdOrientation = simd_quatf(angle: Float(self.orientation.latitude), axis: SIMD3<Float>(1.0, 0.0, 0.0)) * simd_quatf(angle: Float(-self.orientation.longitude), axis: SIMD3<Float>(0.0, 1.0, 0.0))
 +
@@ -1790,7 +1874,14 @@ index 00000000..89743b24
 +    override func didMoveToWindow() {
 +        super.didMoveToWindow()
 +
-+        if self.window != nil {
++        self.updateIsRunning()
++    }
++
++    /// The globe turns and renders only while it is on screen, its scene is ready and nothing
++    /// paused it.
++    private func updateIsRunning() {
++        let isRunning = self.window != nil && !self.isPaused && self.sceneView.scene != nil
++        if isRunning {
 +            self.sceneView.isPlaying = true
 +            if self.displayLink == nil {
 +                self.displayLink = SharedDisplayLinkDriver.shared.add(framesPerSecond: .fps(60), { [weak self] deltaTime in
