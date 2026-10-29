@@ -13,7 +13,7 @@ index 0b086435..1f2fb4f2 100644
 +"ChannelStats.Countries.ShowChart" = "Show Chart";
 +"ChannelStats.Countries.ScreenTitle" = "Followers by Country";
 diff --git a/submodules/StatisticsUI/Sources/ChannelStatsController.swift b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
-index 618b0f67..3d2596c3 100644
+index 618b0f67..a8fe4da2 100644
 --- a/submodules/StatisticsUI/Sources/ChannelStatsController.swift
 +++ b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
 @@ -58,8 +58,10 @@ private final class ChannelStatsControllerArguments {
@@ -219,7 +219,7 @@ index 618b0f67..3d2596c3 100644
      let arguments = ChannelStatsControllerArguments(context: context, loadDetailedGraph: { graph, x -> Signal<StatsGraph?, NoError> in
          return statsContext.loadDetailedGraph(graph, x: x)
      }, openPostStats: { peer, item in
-@@ -2117,6 +2184,14 @@ public func channelStatsController(
+@@ -2117,6 +2184,13 @@ public func channelStatsController(
      },
      dismissInput: {
          dismissInputImpl?()
@@ -229,12 +229,11 @@ index 618b0f67..3d2596c3 100644
 +        countriesShowGlobePromise.set(showGlobe)
 +    },
 +    openCountriesGlobe: { view in
-+        let presentationData = updatedPresentationData?.initial ?? context.sharedContext.currentPresentationData.with { $0 }
-+        presentImpl?(StatsGlobeScreen(presentationData: presentationData, sourceView: view))
++        pushImpl?(StatsGlobeSheetScreen(context: context, countries: view.countries, orientation: view.orientation))
      })
      
      let messageView = context.account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: nil), index: .upperBound, anchorIndex: .upperBound, count: 200, fixedCombinedReadStates: nil)
-@@ -2152,7 +2227,7 @@ public func channelStatsController(
+@@ -2152,7 +2226,7 @@ public func channelStatsController(
      let presentationData = updatedPresentationData?.signal ?? context.sharedContext.presentationData
      let signal = combineLatest(
          presentationData,
@@ -243,7 +242,7 @@ index 618b0f67..3d2596c3 100644
          peer.get(),
          dataPromise.get(),
          messagesPromise.get(),
-@@ -2168,7 +2243,11 @@ public func channelStatsController(
+@@ -2168,7 +2242,11 @@ public func channelStatsController(
          longLoadingSignal
      )
      |> deliverOnMainQueue
@@ -256,7 +255,7 @@ index 618b0f67..3d2596c3 100644
          let (canViewStats, adsRestricted, _, _) = peerData
          var canViewRevenue = peerData.2
          var canViewStarsRevenue = peerData.3
-@@ -2290,7 +2369,7 @@ public func channelStatsController(
+@@ -2290,7 +2368,7 @@ public func channelStatsController(
          }
          
          let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: title, leftNavigationButton: leftNavigationButton, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: true)
@@ -440,7 +439,7 @@ index 00000000..8023894e
 +}
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeItem.swift b/submodules/StatisticsUI/Sources/StatsGlobeItem.swift
 new file mode 100644
-index 00000000..bf372dc5
+index 00000000..87b5503d
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeItem.swift
 @@ -0,0 +1,199 @@
@@ -455,7 +454,7 @@ index 00000000..bf372dc5
 +// Subscriber Globe: the globe card in channel statistics. See docs/subscriber-globe/README.md.
 +//
 +// The "Followers by country" card shows either Telegram's pie chart or this globe, switched from
-+// the section header. The globe turns under a sideways drag and opens fullscreen on a tap.
++// the section header. The globe turns under a sideways drag and opens in a sheet on a tap.
 +
 +/// The globe card of the "Followers by country" section.
 +final class StatsGlobeItem: ListViewItem, ItemListItem {
@@ -607,7 +606,7 @@ index 00000000..bf372dc5
 +                    globeView.updateColors(colors)
 +                } else {
 +                    self.globeView?.removeFromSuperview()
-+                    globeView = StatsGlobeView(countries: item.countries, colors: colors, strings: item.presentationData.strings, isFullscreen: false)
++                    globeView = StatsGlobeView(countries: item.countries, colors: colors, strings: item.presentationData.strings, isExpanded: false)
 +                    self.globeView = globeView
 +                    // Over the background and stripes, which are layers, under the icon and corners.
 +                    self.view.insertSubview(globeView, belowSubview: self.expandIconNode.view)
@@ -713,287 +712,442 @@ index 00000000..525fcb4d
 +    }
 +    return dots
 +}()
-diff --git a/submodules/StatisticsUI/Sources/StatsGlobeScreen.swift b/submodules/StatisticsUI/Sources/StatsGlobeScreen.swift
+diff --git a/submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift b/submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift
 new file mode 100644
-index 00000000..7a56b6f3
+index 00000000..8d448f3f
 --- /dev/null
-+++ b/submodules/StatisticsUI/Sources/StatsGlobeScreen.swift
-@@ -0,0 +1,269 @@
++++ b/submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift
+@@ -0,0 +1,424 @@
 +import Foundation
 +import UIKit
 +import Display
-+import AsyncDisplayKit
++import ComponentFlow
++import AccountContext
 +import TelegramPresentationData
++import TelegramStringFormatting
++import ViewControllerComponent
++import SheetComponent
++import MultilineTextComponent
++import BundleIconComponent
++import GlassBarButtonComponent
 +
-+// Subscriber Globe: the globe opened from the card, filling the screen. See
-+// docs/subscriber-globe/README.md.
++// Subscriber Globe: the globe opened from the card, in a sheet. See docs/subscriber-globe/README.md.
 +//
-+// Opening it dives into the card's globe: the card's globe hides, and the fullscreen globe starts
-+// at its place, size and turn, then grows to fill the screen. Closing it shrinks it back onto the
-+// card, which carries on from wherever it was turned to.
++// The sheet is Telegram's glass sheet with a glass close button, as statistics' transaction info
++// uses it (`TransactionInfoScreen`). It holds a large globe, opened at the card's turn, and the list
++// of countries; tapping a country turns the globe to it.
 +
-+final class StatsGlobeScreen: ViewController {
-+    private let presentationData: PresentationData
-+    private let countries: ChannelStatsCountries
-+    private weak var sourceView: StatsGlobeView?
-+    private var animatedIn = false
++/// A country of the list under the globe: flag and name, share and followers.
++private final class StatsGlobeCountryRowView: UIView {
++    private let highlightView: UIView
++    private let nameLabel: UILabel
++    private let valueLabel: UILabel
++    private let separatorView: UIView
 +
-+    private var controllerNode: StatsGlobeScreenNode {
-+        return self.displayNode as! StatsGlobeScreenNode
++    var tapped: (() -> Void)?
++
++    override init(frame: CGRect) {
++        self.highlightView = UIView()
++        self.highlightView.alpha = 0.0
++        self.nameLabel = UILabel()
++        self.valueLabel = UILabel()
++        self.valueLabel.textAlignment = .right
++        self.separatorView = UIView()
++
++        super.init(frame: frame)
++
++        self.addSubview(self.highlightView)
++        self.addSubview(self.nameLabel)
++        self.addSubview(self.valueLabel)
++        self.addSubview(self.separatorView)
++
++        self.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.tapGesture(_:))))
 +    }
 +
-+    init(presentationData: PresentationData, sourceView: StatsGlobeView) {
-+        self.presentationData = presentationData
-+        self.countries = sourceView.countries
-+        self.sourceView = sourceView
-+
-+        super.init(navigationBarPresentationData: nil)
-+
-+        self.statusBar.statusBarStyle = presentationData.theme.rootController.statusBarStyle.style
++    required init?(coder: NSCoder) {
++        preconditionFailure()
 +    }
 +
-+    required init(coder aDecoder: NSCoder) {
-+        fatalError("init(coder:) has not been implemented")
-+    }
-+
-+    override func loadDisplayNode() {
-+        self.displayNode = StatsGlobeScreenNode(presentationData: self.presentationData, countries: self.countries, sourceView: self.sourceView)
-+        self.controllerNode.close = { [weak self] in
-+            self?.dismiss()
++    @objc private func tapGesture(_ recognizer: UITapGestureRecognizer) {
++        if recognizer.state == .ended {
++            self.highlightView.alpha = 1.0
++            UIView.animate(withDuration: 0.3, delay: 0.1, options: [], animations: {
++                self.highlightView.alpha = 0.0
++            })
++            self.tapped?()
 +        }
-+        self.displayNodeDidLoad()
 +    }
 +
-+    override func viewDidAppear(_ animated: Bool) {
-+        super.viewDidAppear(animated)
++    func update(country: ChannelStatsCountry, total: Int, theme: PresentationTheme, locale: Locale, hasSeparator: Bool, size: CGSize) {
++        let name = locale.localizedString(forRegionCode: country.code) ?? country.code
++        self.nameLabel.attributedText = NSAttributedString(string: "\(flagEmoji(countryCode: country.code))  \(name)", font: Font.regular(17.0), textColor: theme.list.itemPrimaryTextColor)
 +
-+        if !self.animatedIn {
-+            self.animatedIn = true
-+            self.controllerNode.animateIn()
-+        }
-+    }
++        let share = Int((Double(country.followers) * 100.0 / Double(max(1, total))).rounded())
++        let value = NSMutableAttributedString()
++        value.append(NSAttributedString(string: "\(share)%  ", font: Font.regular(15.0), textColor: theme.list.itemSecondaryTextColor))
++        value.append(NSAttributedString(string: compactNumericCountString(country.followers), font: Font.semibold(17.0), textColor: theme.list.itemPrimaryTextColor))
++        self.valueLabel.attributedText = value
 +
-+    override func dismiss(completion: (() -> Void)? = nil) {
-+        self.controllerNode.animateOut(completion: { [weak self] in
-+            self?.presentingViewController?.dismiss(animated: false, completion: nil)
-+            completion?()
-+        })
-+    }
++        self.highlightView.backgroundColor = theme.list.itemHighlightedBackgroundColor
++        self.separatorView.backgroundColor = theme.list.itemBlocksSeparatorColor
++        self.separatorView.isHidden = !hasSeparator
 +
-+    override func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
-+        super.containerLayoutUpdated(layout, transition: transition)
-+
-+        self.controllerNode.containerLayoutUpdated(layout, transition: transition)
++        let sideInset: CGFloat = 16.0
++        let valueSize = self.valueLabel.sizeThatFits(CGSize(width: size.width / 2.0, height: size.height))
++        self.highlightView.frame = CGRect(origin: CGPoint(), size: size)
++        self.valueLabel.frame = CGRect(x: size.width - sideInset - valueSize.width, y: floor((size.height - valueSize.height) / 2.0), width: valueSize.width, height: valueSize.height)
++        let nameWidth = max(0.0, size.width - sideInset * 2.0 - valueSize.width - 8.0)
++        let nameSize = self.nameLabel.sizeThatFits(CGSize(width: nameWidth, height: size.height))
++        self.nameLabel.frame = CGRect(x: sideInset, y: floor((size.height - nameSize.height) / 2.0), width: min(nameWidth, nameSize.width), height: nameSize.height)
++        self.separatorView.frame = CGRect(x: sideInset, y: size.height - UIScreenPixel, width: size.width - sideInset, height: UIScreenPixel)
 +    }
 +}
 +
-+private final class StatsGlobeScreenNode: ASDisplayNode {
-+    private let presentationData: PresentationData
-+    private weak var sourceView: StatsGlobeView?
++/// The globe and the list of countries under it.
++private final class StatsGlobeSheetBodyComponent: Component {
++    let theme: PresentationTheme
++    let strings: PresentationStrings
++    let countries: ChannelStatsCountries
++    let orientation: StatsGlobeOrientation?
++    let sideInset: CGFloat
 +
-+    private let backgroundNode: ASDisplayNode
-+    private let globeView: StatsGlobeView
-+    private let titleNode: ImmediateTextNode
-+    private let closeButton: HighlightableButtonNode
++    init(theme: PresentationTheme, strings: PresentationStrings, countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?, sideInset: CGFloat) {
++        self.theme = theme
++        self.strings = strings
++        self.countries = countries
++        self.orientation = orientation
++        self.sideInset = sideInset
++    }
 +
-+    var close: (() -> Void)?
-+
-+    private var validLayout: ContainerViewLayout?
-+    /// The globe's size and place once open; the dive runs between these and the card's.
-+    private var restingRadius: CGFloat = 100.0
-+    private var restingOffset = CGPoint()
-+    private var diveAnimator: DisplayLinkAnimator?
-+    private var isDiving = false
-+    private var isClosing = false
-+
-+    init(presentationData: PresentationData, countries: ChannelStatsCountries, sourceView: StatsGlobeView?) {
-+        self.presentationData = presentationData
-+        self.sourceView = sourceView
-+
-+        let colors = StatsGlobeColors(theme: presentationData.theme)
-+
-+        self.backgroundNode = ASDisplayNode()
-+        self.backgroundNode.backgroundColor = colors.background
-+
-+        self.globeView = StatsGlobeView(countries: countries, colors: colors, strings: presentationData.strings, isFullscreen: true, orientation: sourceView?.orientation)
-+
-+        self.titleNode = ImmediateTextNode()
-+        self.titleNode.attributedText = NSAttributedString(string: presentationData.strings.ChannelStats_Countries_ScreenTitle, font: Font.semibold(17.0), textColor: presentationData.theme.list.itemPrimaryTextColor)
-+        self.titleNode.maximumNumberOfLines = 1
-+
-+        self.closeButton = HighlightableButtonNode()
-+        self.closeButton.setTitle(presentationData.strings.Common_Close, with: Font.regular(17.0), with: presentationData.theme.list.itemAccentColor, for: .normal)
-+        self.closeButton.hitTestSlop = UIEdgeInsets(top: -8.0, left: -8.0, bottom: -8.0, right: -8.0)
-+
-+        super.init()
-+
-+        self.addSubnode(self.backgroundNode)
-+        self.addSubnode(self.titleNode)
-+        self.addSubnode(self.closeButton)
-+
-+        self.closeButton.addTarget(self, action: #selector(self.closePressed), forControlEvents: .touchUpInside)
-+
-+        // Nothing shows until the dive starts, which places the globe over the card first.
-+        for node in [self.backgroundNode, self.titleNode, self.closeButton] as [ASDisplayNode] {
-+            node.alpha = 0.0
++    static func ==(lhs: StatsGlobeSheetBodyComponent, rhs: StatsGlobeSheetBodyComponent) -> Bool {
++        if lhs.theme !== rhs.theme {
++            return false
 +        }
-+        self.globeView.alpha = 0.0
-+    }
-+
-+    override func didLoad() {
-+        super.didLoad()
-+
-+        self.view.insertSubview(self.globeView, aboveSubview: self.backgroundNode.view)
-+    }
-+
-+    @objc private func closePressed() {
-+        self.close?()
-+    }
-+
-+    func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
-+        self.validLayout = layout
-+        let size = layout.size
-+
-+        transition.updateFrame(node: self.backgroundNode, frame: CGRect(origin: CGPoint(), size: size))
-+
-+        let topInset = max(layout.statusBarHeight ?? 0.0, layout.safeInsets.top)
-+        let barHeight: CGFloat = 44.0
-+        let sideInset: CGFloat = 16.0 + max(layout.safeInsets.left, layout.safeInsets.right)
-+
-+        let closeSize = self.closeButton.measure(CGSize(width: 200.0, height: barHeight))
-+        transition.updateFrame(node: self.closeButton, frame: CGRect(origin: CGPoint(x: sideInset, y: topInset + floor((barHeight - closeSize.height) / 2.0)), size: closeSize))
-+
-+        let titleSize = self.titleNode.updateLayout(CGSize(width: size.width - (sideInset + closeSize.width + 12.0) * 2.0, height: barHeight))
-+        transition.updateFrame(node: self.titleNode, frame: CGRect(origin: CGPoint(x: floor((size.width - titleSize.width) / 2.0), y: topInset + floor((barHeight - titleSize.height) / 2.0)), size: titleSize))
-+
-+        let bottomInset = max(layout.intrinsicInsets.bottom, layout.safeInsets.bottom) + 16.0
-+
-+        // The globe takes the space between the bar and the note, with room for its halo.
-+        let top = topInset + barHeight
-+        let bottom = size.height - bottomInset
-+        let available = CGRect(x: 0.0, y: top, width: size.width, height: max(0.0, bottom - top))
-+        self.restingRadius = floor(max(60.0, min(available.width - 48.0, available.height - 48.0) / 2.0))
-+        self.restingOffset = CGPoint(x: available.midX - size.width / 2.0, y: available.midY - size.height / 2.0)
-+
-+        self.globeView.frame = CGRect(origin: CGPoint(), size: size)
-+        if !self.isDiving && !self.isClosing {
-+            self.globeView.radius = self.restingRadius
-+            self.globeView.centerOffset = self.restingOffset
++        if lhs.strings !== rhs.strings {
++            return false
 +        }
++        if lhs.countries != rhs.countries {
++            return false
++        }
++        if lhs.orientation != rhs.orientation {
++            return false
++        }
++        if lhs.sideInset != rhs.sideInset {
++            return false
++        }
++        return true
 +    }
 +
-+    /// Where the card's globe is, in this node's coordinates.
-+    private func sourceCircle() -> (center: CGPoint, radius: CGFloat)? {
-+        guard let sourceView = self.sourceView, sourceView.window != nil, self.isNodeLoaded else {
-+            return nil
-+        }
-+        let frame = self.view.convert(sourceView.globeFrame, from: sourceView)
-+        let visible = self.view.bounds.intersects(frame)
-+        if !visible {
-+            return nil
-+        }
-+        return (CGPoint(x: frame.midX, y: frame.midY), frame.width / 2.0)
-+    }
++    final class View: UIView {
++        private var globeView: StatsGlobeView?
++        private let sectionView: UIView
++        private var rowViews: [StatsGlobeCountryRowView] = []
 +
-+    private func runDive(from: (center: CGPoint, radius: CGFloat), to: (center: CGPoint, radius: CGFloat), duration: Double, overshoot: Bool, completion: @escaping () -> Void) {
-+        let size = self.view.bounds.size
-+        self.diveAnimator?.invalidate()
-+        self.diveAnimator = DisplayLinkAnimator(duration: duration, from: 0.0, to: 1.0, update: { [weak self] t in
-+            guard let self else {
-+                return
-+            }
-+            // Ease out; opening overshoots a little, the "dive" past the screen's edge and back.
-+            let eased: CGFloat
-+            if overshoot {
-+                let s: CGFloat = 1.2
-+                let u = t - 1.0
-+                eased = 1.0 + u * u * ((s + 1.0) * u + s)
++        override init(frame: CGRect) {
++            self.sectionView = UIView()
++            self.sectionView.clipsToBounds = true
++            self.sectionView.layer.cornerRadius = 26.0
++
++            super.init(frame: frame)
++
++            self.addSubview(self.sectionView)
++        }
++
++        required init?(coder: NSCoder) {
++            preconditionFailure()
++        }
++
++        func update(component: StatsGlobeSheetBodyComponent, availableSize: CGSize) -> CGSize {
++            let width = availableSize.width
++            let colors = StatsGlobeColors(theme: component.theme, background: component.theme.list.modalBlocksBackgroundColor)
++
++            let globeView: StatsGlobeView
++            if let current = self.globeView, current.countries == component.countries {
++                globeView = current
++                globeView.updateColors(colors)
 +            } else {
-+                eased = 1.0 - pow(1.0 - t, 3.0)
++                self.globeView?.removeFromSuperview()
++                globeView = StatsGlobeView(countries: component.countries, colors: colors, strings: component.strings, isExpanded: true, orientation: component.orientation)
++                self.globeView = globeView
++                self.insertSubview(globeView, at: 0)
 +            }
-+            let radius = from.radius + (to.radius - from.radius) * eased
-+            let center = CGPoint(x: from.center.x + (to.center.x - from.center.x) * eased, y: from.center.y + (to.center.y - from.center.y) * eased)
-+            self.globeView.radius = max(1.0, radius)
-+            self.globeView.centerOffset = CGPoint(x: center.x - size.width / 2.0, y: center.y - size.height / 2.0)
-+        }, completion: { [weak self] in
-+            self?.diveAnimator = nil
-+            completion()
-+        })
++            let globeHeight = min(width, 400.0)
++            globeView.frame = CGRect(x: 0.0, y: 0.0, width: width, height: globeHeight)
++            globeView.radius = floor(min(width, globeHeight) / 2.0 - 32.0)
++
++            let countries = component.countries.countries
++            while self.rowViews.count > countries.count {
++                self.rowViews.removeLast().removeFromSuperview()
++            }
++            while self.rowViews.count < countries.count {
++                let rowView = StatsGlobeCountryRowView()
++                self.sectionView.addSubview(rowView)
++                self.rowViews.append(rowView)
++            }
++
++            let rowHeight: CGFloat = 52.0
++            let sectionWidth = width - component.sideInset * 2.0
++            let locale = localeWithStrings(component.strings)
++            for (index, country) in countries.enumerated() {
++                let rowView = self.rowViews[index]
++                rowView.frame = CGRect(x: 0.0, y: CGFloat(index) * rowHeight, width: sectionWidth, height: rowHeight)
++                rowView.update(country: country, total: component.countries.total, theme: component.theme, locale: locale, hasSeparator: index != countries.count - 1, size: rowView.bounds.size)
++                rowView.tapped = { [weak globeView] in
++                    globeView?.focus(on: country)
++                }
++            }
++            self.sectionView.backgroundColor = component.theme.list.itemModalBlocksBackgroundColor
++            let sectionFrame = CGRect(x: component.sideInset, y: globeHeight + 8.0, width: sectionWidth, height: CGFloat(countries.count) * rowHeight)
++            self.sectionView.frame = sectionFrame
++            self.sectionView.isHidden = countries.isEmpty
++
++            return CGSize(width: width, height: countries.isEmpty ? globeHeight : sectionFrame.maxY)
++        }
 +    }
 +
-+    func animateIn() {
-+        let size = self.view.bounds.size
-+        let target = (center: CGPoint(x: size.width / 2.0 + self.restingOffset.x, y: size.height / 2.0 + self.restingOffset.y), radius: self.restingRadius)
-+
-+        self.backgroundNode.alpha = 1.0
-+        self.backgroundNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3)
-+        for node in [self.titleNode, self.closeButton] as [ASDisplayNode] {
-+            node.alpha = 1.0
-+            node.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.3, delay: 0.1)
-+        }
-+        self.globeView.alpha = 1.0
-+
-+        guard let source = self.sourceCircle() else {
-+            self.globeView.layer.animateScale(from: 0.6, to: 1.0, duration: 0.4)
-+            self.globeView.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.25)
-+            return
-+        }
-+        // The card's globe becomes this one.
-+        self.sourceView?.alpha = 0.0
-+        self.isDiving = true
-+        self.globeView.radius = source.radius
-+        self.globeView.centerOffset = CGPoint(x: source.center.x - size.width / 2.0, y: source.center.y - size.height / 2.0)
-+        self.runDive(from: source, to: target, duration: 0.5, overshoot: true, completion: { [weak self] in
-+            self?.isDiving = false
-+        })
++    func makeView() -> View {
++        return View(frame: CGRect())
 +    }
 +
-+    func animateOut(completion: @escaping () -> Void) {
-+        if self.isClosing {
-+            return
-+        }
-+        self.isClosing = true
-+        self.view.isUserInteractionEnabled = false
++    func update(view: View, availableSize: CGSize, state: EmptyComponentState, environment: Environment<Empty>, transition: ComponentTransition) -> CGSize {
++        return view.update(component: self, availableSize: availableSize)
++    }
++}
 +
-+        // Zoom folds into the radius, so the globe shrinks from the size it is shown at.
-+        let size = self.view.bounds.size
-+        let shownRadius = self.globeView.radius * self.globeView.zoom
-+        self.globeView.setZoom(1.0, animated: false)
-+        self.globeView.radius = shownRadius
-+        let current = (center: CGPoint(x: size.width / 2.0 + self.globeView.centerOffset.x, y: size.height / 2.0 + self.globeView.centerOffset.y), radius: shownRadius)
++private final class StatsGlobeSheetContent: CombinedComponent {
++    typealias EnvironmentType = ViewControllerComponentContainer.Environment
 +
-+        self.backgroundNode.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, removeOnCompletion: false)
-+        for node in [self.titleNode, self.closeButton] as [ASDisplayNode] {
-+            node.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
-+        }
++    let countries: ChannelStatsCountries
++    let orientation: StatsGlobeOrientation?
++    let dismiss: () -> Void
 +
-+        guard let source = self.sourceCircle() else {
-+            self.sourceView?.alpha = 1.0
-+            self.globeView.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.2, removeOnCompletion: false, completion: { _ in
-+                completion()
-+            })
-+            return
++    init(countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?, dismiss: @escaping () -> Void) {
++        self.countries = countries
++        self.orientation = orientation
++        self.dismiss = dismiss
++    }
++
++    static func ==(lhs: StatsGlobeSheetContent, rhs: StatsGlobeSheetContent) -> Bool {
++        if lhs.countries != rhs.countries {
++            return false
 +        }
-+        self.runDive(from: current, to: source, duration: 0.35, overshoot: false, completion: { [weak self] in
-+            guard let self else {
-+                completion()
-+                return
++        if lhs.orientation != rhs.orientation {
++            return false
++        }
++        return true
++    }
++
++    static var body: Body {
++        let closeButton = Child(GlassBarButtonComponent.self)
++        let title = Child(MultilineTextComponent.self)
++        let globe = Child(StatsGlobeSheetBodyComponent.self)
++
++        return { context in
++            let environment = context.environment[EnvironmentType.self]
++            let component = context.component
++            let theme = environment.theme
++
++            let closeButton = closeButton.update(
++                component: GlassBarButtonComponent(
++                    size: CGSize(width: 44.0, height: 44.0),
++                    backgroundColor: nil,
++                    isDark: theme.overallDarkAppearance,
++                    state: .glass,
++                    component: AnyComponentWithIdentity(id: "close", component: AnyComponent(
++                        BundleIconComponent(
++                            name: "Navigation/Close",
++                            tintColor: theme.chat.inputPanel.panelControlColor
++                        )
++                    )),
++                    action: { _ in
++                        component.dismiss()
++                    }
++                ),
++                availableSize: CGSize(width: 44.0, height: 44.0),
++                transition: .immediate
++            )
++            context.add(closeButton
++                .position(CGPoint(x: 16.0 + closeButton.size.width / 2.0, y: 16.0 + closeButton.size.height / 2.0))
++            )
++
++            let title = title.update(
++                component: MultilineTextComponent(
++                    text: .plain(NSAttributedString(string: environment.strings.ChannelStats_Countries_ScreenTitle, font: Font.semibold(17.0), textColor: theme.actionSheet.primaryTextColor)),
++                    horizontalAlignment: .center,
++                    maximumNumberOfLines: 1
++                ),
++                availableSize: CGSize(width: context.availableSize.width - 140.0, height: 44.0),
++                transition: .immediate
++            )
++            context.add(title
++                .position(CGPoint(x: context.availableSize.width / 2.0, y: 16.0 + 22.0))
++            )
++
++            var contentHeight: CGFloat = 68.0
++
++            let globe = globe.update(
++                component: StatsGlobeSheetBodyComponent(
++                    theme: theme,
++                    strings: environment.strings,
++                    countries: component.countries,
++                    orientation: component.orientation,
++                    sideInset: 16.0 + environment.safeInsets.left
++                ),
++                availableSize: CGSize(width: context.availableSize.width, height: 10000.0),
++                transition: context.transition
++            )
++            context.add(globe
++                .position(CGPoint(x: context.availableSize.width / 2.0, y: contentHeight + globe.size.height / 2.0))
++            )
++            contentHeight += globe.size.height
++            contentHeight += 16.0 + max(environment.safeInsets.bottom, 16.0)
++
++            return CGSize(width: context.availableSize.width, height: contentHeight)
++        }
++    }
++}
++
++private final class StatsGlobeSheetContainerComponent: CombinedComponent {
++    typealias EnvironmentType = ViewControllerComponentContainer.Environment
++
++    let countries: ChannelStatsCountries
++    let orientation: StatsGlobeOrientation?
++
++    init(countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?) {
++        self.countries = countries
++        self.orientation = orientation
++    }
++
++    static func ==(lhs: StatsGlobeSheetContainerComponent, rhs: StatsGlobeSheetContainerComponent) -> Bool {
++        if lhs.countries != rhs.countries {
++            return false
++        }
++        if lhs.orientation != rhs.orientation {
++            return false
++        }
++        return true
++    }
++
++    static var body: Body {
++        let sheet = Child(SheetComponent<EnvironmentType>.self)
++        let animateOut = StoredActionSlot(Action<Void>.self)
++
++        let sheetExternalState = SheetComponent<EnvironmentType>.ExternalState()
++
++        return { context in
++            let environment = context.environment[EnvironmentType.self]
++
++            let controller = environment.controller
++
++            let sheet = sheet.update(
++                component: SheetComponent<EnvironmentType>(
++                    content: AnyComponent<EnvironmentType>(StatsGlobeSheetContent(
++                        countries: context.component.countries,
++                        orientation: context.component.orientation,
++                        dismiss: {
++                            animateOut.invoke(Action { _ in
++                                if let controller = controller() {
++                                    controller.dismiss(completion: nil)
++                                }
++                            })
++                        }
++                    )),
++                    style: .glass,
++                    backgroundColor: .color(environment.theme.list.modalBlocksBackgroundColor),
++                    followContentSizeChanges: true,
++                    externalState: sheetExternalState,
++                    animateOut: animateOut
++                ),
++                environment: {
++                    environment
++                    SheetComponentEnvironment(
++                        metrics: environment.metrics,
++                        deviceMetrics: environment.deviceMetrics,
++                        isDisplaying: environment.value.isVisible,
++                        isCentered: environment.presentsFloatingPanels,
++                        hasInputHeight: !environment.inputHeight.isZero,
++                        regularMetricsSize: CGSize(width: 430.0, height: 900.0),
++                        dismiss: { animated in
++                            if animated {
++                                animateOut.invoke(Action { _ in
++                                    if let controller = controller() {
++                                        controller.dismiss(completion: nil)
++                                    }
++                                })
++                            } else {
++                                if let controller = controller() {
++                                    controller.dismiss(completion: nil)
++                                }
++                            }
++                        }
++                    )
++                },
++                availableSize: context.availableSize,
++                transition: context.transition
++            )
++
++            context.add(sheet
++                .position(CGPoint(x: context.availableSize.width / 2.0, y: context.availableSize.height / 2.0))
++            )
++
++            if let controller = controller(), !controller.automaticallyControlPresentationContextLayout {
++                let layout = ContainerViewLayout(
++                    size: context.availableSize,
++                    metrics: environment.metrics,
++                    deviceMetrics: environment.deviceMetrics,
++                    intrinsicInsets: UIEdgeInsets(top: 0.0, left: 0.0, bottom: max(environment.safeInsets.bottom, sheetExternalState.contentHeight), right: 0.0),
++                    safeInsets: UIEdgeInsets(top: 0.0, left: environment.safeInsets.left, bottom: 0.0, right: environment.safeInsets.right),
++                    reservedCorners: environment.reservedCorners,
++                    division: nil,
++                    additionalInsets: .zero,
++                    statusBarHeight: environment.fullStatusBarHeight,
++                    inputHeight: nil,
++                    inputHeightIsInteractivellyChanging: false,
++                    inVoiceOver: false,
++                    presentedInFormSheet: false
++                )
++                controller.presentationContext.containerLayoutUpdated(layout, transition: context.transition.containedViewLayoutTransition)
 +            }
-+            // The card picks up where this globe was turned to.
-+            if let sourceView = self.sourceView {
-+                sourceView.orientation = self.globeView.orientation
-+                sourceView.alpha = 1.0
-+            }
-+            completion()
-+        })
++
++            return context.availableSize
++        }
++    }
++}
++
++/// The globe sheet. It opens at the turn of the card's globe it was opened from.
++final class StatsGlobeSheetScreen: ViewControllerComponentContainer {
++    init(context: AccountContext, countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?) {
++        super.init(
++            context: context,
++            component: StatsGlobeSheetContainerComponent(
++                countries: countries,
++                orientation: orientation
++            ),
++            navigationBarAppearance: .none,
++            statusBarStyle: .ignore,
++            theme: .default
++        )
++
++        self.navigationPresentation = .flatModal
++    }
++
++    override func viewDidLoad() {
++        super.viewDidLoad()
++
++        // The sheet dismisses itself on a downward drag; the navigation controller's would fight it.
++        self.view.disablesInteractiveModalDismiss = true
++    }
++
++    required public init(coder aDecoder: NSCoder) {
++        fatalError("init(coder:) has not been implemented")
 +    }
 +}
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeView.swift b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
 new file mode 100644
-index 00000000..11e51e60
+index 00000000..89743b24
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
-@@ -0,0 +1,600 @@
+@@ -0,0 +1,626 @@
 +import Foundation
 +import UIKit
 +import SceneKit
@@ -1013,7 +1167,7 @@ index 00000000..11e51e60
 +
 +/// The colours of the globe, from the theme.
 +struct StatsGlobeColors: Equatable {
-+    /// What the globe sits on: the card's colour, which the fullscreen globe keeps.
++    /// What the globe sits on, so its edge can fade into it.
 +    let background: UIColor
 +    let sea: UIColor
 +    let land: UIColor
@@ -1022,8 +1176,9 @@ index 00000000..11e51e60
 +    let labelText: UIColor
 +    let labelSecondaryText: UIColor
 +
-+    init(theme: PresentationTheme) {
-+        let background = theme.list.itemBlocksBackgroundColor
++    /// `background` is what the globe sits on: the statistics card by default, or the sheet.
++    init(theme: PresentationTheme, background: UIColor? = nil) {
++        let background = background ?? theme.list.itemBlocksBackgroundColor
 +        let accent = theme.list.itemAccentColor
 +        self.background = background
 +        self.accent = accent
@@ -1103,7 +1258,7 @@ index 00000000..11e51e60
 +    return material
 +}
 +
-+/// A country's label: its flag and followers, and in fullscreen its name.
++/// A country's label: its flag and followers, and in the sheet its name.
 +private final class GlobeLabelView: UIView {
 +    let label: UILabel
 +    /// Whether the label has room, eased so labels do not pop when they start to overlap.
@@ -1146,15 +1301,15 @@ index 00000000..11e51e60
 +    }
 +}
 +
-+/// The globe: drag to turn it, and in fullscreen pinch or double-tap to zoom.
++/// The globe: drag to turn it, and in the sheet pinch or double-tap to zoom.
 +final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
 +    let countries: ChannelStatsCountries
 +    private(set) var colors: StatsGlobeColors
-+    /// Fullscreen: labels carry the country's name, the globe zooms, and drags go any way. In the
++    /// In the sheet: labels carry the country's name, the globe zooms, and drags go any way. In the
 +    /// card the globe only takes horizontal drags, so the list still scrolls over it.
-+    let isFullscreen: Bool
++    let isExpanded: Bool
 +
-+    /// Called on a tap; the card opens the fullscreen globe.
++    /// Called on a tap; the card opens the globe sheet.
 +    var tapped: (() -> Void)?
 +
 +    private let glowLayer: CAGradientLayer
@@ -1192,13 +1347,14 @@ index 00000000..11e51e60
 +    private var spinFactor: CGFloat = 1.0
 +    private var zoomAtPinchStart: CGFloat = 1.0
 +    private var zoomAnimation: (from: CGFloat, to: CGFloat, start: Double)?
++    private var turnAnimation: (from: StatsGlobeOrientation, to: StatsGlobeOrientation, start: Double)?
 +
 +    private var displayLink: SharedDisplayLinkDriver.Link?
 +
-+    init(countries: ChannelStatsCountries, colors: StatsGlobeColors, strings: PresentationStrings, isFullscreen: Bool, orientation: StatsGlobeOrientation? = nil) {
++    init(countries: ChannelStatsCountries, colors: StatsGlobeColors, strings: PresentationStrings, isExpanded: Bool, orientation: StatsGlobeOrientation? = nil) {
 +        self.countries = countries
 +        self.colors = colors
-+        self.isFullscreen = isFullscreen
++        self.isExpanded = isExpanded
 +
 +        // The globe opens over the largest audience.
 +        if let orientation {
@@ -1258,7 +1414,7 @@ index 00000000..11e51e60
 +
 +        super.init(frame: CGRect())
 +
-+        self.clipsToBounds = !isFullscreen
++        self.clipsToBounds = true
 +        self.layer.addSublayer(self.glowLayer)
 +        self.addSubview(self.sceneView)
 +        self.layer.addSublayer(self.shadeLayer)
@@ -1272,7 +1428,7 @@ index 00000000..11e51e60
 +        self.addGestureRecognizer(pan)
 +        let tap = UITapGestureRecognizer(target: self, action: #selector(self.tapGesture(_:)))
 +        self.addGestureRecognizer(tap)
-+        if isFullscreen {
++        if isExpanded {
 +            let pinch = UIPinchGestureRecognizer(target: self, action: #selector(self.pinchGesture(_:)))
 +            self.addGestureRecognizer(pinch)
 +            let doubleTap = UITapGestureRecognizer(target: self, action: #selector(self.doubleTapGesture(_:)))
@@ -1333,7 +1489,7 @@ index 00000000..11e51e60
 +            self.markerNodes.append(marker)
 +
 +            let labelView = GlobeLabelView()
-+            let name: String? = self.isFullscreen ? (locale.localizedString(forRegionCode: country.code) ?? country.code) : nil
++            let name: String? = self.isExpanded ? (locale.localizedString(forRegionCode: country.code) ?? country.code) : nil
 +            let _ = labelView.update(country: country, name: name, colors: self.colors)
 +            labelView.alpha = 0.0
 +            self.labelNames.append(name)
@@ -1482,7 +1638,18 @@ index 00000000..11e51e60
 +            }
 +        }
 +
-+        if !self.isTracking {
++        if let turnAnimation = self.turnAnimation {
++            let t = min(1.0, CGFloat((now - turnAnimation.start) / 0.6))
++            let eased = t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0
++            self.orientation = StatsGlobeOrientation(
++                latitude: turnAnimation.from.latitude + (turnAnimation.to.latitude - turnAnimation.from.latitude) * eased,
++                longitude: turnAnimation.from.longitude + (turnAnimation.to.longitude - turnAnimation.from.longitude) * eased
++            )
++            if t >= 1.0 {
++                self.turnAnimation = nil
++            }
++            self.noteInteraction()
++        } else if !self.isTracking {
 +            // Coasting after a flick.
 +            if abs(self.velocity.x) > 0.001 || abs(self.velocity.y) > 0.001 {
 +                self.orientation.longitude += self.velocity.x * deltaTime
@@ -1507,6 +1674,20 @@ index 00000000..11e51e60
 +        self.updateGeometry()
 +    }
 +
++    /// Turns the globe, by the shorter way round, so a country faces the viewer.
++    func focus(on country: ChannelStatsCountry) {
++        let latitude = max(-maxLatitude, min(maxLatitude, CGFloat(country.latitude * Double.pi / 180.0) - 0.1))
++        var longitude = CGFloat(country.longitude * Double.pi / 180.0)
++        while longitude - self.orientation.longitude > CGFloat.pi {
++            longitude -= 2.0 * CGFloat.pi
++        }
++        while longitude - self.orientation.longitude < -CGFloat.pi {
++            longitude += 2.0 * CGFloat.pi
++        }
++        self.velocity = CGPoint()
++        self.turnAnimation = (self.orientation, StatsGlobeOrientation(latitude: latitude, longitude: longitude), CACurrentMediaTime())
++    }
++
 +    private func noteInteraction() {
 +        self.lastInteraction = CACurrentMediaTime()
 +        self.spinFactor = 0.0
@@ -1518,6 +1699,7 @@ index 00000000..11e51e60
 +        switch recognizer.state {
 +        case .began:
 +            self.isTracking = true
++            self.turnAnimation = nil
 +            self.velocity = CGPoint()
 +            self.noteInteraction()
 +        case .changed:
@@ -1570,19 +1752,17 @@ index 00000000..11e51e60
 +        }
 +    }
 +
-+    /// Zooms in or out by animation, as the fullscreen globe does while it opens and closes.
-+    func setZoom(_ zoom: CGFloat, animated: Bool) {
-+        if animated {
-+            self.zoomAnimation = (self.zoom, zoom, CACurrentMediaTime())
-+        } else {
-+            self.zoomAnimation = nil
-+            self.zoom = zoom
-+            self.setNeedsLayout()
-+        }
-+    }
-+
 +    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-+        if !self.isFullscreen, let pan = gestureRecognizer as? UIPanGestureRecognizer {
++        guard let pan = gestureRecognizer as? UIPanGestureRecognizer else {
++            return true
++        }
++        if pan.view !== self {
++            // UIKit also asks the touched view about its ancestors' drags, as UISlider uses it. In
++            // the sheet a drag that starts on the globe turns it rather than dragging the sheet down;
++            // in the card the list's scroll stays as it is.
++            return !self.isExpanded
++        }
++        if !self.isExpanded {
 +            // In the card only sideways drags turn the globe; the rest scroll the list.
 +            let velocity = pan.velocity(in: self)
 +            return abs(velocity.x) > abs(velocity.y) * 1.2
@@ -1591,6 +1771,6 @@ index 00000000..11e51e60
 +    }
 +
 +    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-+        return self.isFullscreen && otherGestureRecognizer is UIPinchGestureRecognizer
++        return self.isExpanded && otherGestureRecognizer is UIPinchGestureRecognizer
 +    }
 +}
