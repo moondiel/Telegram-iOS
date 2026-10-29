@@ -194,10 +194,18 @@ tilts as well as turns) or goes sideways anywhere on the card; only an up-and-do
 beside the sphere, or on the tabs and the note, scrolls the list. The list's scroll still gets
 exactly the drags the globe does not, by the same test.
 
-**D-030. A label tries four sides of its marker before it hides.** A label used to have one place,
+**D-030. A label tries four sides of its marker before it hides.** Extended by D-031. A label used to have one place,
 above its marker, and hid when a larger country's label was there, so a country between two
 larger ones (Germany between the United Kingdom and Ukraine) had none even when pinched closer.
 Labels are still placed largest audience first, but each tries above, below, right and left,
 keeping its current side first so it does not hop, and takes the first side that overlaps no
 placed label, covers no other visible marker and stays inside the card. Only a label with no free
 side hides. When a label changes sides it glides there; one that was hidden appears in place.
+
+**D-031. A label hides only when it has nowhere at all to go.** On a device, two countries between
+others (one between the United Kingdom and Ukraine, Belarus between Russia and Ukraine) still had
+no label: all four sides overlapped a label or covered a marker. A label now looks further, in
+this order: the four sides and then the four corners with its name; the same eight places in its
+short form, the colour dot and the share ("3%"); and only then the same again allowed to cover
+another country's marker, never another label and never past the card. Its current place and form
+are tried first so it does not hop, and it glides when it moves.

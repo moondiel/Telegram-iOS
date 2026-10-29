@@ -26,8 +26,9 @@ replaces one function.
    settles. The card keeps its height on both pages, so the list does not move.
 4. The globe opens over the country with the most followers and turns slowly on its own. Land is
    dots, each country is a dot in its colour from the chart whose ring pings outward, sized by its
-   share, with a label carrying a dot of that colour, its name and share. A label sits above its marker, or below, right or left
-   when that is taken; only when all four would overlap does the smaller audience lose its label. A drag that starts on the sphere turns and tilts it, in any direction, and
+   share, with a label carrying a dot of that colour, its name and share. A label sits above its marker, or below, beside or at a
+   corner when that is taken, in its short form ("3%") when the name does not fit, and over another
+   marker only as a last resort; it hides only when it has nowhere at all to go. A drag that starts on the sphere turns and tilts it, in any direction, and
    lets it coast; an up-and-down drag beside the sphere scrolls the list. A pinch draws it up to three times closer, which spreads crowded countries apart so
    their labels show, and it springs back when the fingers lift, as a photo in a chat does.
 5. A note under the card says: "Estimated from the languages your followers use Telegram in."
