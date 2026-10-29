@@ -1062,10 +1062,10 @@ index 00000000..525fcb4d
 +}()
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeView.swift b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
 new file mode 100644
-index 00000000..00520848
+index 00000000..a76884a0
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
-@@ -0,0 +1,743 @@
+@@ -0,0 +1,791 @@
 +import Foundation
 +import UIKit
 +import SceneKit
@@ -1181,14 +1181,20 @@ index 00000000..00520848
 +private final class GlobeLabelView: UIView {
 +    private let dotView: UIView
 +    private let label: UILabel
++    private var fullText: NSAttributedString?
++    private var compactText: NSAttributedString?
++    private(set) var fullSize = CGSize()
++    private(set) var compactSize = CGSize()
 +    /// Whether the label has room, eased so labels do not pop when they start to overlap.
 +    var visibility: CGFloat = 0.0
-+    /// Which side of its marker the label sits on (an index into the places tried), kept while it
-+    /// stays free so labels do not hop between sides.
++    /// Which place around its marker the label takes (an index into the places tried), kept while
++    /// it stays free so labels do not hop around.
 +    var place: Int?
-+    /// Where the label is drawn relative to its marker, eased towards its place so a move to
-+    /// another side glides instead of jumping.
++    /// Where the label is drawn relative to its marker, eased towards its place so a move glides
++    /// instead of jumping.
 +    var offset: CGPoint?
++    /// The short form, the dot and the share, for where the name does not fit.
++    private(set) var isCompact = false
 +
 +    override init(frame: CGRect) {
 +        self.dotView = UIView()
@@ -1212,19 +1218,41 @@ index 00000000..00520848
 +    }
 +
 +    func update(name: String, share: Int, color: UIColor, colors: StatsGlobeColors) {
-+        let text = NSMutableAttributedString()
-+        text.append(NSAttributedString(string: name, attributes: [.font: Font.medium(12.0), .foregroundColor: colors.labelText]))
-+        text.append(NSAttributedString(string: "  \(share)%", attributes: [.font: Font.regular(12.0), .foregroundColor: colors.labelSecondaryText]))
-+        self.label.attributedText = text
++        let full = NSMutableAttributedString()
++        full.append(NSAttributedString(string: name, attributes: [.font: Font.medium(12.0), .foregroundColor: colors.labelText]))
++        full.append(NSAttributedString(string: "  \(share)%", attributes: [.font: Font.regular(12.0), .foregroundColor: colors.labelSecondaryText]))
++        let compact = NSAttributedString(string: "\(share)%", attributes: [.font: Font.medium(12.0), .foregroundColor: colors.labelText])
++        self.fullText = full
++        self.compactText = compact
++        self.fullSize = self.size(for: full)
++        self.compactSize = self.size(for: compact)
 +        self.dotView.backgroundColor = color
++        self.backgroundColor = colors.labelBackground
++        self.apply(isCompact: self.isCompact, force: true)
++    }
 +
++    private func size(for text: NSAttributedString) -> CGSize {
++        self.label.attributedText = text
 +        let textSize = self.label.sizeThatFits(CGSize(width: 240.0, height: 40.0))
 +        // Dot inset 8, dot 8, gap 6, text, then 10 to the end: a little more than the dot's inset,
 +        // since the text ends on a figure and a percent sign rather than a round dot.
-+        let size = CGSize(width: 8.0 + 8.0 + 6.0 + ceil(textSize.width) + 10.0, height: 22.0)
++        return CGSize(width: 8.0 + 8.0 + 6.0 + ceil(textSize.width) + 10.0, height: 22.0)
++    }
++
++    func setCompact(_ isCompact: Bool) {
++        self.apply(isCompact: isCompact, force: false)
++    }
++
++    private func apply(isCompact: Bool, force: Bool) {
++        if !force && isCompact == self.isCompact {
++            return
++        }
++        self.isCompact = isCompact
++        self.label.attributedText = isCompact ? self.compactText : self.fullText
++        let size = isCompact ? self.compactSize : self.fullSize
++        let textSize = CGSize(width: size.width - 8.0 - 8.0 - 6.0 - 10.0, height: self.label.sizeThatFits(CGSize(width: 240.0, height: 40.0)).height)
 +        self.dotView.frame = CGRect(x: 8.0, y: floor((size.height - 8.0) / 2.0), width: 8.0, height: 8.0)
 +        self.label.frame = CGRect(origin: CGPoint(x: 8.0 + 8.0 + 6.0, y: floor((size.height - textSize.height) / 2.0)), size: textSize)
-+        self.backgroundColor = colors.labelBackground
 +        self.layer.cornerRadius = size.height / 2.0
 +        self.bounds = CGRect(origin: CGPoint(), size: size)
 +        // A fixed path, so the moving labels do not render their shadow off-screen every frame.
@@ -1549,67 +1577,87 @@ index 00000000..00520848
 +            markers.append((CGPoint(x: globeFrame.midX + CGFloat(point.x) * radius, y: globeFrame.midY - CGFloat(point.y) * radius), markerRadius, facing))
 +        }
 +
-+        // Labels are placed largest audience first. Each tries the four sides of its marker, above,
-+        // below, right and left (its current side first, so it does not hop), and takes the first
-+        // that overlaps no placed label, no other visible marker and stays inside the globe's view.
-+        // Only a label with no free side hides.
++        // Labels are placed largest audience first. Each looks for a free place around its marker:
++        // above, below, right, left, then the four corners; first with its name, then in its short
++        // form (the dot and the share); and only then does it let itself cover another country's
++        // marker. A place is free when it overlaps no placed label and stays inside the card. The
++        // label's current place and form are tried first, so labels do not hop. Only a label with
++        // nowhere at all to go hides.
 +        let bounds = self.bounds.insetBy(dx: 4.0, dy: 4.0)
 +        var taken: [CGRect] = []
 +        for (index, labelView) in self.labelViews.enumerated() where index < markers.count {
 +            let marker = markers[index]
-+            let size = labelView.bounds.size
 +            let gap: CGFloat = 5.0
-+            let offsets: [CGPoint] = [
-+                CGPoint(x: 0.0, y: -(marker.radius + gap + size.height / 2.0)),
-+                CGPoint(x: 0.0, y: marker.radius + gap + size.height / 2.0),
-+                CGPoint(x: marker.radius + gap + size.width / 2.0, y: 0.0),
-+                CGPoint(x: -(marker.radius + gap + size.width / 2.0), y: 0.0)
-+            ]
-+
-+            var order = Array(0 ..< offsets.count)
-+            if let place = labelView.place, let position = order.firstIndex(of: place) {
-+                order.remove(at: position)
-+                order.insert(place, at: 0)
++            func offsets(for size: CGSize) -> [CGPoint] {
++                let r = marker.radius
++                let side = r * 0.72
++                return [
++                    CGPoint(x: 0.0, y: -(r + gap + size.height / 2.0)),
++                    CGPoint(x: 0.0, y: r + gap + size.height / 2.0),
++                    CGPoint(x: r + gap + size.width / 2.0, y: 0.0),
++                    CGPoint(x: -(r + gap + size.width / 2.0), y: 0.0),
++                    CGPoint(x: side + gap + size.width / 2.0, y: -(side + gap + size.height / 2.0)),
++                    CGPoint(x: -(side + gap + size.width / 2.0), y: -(side + gap + size.height / 2.0)),
++                    CGPoint(x: side + gap + size.width / 2.0, y: side + gap + size.height / 2.0),
++                    CGPoint(x: -(side + gap + size.width / 2.0), y: side + gap + size.height / 2.0)
++                ]
 +            }
 +
-+            var chosen: Int?
++            func isFree(_ frame: CGRect, allowingMarkers: Bool) -> Bool {
++                if !bounds.contains(frame) {
++                    return false
++                }
++                if taken.contains(where: { $0.insetBy(dx: -2.0, dy: -2.0).intersects(frame) }) {
++                    return false
++                }
++                if allowingMarkers {
++                    return true
++                }
++                return !markers.enumerated().contains(where: { entry in
++                    let (otherIndex, other) = entry
++                    if otherIndex == index || other.facing <= 0.0 {
++                        return false
++                    }
++                    let markerFrame = CGRect(x: other.point.x - other.radius, y: other.point.y - other.radius, width: other.radius * 2.0, height: other.radius * 2.0)
++                    return markerFrame.intersects(frame)
++                })
++            }
++
++            var chosen: (place: Int, isCompact: Bool, offset: CGPoint)?
 +            if marker.facing > 0.0 {
-+                for place in order {
-+                    let center = CGPoint(x: marker.point.x + offsets[place].x, y: marker.point.y + offsets[place].y)
-+                    let frame = CGRect(x: center.x - size.width / 2.0, y: center.y - size.height / 2.0, width: size.width, height: size.height)
-+                    if !bounds.contains(frame) {
-+                        continue
++                let passes: [(isCompact: Bool, allowingMarkers: Bool)] = [(false, false), (true, false), (false, true), (true, true)]
++                search: for pass in passes {
++                    let size = pass.isCompact ? labelView.compactSize : labelView.fullSize
++                    let candidates = offsets(for: size)
++                    var order = Array(0 ..< candidates.count)
++                    if let place = labelView.place, labelView.isCompact == pass.isCompact, let position = order.firstIndex(of: place) {
++                        order.remove(at: position)
++                        order.insert(place, at: 0)
 +                    }
-+                    if taken.contains(where: { $0.insetBy(dx: -2.0, dy: -2.0).intersects(frame) }) {
-+                        continue
-+                    }
-+                    let coversMarker = markers.enumerated().contains(where: { entry in
-+                        let (otherIndex, other) = entry
-+                        if otherIndex == index || other.facing <= 0.0 {
-+                            return false
++                    for place in order {
++                        let center = CGPoint(x: marker.point.x + candidates[place].x, y: marker.point.y + candidates[place].y)
++                        let frame = CGRect(x: center.x - size.width / 2.0, y: center.y - size.height / 2.0, width: size.width, height: size.height)
++                        if isFree(frame, allowingMarkers: pass.allowingMarkers) {
++                            chosen = (place, pass.isCompact, candidates[place])
++                            taken.append(frame)
++                            break search
 +                        }
-+                        let markerFrame = CGRect(x: other.point.x - other.radius, y: other.point.y - other.radius, width: other.radius * 2.0, height: other.radius * 2.0)
-+                        return markerFrame.intersects(frame)
-+                    })
-+                    if coversMarker {
-+                        continue
 +                    }
-+                    chosen = place
-+                    taken.append(frame)
-+                    break
 +                }
 +            }
 +
++            var targetOffset = labelView.offset ?? .zero
 +            if let chosen {
-+                if labelView.place != chosen {
-+                    labelView.place = chosen
++                if labelView.place != chosen.place || labelView.isCompact != chosen.isCompact {
 +                    // A hidden label appears straight at its place; a shown one glides there.
 +                    if labelView.visibility <= 0.0 {
-+                        labelView.offset = offsets[chosen]
++                        labelView.offset = chosen.offset
 +                    }
++                    labelView.place = chosen.place
++                    labelView.setCompact(chosen.isCompact)
 +                }
++                targetOffset = chosen.offset
 +            }
-+            let targetOffset = offsets[labelView.place ?? 0]
 +            var offset = labelView.offset ?? targetOffset
 +            offset = CGPoint(x: offset.x + (targetOffset.x - offset.x) * 0.3, y: offset.y + (targetOffset.y - offset.y) * 0.3)
 +            if abs(offset.x - targetOffset.x) < 0.5 && abs(offset.y - targetOffset.y) < 0.5 {
