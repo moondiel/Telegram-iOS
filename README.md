@@ -8,7 +8,7 @@ See where a channel's followers are, on a globe in its statistics.
 
 1. Channel Statistics gets a **Followers by country** card under Languages. At the top of the card, Telegram's statistics tabs (**Chart** / **Globe**, as Boosts / Gifts switch theirs) switch the same card between a pie chart and a globe.
 2. The globe is drawn in the theme's colours: land as dots, each country as a dot in its colour from the chart with a ring that pings outward, and a label with its name and share. It turns slowly on its own and under a sideways drag.
-3. A tap on the globe opens it in a sheet: a large globe at the same turn, with country names on the labels, which turns and zooms freely, and the list of countries with their shares. Tapping a country turns the globe to it.
+3. Switching slides the chart and the globe like a profile's tabs, and the globe arrives spinning. A tap on the globe opens it large in a sheet, at the same turn, where it turns and zooms freely.
 4. It is built from Telegram's own pieces: the statistics section, tabs and pie chart, the glass sheet, SceneKit as the Premium star uses it, and country names as giveaways show them.
 
 ## Links

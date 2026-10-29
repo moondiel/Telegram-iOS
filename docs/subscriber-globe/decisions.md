@@ -129,3 +129,16 @@ gradients were reassigned on every frame (each assignment redraws them), and the
 had no path (an off-screen pass per label per frame). The gradients now change only when the
 globe moves or grows, and the labels carry a shadow path. SceneKit prepares each globe's scene off
 the main thread before it is shown, and the card's globe stops while the sheet covers it.
+
+**D-021. Chart and globe are two pages of one card, sliding as Telegram's tabs do. (moondiel)**
+Swapping two list items only cross-faded. The card is now one item (`StatsCountriesItem`) that
+holds Telegram's pie chart (`ChartNode`, set up as `StatsGraphItem` sets it up) and the globe side
+by side, in tab order. A tab slides them with the transition a profile's panes use
+(`PeerInfoPaneContainerNode`: `.animated(duration: 0.4, curve: .spring)`), the page leaving to the
+side its tab is on, while `BoostsTabsItem` moves its underline on its own spring. The globe arrives
+turning the last part of a turn and settles. The card is as tall as the chart, legend included,
+on both pages. The globe stops when its page is off screen.
+
+**D-022. The sheet holds only the globe. (moondiel)** The list of countries under the sheet's
+globe is gone (it repeated the chart's legend); the globe takes the room, up to 460 pt tall.
+Replaces the list part of D-016.

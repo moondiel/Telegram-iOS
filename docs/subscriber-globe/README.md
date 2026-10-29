@@ -19,7 +19,10 @@ replaces one function.
 2. The card opens with Telegram's statistics tabs, **Chart** and **Globe**, the same tabs item
    (`BoostsTabsItem`) that switches Boosts / Gifts and TON / Stars. **Chart** shows a pie chart
    with a legend of every country in its colour, the same chart and legend as **Languages**.
-3. **Globe** switches the same card, at the same height, to the globe.
+3. **Globe** switches the same card to the globe. The two are pages side by side inside the
+   card: the chart slides out to the left and the globe in from the right, on the 0.4 s spring a
+   profile's tabs use, while the tabs' underline moves along; the globe arrives turning and
+   settles. The card keeps its height on both pages, so the list does not move.
 4. The globe opens over the country with the most followers and turns slowly on its own. Land is
    dots, each country is a dot in its colour from the chart whose ring pings outward, sized by its
    share, with a label carrying a dot of that colour, its name and share. When two labels would overlap, the larger audience
@@ -27,8 +30,7 @@ replaces one function.
    the list.
 5. A tap on the globe opens Telegram's glass sheet with a glass close button, as statistics'
    transaction info does. It holds a large globe at the card's turn, which turns any way and zooms
-   with a pinch or a double tap. Under it is the list of countries, each with a dot in its colour,
-   name, share and followers; tapping one turns the globe to it. A drag that
+   with a pinch or a double tap. A drag that
    starts on the globe turns the globe; anywhere else it pulls the sheet down. The sheet's title
    reads "Estimated from languages" underneath.
 6. A note under the card says: "Estimated from the languages your followers use Telegram in."
@@ -86,7 +88,7 @@ Statistics are only available for channels with enough followers; the server dec
   colours, light or dark. It turns under the finger, coasts, and turns slowly when left alone.
 - Markers sized by share and coloured as in the chart, labels with country names in the app's
   language and shares, and labels that give way to larger audiences.
-- The globe sheet with the country list, and turning to a tapped country.
+- The chart and globe pages sliding inside one card, and the globe sheet.
 
 **Limited**
 
@@ -142,15 +144,14 @@ New files:
 | `submodules/StatisticsUI/Sources/ChannelStatsCountries.swift` | The model, marker coordinates, the language-to-country table and the estimate, and the pie chart's graph |
 | `submodules/StatisticsUI/Sources/StatsGlobeLand.swift` | The land: a grid of dots 2° apart, one bit each (1.7 KB), and its decoder |
 | `submodules/StatisticsUI/Sources/StatsGlobeView.swift` | The globe: SceneKit sphere, land dots, markers and their rings, labels, turning, coasting and zooming |
-| `submodules/StatisticsUI/Sources/StatsGlobeItem.swift` | The globe card: a list item hosting the globe in the statistics list |
-| `submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift` | The globe sheet: Telegram's glass sheet with a large globe and the country list |
+| `submodules/StatisticsUI/Sources/StatsCountriesItem.swift` | The countries card: one list item with the pie chart and the globe as pages that slide |
+| `submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift` | The globe sheet: Telegram's glass sheet with a large globe |
 | `docs/subscriber-globe/*` | This write-up, the decision log and the API proposal |
 
 Changed files:
 
 - `submodules/StatisticsUI/Sources/ChannelStatsController.swift`: the section
-  (`StatsSection.countries`), its entries (header, Chart / Globe tabs, pie chart, globe, the
-  estimate note), which tab is selected, opening the globe sheet, and the entries after the
+  (`StatsSection.countries`), its entries (header, Chart / Globe tabs, the card, the estimate note), which tab is selected, opening the globe sheet, and the entries after the
   section moved down five stable ids.
 - `Telegram/Telegram-iOS/en.lproj/Localizable.strings`: `ChannelStats.Countries.Title`,
   `ChannelStats.Countries.EstimateInfo`, `ChannelStats.Countries.EstimateSubtitle`,

@@ -195,7 +195,7 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
     private var spinFactor: CGFloat = 1.0
     private var zoomAtPinchStart: CGFloat = 1.0
     private var zoomAnimation: (from: CGFloat, to: CGFloat, start: Double)?
-    private var turnAnimation: (from: StatsGlobeOrientation, to: StatsGlobeOrientation, start: Double)?
+    private var turnAnimation: (from: StatsGlobeOrientation, to: StatsGlobeOrientation, start: Double, duration: Double)?
 
     private var displayLink: SharedDisplayLinkDriver.Link?
     /// The globe's circle the halo and the edge shading were last laid out for.
@@ -534,8 +534,8 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         }
 
         if let turnAnimation = self.turnAnimation {
-            let t = min(1.0, CGFloat((now - turnAnimation.start) / 0.6))
-            let eased = t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0
+            let t = min(1.0, CGFloat((now - turnAnimation.start) / turnAnimation.duration))
+            let eased = 1.0 - pow(1.0 - t, 3.0)
             self.orientation = StatsGlobeOrientation(
                 latitude: turnAnimation.from.latitude + (turnAnimation.to.latitude - turnAnimation.from.latitude) * eased,
                 longitude: turnAnimation.from.longitude + (turnAnimation.to.longitude - turnAnimation.from.longitude) * eased
@@ -569,18 +569,14 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         self.updateGeometry()
     }
 
-    /// Turns the globe, by the shorter way round, so a country faces the viewer.
-    func focus(on country: ChannelStatsCountry) {
-        let latitude = max(-maxLatitude, min(maxLatitude, CGFloat(country.latitude * Double.pi / 180.0) - 0.1))
-        var longitude = CGFloat(country.longitude * Double.pi / 180.0)
-        while longitude - self.orientation.longitude > CGFloat.pi {
-            longitude -= 2.0 * CGFloat.pi
-        }
-        while longitude - self.orientation.longitude < -CGFloat.pi {
-            longitude += 2.0 * CGFloat.pi
-        }
+    /// Turns the globe the last part of a turn into place, so it arrives spinning and settles.
+    func spinIn() {
+        let target = self.orientation
+        let from = StatsGlobeOrientation(latitude: target.latitude, longitude: target.longitude - 1.1)
         self.velocity = CGPoint()
-        self.turnAnimation = (self.orientation, StatsGlobeOrientation(latitude: latitude, longitude: longitude), CACurrentMediaTime())
+        self.orientation = from
+        self.turnAnimation = (from, target, CACurrentMediaTime(), 0.9)
+        self.setNeedsLayout()
     }
 
     private func noteInteraction() {

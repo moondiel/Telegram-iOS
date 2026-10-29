@@ -5,7 +5,6 @@ import ComponentFlow
 import SwiftSignalKit
 import AccountContext
 import TelegramPresentationData
-import TelegramStringFormatting
 import ViewControllerComponent
 import SheetComponent
 import MultilineTextComponent
@@ -15,97 +14,21 @@ import GlassBarButtonComponent
 // Subscriber Globe: the globe opened from the card, in a sheet. See docs/subscriber-globe/README.md.
 //
 // The sheet is Telegram's glass sheet with a glass close button, as statistics' transaction info
-// uses it (`TransactionInfoScreen`). It holds a large globe, opened at the card's turn, and the list
-// of countries; tapping a country turns the globe to it.
+// uses it (`TransactionInfoScreen`). It holds a large globe, opened at the card's turn, that turns
+// any way and zooms.
 
-/// A country of the list under the globe: a dot in its colour, as in the chart's legend, its name,
-/// share and followers.
-private final class StatsGlobeCountryRowView: UIView {
-    private let highlightView: UIView
-    private let dotView: UIView
-    private let nameLabel: UILabel
-    private let valueLabel: UILabel
-    private let separatorView: UIView
-
-    var tapped: (() -> Void)?
-
-    override init(frame: CGRect) {
-        self.highlightView = UIView()
-        self.highlightView.alpha = 0.0
-        self.dotView = UIView()
-        self.dotView.layer.cornerRadius = 5.0
-        self.nameLabel = UILabel()
-        self.valueLabel = UILabel()
-        self.valueLabel.textAlignment = .right
-        self.separatorView = UIView()
-
-        super.init(frame: frame)
-
-        self.addSubview(self.highlightView)
-        self.addSubview(self.dotView)
-        self.addSubview(self.nameLabel)
-        self.addSubview(self.valueLabel)
-        self.addSubview(self.separatorView)
-
-        self.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.tapGesture(_:))))
-    }
-
-    required init?(coder: NSCoder) {
-        preconditionFailure()
-    }
-
-    @objc private func tapGesture(_ recognizer: UITapGestureRecognizer) {
-        if recognizer.state == .ended {
-            self.highlightView.alpha = 1.0
-            UIView.animate(withDuration: 0.3, delay: 0.1, options: [], animations: {
-                self.highlightView.alpha = 0.0
-            })
-            self.tapped?()
-        }
-    }
-
-    func update(country: ChannelStatsCountry, color: UIColor, total: Int, theme: PresentationTheme, locale: Locale, hasSeparator: Bool, size: CGSize) {
-        let name = locale.localizedString(forRegionCode: country.code) ?? country.code
-        self.nameLabel.attributedText = NSAttributedString(string: name, font: Font.regular(17.0), textColor: theme.list.itemPrimaryTextColor)
-        self.dotView.backgroundColor = color
-
-        let share = Int((Double(country.followers) * 100.0 / Double(max(1, total))).rounded())
-        let value = NSMutableAttributedString()
-        value.append(NSAttributedString(string: "\(share)%  ", font: Font.regular(15.0), textColor: theme.list.itemSecondaryTextColor))
-        value.append(NSAttributedString(string: compactNumericCountString(country.followers), font: Font.semibold(17.0), textColor: theme.list.itemPrimaryTextColor))
-        self.valueLabel.attributedText = value
-
-        self.highlightView.backgroundColor = theme.list.itemHighlightedBackgroundColor
-        self.separatorView.backgroundColor = theme.list.itemBlocksSeparatorColor
-        self.separatorView.isHidden = !hasSeparator
-
-        let sideInset: CGFloat = 16.0
-        let valueSize = self.valueLabel.sizeThatFits(CGSize(width: size.width / 2.0, height: size.height))
-        self.highlightView.frame = CGRect(origin: CGPoint(), size: size)
-        self.valueLabel.frame = CGRect(x: size.width - sideInset - valueSize.width, y: floor((size.height - valueSize.height) / 2.0), width: valueSize.width, height: valueSize.height)
-        self.dotView.frame = CGRect(x: sideInset, y: floor((size.height - 10.0) / 2.0), width: 10.0, height: 10.0)
-        let nameX = sideInset + 10.0 + 12.0
-        let nameWidth = max(0.0, size.width - nameX - sideInset - valueSize.width - 8.0)
-        let nameSize = self.nameLabel.sizeThatFits(CGSize(width: nameWidth, height: size.height))
-        self.nameLabel.frame = CGRect(x: nameX, y: floor((size.height - nameSize.height) / 2.0), width: min(nameWidth, nameSize.width), height: nameSize.height)
-        self.separatorView.frame = CGRect(x: nameX, y: size.height - UIScreenPixel, width: size.width - nameX, height: UIScreenPixel)
-    }
-}
-
-/// The globe and the list of countries under it.
+/// The globe, as large as the sheet's width allows.
 private final class StatsGlobeSheetBodyComponent: Component {
     let theme: PresentationTheme
     let strings: PresentationStrings
     let countries: ChannelStatsCountries
     let orientation: StatsGlobeOrientation?
-    let sideInset: CGFloat
 
-    init(theme: PresentationTheme, strings: PresentationStrings, countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?, sideInset: CGFloat) {
+    init(theme: PresentationTheme, strings: PresentationStrings, countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?) {
         self.theme = theme
         self.strings = strings
         self.countries = countries
         self.orientation = orientation
-        self.sideInset = sideInset
     }
 
     static func ==(lhs: StatsGlobeSheetBodyComponent, rhs: StatsGlobeSheetBodyComponent) -> Bool {
@@ -121,30 +44,11 @@ private final class StatsGlobeSheetBodyComponent: Component {
         if lhs.orientation != rhs.orientation {
             return false
         }
-        if lhs.sideInset != rhs.sideInset {
-            return false
-        }
         return true
     }
 
     final class View: UIView {
         private var globeView: StatsGlobeView?
-        private let sectionView: UIView
-        private var rowViews: [StatsGlobeCountryRowView] = []
-
-        override init(frame: CGRect) {
-            self.sectionView = UIView()
-            self.sectionView.clipsToBounds = true
-            self.sectionView.layer.cornerRadius = 26.0
-
-            super.init(frame: frame)
-
-            self.addSubview(self.sectionView)
-        }
-
-        required init?(coder: NSCoder) {
-            preconditionFailure()
-        }
 
         func update(component: StatsGlobeSheetBodyComponent, availableSize: CGSize) -> CGSize {
             let width = availableSize.width
@@ -158,39 +62,12 @@ private final class StatsGlobeSheetBodyComponent: Component {
                 self.globeView?.removeFromSuperview()
                 globeView = StatsGlobeView(countries: component.countries, colors: colors, strings: component.strings, isExpanded: true, orientation: component.orientation)
                 self.globeView = globeView
-                self.insertSubview(globeView, at: 0)
+                self.addSubview(globeView)
             }
-            let globeHeight = min(width, 400.0)
-            globeView.frame = CGRect(x: 0.0, y: 0.0, width: width, height: globeHeight)
-            globeView.radius = floor(min(width, globeHeight) / 2.0 - 32.0)
-
-            let countries = component.countries.countries
-            while self.rowViews.count > countries.count {
-                self.rowViews.removeLast().removeFromSuperview()
-            }
-            while self.rowViews.count < countries.count {
-                let rowView = StatsGlobeCountryRowView()
-                self.sectionView.addSubview(rowView)
-                self.rowViews.append(rowView)
-            }
-
-            let rowHeight: CGFloat = 52.0
-            let sectionWidth = width - component.sideInset * 2.0
-            let locale = localeWithStrings(component.strings)
-            for (index, country) in countries.enumerated() {
-                let rowView = self.rowViews[index]
-                rowView.frame = CGRect(x: 0.0, y: CGFloat(index) * rowHeight, width: sectionWidth, height: rowHeight)
-                rowView.update(country: country, color: channelStatsCountryColor(at: index), total: component.countries.total, theme: component.theme, locale: locale, hasSeparator: index != countries.count - 1, size: rowView.bounds.size)
-                rowView.tapped = { [weak globeView] in
-                    globeView?.focus(on: country)
-                }
-            }
-            self.sectionView.backgroundColor = component.theme.list.itemModalBlocksBackgroundColor
-            let sectionFrame = CGRect(x: component.sideInset, y: globeHeight + 8.0, width: sectionWidth, height: CGFloat(countries.count) * rowHeight)
-            self.sectionView.frame = sectionFrame
-            self.sectionView.isHidden = countries.isEmpty
-
-            return CGSize(width: width, height: countries.isEmpty ? globeHeight : sectionFrame.maxY)
+            let size = CGSize(width: width, height: min(width + 20.0, 460.0))
+            globeView.frame = CGRect(origin: CGPoint(), size: size)
+            globeView.radius = floor(min(size.width, size.height) / 2.0 - 30.0)
+            return size
         }
     }
 
@@ -300,8 +177,7 @@ private final class StatsGlobeSheetContent: CombinedComponent {
                     theme: theme,
                     strings: environment.strings,
                     countries: component.countries,
-                    orientation: component.orientation,
-                    sideInset: 16.0 + environment.safeInsets.left
+                    orientation: component.orientation
                 ),
                 availableSize: CGSize(width: context.availableSize.width, height: 10000.0),
                 transition: context.transition

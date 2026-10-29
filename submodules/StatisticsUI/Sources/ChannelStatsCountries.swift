@@ -312,7 +312,8 @@ extension ChannelStatsCountries {
             "percentage": true,
             "stacked": true
         ]
-        guard let data = try? JSONSerialization.data(withJSONObject: json), let string = String(data: data, encoding: .utf8) else {
+        // Sorted keys: the same countries always give the same string, so the chart is not rebuilt.
+        guard let data = try? JSONSerialization.data(withJSONObject: json, options: [.sortedKeys]), let string = String(data: data, encoding: .utf8) else {
             return .Empty
         }
         return .Loaded(token: nil, data: string)
