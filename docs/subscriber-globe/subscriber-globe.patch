@@ -1,44 +1,40 @@
 diff --git a/Telegram/Telegram-iOS/en.lproj/Localizable.strings b/Telegram/Telegram-iOS/en.lproj/Localizable.strings
-index 0b086435..72bf2088 100644
+index 0b086435..78a4dcad 100644
 --- a/Telegram/Telegram-iOS/en.lproj/Localizable.strings
 +++ b/Telegram/Telegram-iOS/en.lproj/Localizable.strings
-@@ -17106,3 +17106,10 @@ Error: %8$@";
+@@ -17106,3 +17106,8 @@ Error: %8$@";
  "Notification.GramTransfer.UnknownUser" = "UNKNOWN USER";
  
  "Chat.ViewStyle" = "VIEW STYLE";
 +
 +"ChannelStats.Countries.Title" = "FOLLOWERS BY COUNTRY";
 +"ChannelStats.Countries.EstimateInfo" = "Estimated from the languages your followers use Telegram in.";
-+"ChannelStats.Countries.EstimateSubtitle" = "Estimated from languages";
 +"ChannelStats.Countries.TabChart" = "Chart";
 +"ChannelStats.Countries.TabGlobe" = "Globe";
-+"ChannelStats.Countries.ScreenTitle" = "Followers by Country";
 diff --git a/submodules/StatisticsUI/Sources/ChannelStatsController.swift b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
-index 618b0f67..711a0832 100644
+index 618b0f67..1e66b0a6 100644
 --- a/submodules/StatisticsUI/Sources/ChannelStatsController.swift
 +++ b/submodules/StatisticsUI/Sources/ChannelStatsController.swift
-@@ -58,8 +58,10 @@ private final class ChannelStatsControllerArguments {
+@@ -58,8 +58,9 @@ private final class ChannelStatsControllerArguments {
      let presentCpmLocked: () -> Void
      let openEarnStars: () -> Void
      let dismissInput: () -> Void
 +    let setCountriesGlobeSelected: (Bool) -> Void
-+    let openCountriesGlobe: (StatsGlobeView) -> Void
      
 -    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void) {
-+    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void, setCountriesGlobeSelected: @escaping (Bool) -> Void, openCountriesGlobe: @escaping (StatsGlobeView) -> Void) {
++    init(context: AccountContext, loadDetailedGraph: @escaping (StatsGraph, Int64) -> Signal<StatsGraph?, NoError>, openPostStats: @escaping (EnginePeer, StatsPostItem) -> Void, openStory: @escaping (EngineStoryItem, UIView) -> Void, contextAction: @escaping (MessageId, ASDisplayNode, ContextGesture?) -> Void, copyBoostLink: @escaping (String) -> Void, shareBoostLink: @escaping (String) -> Void, openBoost: @escaping (ChannelBoostersContext.State.Boost) -> Void, expandBoosters: @escaping () -> Void, openGifts: @escaping () -> Void, createPrepaidGiveaway: @escaping (PrepaidGiveaway) -> Void, updateGiftsSelected: @escaping (Bool) -> Void, updateStarsSelected: @escaping (Bool) -> Void, requestTonWithdraw: @escaping () -> Void, requestStarsWithdraw: @escaping () -> Void, showTimeoutTooltip: @escaping (Int32) -> Void, buyAds: @escaping () -> Void, openMonetizationIntro: @escaping () -> Void, openMonetizationInfo: @escaping () -> Void, openTonTransaction: @escaping (StarsContext.State.Transaction) -> Void, openStarsTransaction: @escaping (StarsContext.State.Transaction) -> Void, expandTransactions: @escaping (Bool) -> Void, updateCpmEnabled: @escaping (Bool) -> Void, presentCpmLocked: @escaping () -> Void, openEarnStars: @escaping () -> Void, dismissInput: @escaping () -> Void, setCountriesGlobeSelected: @escaping (Bool) -> Void) {
          self.context = context
          self.loadDetailedGraph = loadDetailedGraph
          self.openPostStats = openPostStats
-@@ -86,6 +88,8 @@ private final class ChannelStatsControllerArguments {
+@@ -86,6 +87,7 @@ private final class ChannelStatsControllerArguments {
          self.presentCpmLocked = presentCpmLocked
          self.openEarnStars = openEarnStars
          self.dismissInput = dismissInput
 +        self.setCountriesGlobeSelected = setCountriesGlobeSelected
-+        self.openCountriesGlobe = openCountriesGlobe
      }
  }
  
-@@ -98,6 +102,7 @@ private enum StatsSection: Int32 {
+@@ -98,6 +100,7 @@ private enum StatsSection: Int32 {
      case viewsBySource
      case followersBySource
      case languages
@@ -46,7 +42,7 @@ index 618b0f67..711a0832 100644
      case postInteractions
      case instantPageInteractions
      case reactionsByEmotion
-@@ -189,6 +194,12 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -189,6 +192,12 @@ private enum StatsEntry: ItemListNodeEntry {
      case languagesTitle(PresentationTheme, String)
      case languagesGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
      
@@ -59,7 +55,7 @@ index 618b0f67..711a0832 100644
      case postInteractionsTitle(PresentationTheme, String)
      case postInteractionsGraph(PresentationTheme, PresentationStrings, PresentationDateTimeFormat, StatsGraph, ChartType)
  
-@@ -281,6 +292,8 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -281,6 +290,8 @@ private enum StatsEntry: ItemListNodeEntry {
                  return StatsSection.followersBySource.rawValue
              case .languagesTitle, .languagesGraph:
                  return StatsSection.languages.rawValue
@@ -68,7 +64,7 @@ index 618b0f67..711a0832 100644
              case .postInteractionsTitle, .postInteractionsGraph:
                  return StatsSection.postInteractions.rawValue
              case .instantPageInteractionsTitle, .instantPageInteractionsGraph:
-@@ -362,30 +375,38 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -362,30 +373,38 @@ private enum StatsEntry: ItemListNodeEntry {
                  return 14
              case .languagesGraph:
                  return 15
@@ -119,7 +115,7 @@ index 618b0f67..711a0832 100644
              case .boostLevel:
                  return 2000
              case .boostOverviewTitle:
-@@ -569,6 +590,30 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -569,6 +588,30 @@ private enum StatsEntry: ItemListNodeEntry {
                  } else {
                      return false
                  }
@@ -150,7 +146,7 @@ index 618b0f67..711a0832 100644
              case let .postInteractionsTitle(lhsTheme, lhsText):
                  if case let .postInteractionsTitle(rhsTheme, rhsText) = rhs, lhsTheme === rhsTheme, lhsText == rhsText {
                      return true
-@@ -931,6 +976,20 @@ private enum StatsEntry: ItemListNodeEntry {
+@@ -931,6 +974,18 @@ private enum StatsEntry: ItemListNodeEntry {
                   let .adsCpmInfo(_, text),
                   let .adsProceedsInfo(_, text):
                  return ItemListTextItem(presentationData: presentationData, text: .markdown(text), sectionId: self.section)
@@ -163,15 +159,13 @@ index 618b0f67..711a0832 100644
 +                    arguments.setCountriesGlobeSelected(tab == .gifts)
 +                })
 +            case let .countriesCard(_, _, countries, graph, showsGlobe):
-+                return StatsCountriesItem(presentationData: presentationData, systemStyle: .glass, countries: countries, graph: graph, showsGlobe: showsGlobe, sectionId: self.section, openGlobe: { view in
-+                    arguments.openCountriesGlobe(view)
-+                })
++                return StatsCountriesItem(presentationData: presentationData, systemStyle: .glass, countries: countries, graph: graph, showsGlobe: showsGlobe, sectionId: self.section)
 +            case let .countriesInfo(_, text):
 +                return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
              case let .overview(_, stats):
                  return StatsOverviewItem(context: arguments.context, presentationData: presentationData, systemStyle: .glass, isGroup: false, stats: stats, sectionId: self.section, style: .blocks)
              case let .growthGraph(_, _, _, graph, type),
-@@ -1331,7 +1390,8 @@ private func statsEntries(
+@@ -1331,7 +1386,8 @@ private func statsEntries(
      peer: EnginePeer?,
      messages: [Message]?,
      stories: StoryListContext.State?,
@@ -181,7 +175,7 @@ index 618b0f67..711a0832 100644
  ) -> [StatsEntry] {
      var entries: [StatsEntry] = []
      
-@@ -1376,6 +1436,15 @@ private func statsEntries(
+@@ -1376,6 +1432,15 @@ private func statsEntries(
          entries.append(.languagesGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.languagesGraph, .pie))
      }
      
@@ -197,7 +191,7 @@ index 618b0f67..711a0832 100644
      if !data.interactionsGraph.isEmpty {
          entries.append(.postInteractionsTitle(presentationData.theme, presentationData.strings.Stats_InteractionsTitle))
          entries.append(.postInteractionsGraph(presentationData.theme, presentationData.strings, presentationData.dateTimeFormat, data.interactionsGraph, .twoAxisStep))
-@@ -1781,7 +1850,8 @@ private func channelStatsControllerEntries(
+@@ -1781,7 +1846,8 @@ private func channelStatsControllerEntries(
      monetizationConfiguration: MonetizationConfiguration,
      canViewRevenue: Bool,
      canViewStarsRevenue: Bool,
@@ -207,7 +201,7 @@ index 618b0f67..711a0832 100644
  ) -> [StatsEntry] {
      switch state.section {
      case .stats:
-@@ -1792,7 +1862,8 @@ private func channelStatsControllerEntries(
+@@ -1792,7 +1858,8 @@ private func channelStatsControllerEntries(
                  peer: peer,
                  messages: messages,
                  stories: stories,
@@ -217,7 +211,7 @@ index 618b0f67..711a0832 100644
              )
          }
      case .boosts:
-@@ -1926,6 +1997,10 @@ public func channelStatsController(
+@@ -1926,6 +1993,10 @@ public func channelStatsController(
      var updateStatusBarImpl: ((StatusBarStyle) -> Void)?
      var dismissInputImpl: (() -> Void)?
      
@@ -228,20 +222,17 @@ index 618b0f67..711a0832 100644
      let arguments = ChannelStatsControllerArguments(context: context, loadDetailedGraph: { graph, x -> Signal<StatsGraph?, NoError> in
          return statsContext.loadDetailedGraph(graph, x: x)
      }, openPostStats: { peer, item in
-@@ -2117,6 +2192,12 @@ public func channelStatsController(
+@@ -2117,6 +2188,9 @@ public func channelStatsController(
      },
      dismissInput: {
          dismissInputImpl?()
 +    },
 +    setCountriesGlobeSelected: { globeSelected in
 +        countriesShowGlobePromise.set(globeSelected)
-+    },
-+    openCountriesGlobe: { view in
-+        pushImpl?(StatsGlobeSheetScreen(context: context, sourceView: view))
      })
      
      let messageView = context.account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: nil), index: .upperBound, anchorIndex: .upperBound, count: 200, fixedCombinedReadStates: nil)
-@@ -2152,7 +2233,7 @@ public func channelStatsController(
+@@ -2152,7 +2226,7 @@ public func channelStatsController(
      let presentationData = updatedPresentationData?.signal ?? context.sharedContext.presentationData
      let signal = combineLatest(
          presentationData,
@@ -250,7 +241,7 @@ index 618b0f67..711a0832 100644
          peer.get(),
          dataPromise.get(),
          messagesPromise.get(),
-@@ -2168,7 +2249,11 @@ public func channelStatsController(
+@@ -2168,7 +2242,11 @@ public func channelStatsController(
          longLoadingSignal
      )
      |> deliverOnMainQueue
@@ -263,7 +254,7 @@ index 618b0f67..711a0832 100644
          let (canViewStats, adsRestricted, _, _) = peerData
          var canViewRevenue = peerData.2
          var canViewStarsRevenue = peerData.3
-@@ -2290,7 +2375,7 @@ public func channelStatsController(
+@@ -2290,7 +2368,7 @@ public func channelStatsController(
          }
          
          let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: title, leftNavigationButton: leftNavigationButton, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back), animateChanges: true)
@@ -601,10 +592,10 @@ index 00000000..56204af1
 +}
 diff --git a/submodules/StatisticsUI/Sources/StatsCountriesItem.swift b/submodules/StatisticsUI/Sources/StatsCountriesItem.swift
 new file mode 100644
-index 00000000..8eccbf59
+index 00000000..6e77f920
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsCountriesItem.swift
-@@ -0,0 +1,300 @@
+@@ -0,0 +1,285 @@
 +import Foundation
 +import UIKit
 +import UIKitRuntimeUtils
@@ -631,16 +622,14 @@ index 00000000..8eccbf59
 +    let graph: StatsGraph
 +    let showsGlobe: Bool
 +    let sectionId: ItemListSectionId
-+    let openGlobe: (StatsGlobeView) -> Void
 +
-+    init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle, countries: ChannelStatsCountries, graph: StatsGraph, showsGlobe: Bool, sectionId: ItemListSectionId, openGlobe: @escaping (StatsGlobeView) -> Void) {
++    init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle, countries: ChannelStatsCountries, graph: StatsGraph, showsGlobe: Bool, sectionId: ItemListSectionId) {
 +        self.presentationData = presentationData
 +        self.systemStyle = systemStyle
 +        self.countries = countries
 +        self.graph = graph
 +        self.showsGlobe = showsGlobe
 +        self.sectionId = sectionId
-+        self.openGlobe = openGlobe
 +    }
 +
 +    func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, neighbors: ListViewItemNeighbors, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
@@ -689,7 +678,6 @@ index 00000000..8eccbf59
 +    private let chartContainerNode: ASDisplayNode
 +    private let chartNode: ChartNode
 +    private let globePageView: UIView
-+    private let expandIconView: UIImageView
 +    private var globeView: StatsGlobeView?
 +
 +    private var item: StatsCountriesItem?
@@ -716,7 +704,6 @@ index 00000000..8eccbf59
 +        self.chartNode = ChartNode()
 +
 +        self.globePageView = UIView()
-+        self.expandIconView = UIImageView()
 +
 +        super.init(layerBacked: false)
 +
@@ -734,7 +721,6 @@ index 00000000..8eccbf59
 +        super.didLoad()
 +
 +        self.pagesNode.view.addSubview(self.globePageView)
-+        self.globePageView.addSubview(self.expandIconView)
 +
 +        // As the chart card does: the back swipe keeps the left edge, and on the chart also the
 +        // range slider's strip.
@@ -789,7 +775,6 @@ index 00000000..8eccbf59
 +                    self.topStripeNode.backgroundColor = theme.list.itemBlocksSeparatorColor
 +                    self.bottomStripeNode.backgroundColor = theme.list.itemBlocksSeparatorColor
 +                    self.backgroundNode.backgroundColor = theme.list.itemBlocksBackgroundColor
-+                    self.expandIconView.image = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Expand"), color: theme.list.itemSecondaryTextColor)
 +                    self.chartNode.setup(
 +                        theme: ChartTheme(presentationTheme: theme),
 +                        strings: ChartStrings(
@@ -841,24 +826,15 @@ index 00000000..8eccbf59
 +                    globeView.updateColors(colors)
 +                } else {
 +                    self.globeView?.removeFromSuperview()
-+                    globeView = StatsGlobeView(countries: item.countries, colors: colors, strings: item.presentationData.strings, isExpanded: false)
++                    globeView = StatsGlobeView(countries: item.countries, colors: colors, strings: item.presentationData.strings)
 +                    self.globeView = globeView
 +                    self.globePageView.insertSubview(globeView, at: 0)
-+                }
-+                globeView.tapped = { [weak self, weak globeView] in
-+                    guard let self, let globeView, let item = self.item else {
-+                        return
-+                    }
-+                    item.openGlobe(globeView)
 +                }
 +                let globeFrame = CGRect(origin: CGPoint(), size: pageSize)
 +                if globeView.frame != globeFrame {
 +                    globeView.frame = globeFrame
 +                }
 +                globeView.radius = floor(min(pageSize.width, pageSize.height) / 2.0 - 34.0)
-+                if let image = self.expandIconView.image {
-+                    self.expandIconView.frame = CGRect(origin: CGPoint(x: pageSize.width - 12.0 - image.size.width, y: 12.0), size: image.size)
-+                }
 +
 +                // The pages, side by side in tab order: the chart, then the globe.
 +                self.pagesNode.frame = CGRect(origin: CGPoint(x: leftInset, y: 0.0), size: pageSize)
@@ -975,367 +951,12 @@ index 00000000..525fcb4d
 +    }
 +    return dots
 +}()
-diff --git a/submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift b/submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift
-new file mode 100644
-index 00000000..070ecf49
---- /dev/null
-+++ b/submodules/StatisticsUI/Sources/StatsGlobeSheetScreen.swift
-@@ -0,0 +1,349 @@
-+import Foundation
-+import UIKit
-+import Display
-+import ComponentFlow
-+import SwiftSignalKit
-+import AccountContext
-+import TelegramPresentationData
-+import ViewControllerComponent
-+import SheetComponent
-+import MultilineTextComponent
-+import BundleIconComponent
-+import GlassBarButtonComponent
-+
-+// Subscriber Globe: the globe opened from the card, in a sheet. See docs/subscriber-globe/README.md.
-+//
-+// The sheet is Telegram's glass sheet with a glass close button, as statistics' transaction info
-+// uses it (`TransactionInfoScreen`). It holds a large globe, opened at the card's turn, that turns
-+// any way and zooms.
-+
-+/// The globe, as large as the sheet's width allows.
-+private final class StatsGlobeSheetBodyComponent: Component {
-+    let theme: PresentationTheme
-+    let strings: PresentationStrings
-+    let countries: ChannelStatsCountries
-+    let orientation: StatsGlobeOrientation?
-+
-+    init(theme: PresentationTheme, strings: PresentationStrings, countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?) {
-+        self.theme = theme
-+        self.strings = strings
-+        self.countries = countries
-+        self.orientation = orientation
-+    }
-+
-+    static func ==(lhs: StatsGlobeSheetBodyComponent, rhs: StatsGlobeSheetBodyComponent) -> Bool {
-+        if lhs.theme !== rhs.theme {
-+            return false
-+        }
-+        if lhs.strings !== rhs.strings {
-+            return false
-+        }
-+        if lhs.countries != rhs.countries {
-+            return false
-+        }
-+        if lhs.orientation != rhs.orientation {
-+            return false
-+        }
-+        return true
-+    }
-+
-+    final class View: UIView {
-+        private var globeView: StatsGlobeView?
-+
-+        func update(component: StatsGlobeSheetBodyComponent, availableSize: CGSize) -> CGSize {
-+            let width = availableSize.width
-+            let colors = StatsGlobeColors(theme: component.theme, background: component.theme.list.modalBlocksBackgroundColor)
-+
-+            let globeView: StatsGlobeView
-+            if let current = self.globeView, current.countries == component.countries {
-+                globeView = current
-+                globeView.updateColors(colors)
-+            } else {
-+                self.globeView?.removeFromSuperview()
-+                globeView = StatsGlobeView(countries: component.countries, colors: colors, strings: component.strings, isExpanded: true, orientation: component.orientation)
-+                self.globeView = globeView
-+                self.addSubview(globeView)
-+            }
-+            let size = CGSize(width: width, height: min(width + 20.0, 460.0))
-+            globeView.frame = CGRect(origin: CGPoint(), size: size)
-+            globeView.radius = floor(min(size.width, size.height) / 2.0 - 30.0)
-+            return size
-+        }
-+    }
-+
-+    func makeView() -> View {
-+        return View(frame: CGRect())
-+    }
-+
-+    func update(view: View, availableSize: CGSize, state: EmptyComponentState, environment: Environment<Empty>, transition: ComponentTransition) -> CGSize {
-+        return view.update(component: self, availableSize: availableSize)
-+    }
-+}
-+
-+private final class StatsGlobeSheetContent: CombinedComponent {
-+    typealias EnvironmentType = ViewControllerComponentContainer.Environment
-+
-+    let countries: ChannelStatsCountries
-+    let orientation: StatsGlobeOrientation?
-+    let dismiss: () -> Void
-+
-+    init(countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?, dismiss: @escaping () -> Void) {
-+        self.countries = countries
-+        self.orientation = orientation
-+        self.dismiss = dismiss
-+    }
-+
-+    static func ==(lhs: StatsGlobeSheetContent, rhs: StatsGlobeSheetContent) -> Bool {
-+        if lhs.countries != rhs.countries {
-+            return false
-+        }
-+        if lhs.orientation != rhs.orientation {
-+            return false
-+        }
-+        return true
-+    }
-+
-+    static var body: Body {
-+        let closeButton = Child(GlassBarButtonComponent.self)
-+        let title = Child(MultilineTextComponent.self)
-+        let subtitle = Child(MultilineTextComponent.self)
-+        let globe = Child(StatsGlobeSheetBodyComponent.self)
-+
-+        return { context in
-+            let environment = context.environment[EnvironmentType.self]
-+            let component = context.component
-+            let theme = environment.theme
-+
-+            let closeButton = closeButton.update(
-+                component: GlassBarButtonComponent(
-+                    size: CGSize(width: 44.0, height: 44.0),
-+                    backgroundColor: nil,
-+                    isDark: theme.overallDarkAppearance,
-+                    state: .glass,
-+                    component: AnyComponentWithIdentity(id: "close", component: AnyComponent(
-+                        BundleIconComponent(
-+                            name: "Navigation/Close",
-+                            tintColor: theme.chat.inputPanel.panelControlColor
-+                        )
-+                    )),
-+                    action: { _ in
-+                        component.dismiss()
-+                    }
-+                ),
-+                availableSize: CGSize(width: 44.0, height: 44.0),
-+                transition: .immediate
-+            )
-+            context.add(closeButton
-+                .position(CGPoint(x: 16.0 + closeButton.size.width / 2.0, y: 16.0 + closeButton.size.height / 2.0))
-+            )
-+
-+            let title = title.update(
-+                component: MultilineTextComponent(
-+                    text: .plain(NSAttributedString(string: environment.strings.ChannelStats_Countries_ScreenTitle, font: Font.semibold(17.0), textColor: theme.actionSheet.primaryTextColor)),
-+                    horizontalAlignment: .center,
-+                    maximumNumberOfLines: 1
-+                ),
-+                availableSize: CGSize(width: context.availableSize.width - 140.0, height: 44.0),
-+                transition: .immediate
-+            )
-+            if component.countries.isEstimate {
-+                // Under the title, where the numbers come from.
-+                let subtitle = subtitle.update(
-+                    component: MultilineTextComponent(
-+                        text: .plain(NSAttributedString(string: environment.strings.ChannelStats_Countries_EstimateSubtitle, font: Font.regular(13.0), textColor: theme.actionSheet.secondaryTextColor)),
-+                        horizontalAlignment: .center,
-+                        maximumNumberOfLines: 1
-+                    ),
-+                    availableSize: CGSize(width: context.availableSize.width - 140.0, height: 44.0),
-+                    transition: .immediate
-+                )
-+                let titleY: CGFloat = 16.0 + 22.0 - floor(subtitle.size.height / 2.0) - 1.0
-+                context.add(title
-+                    .position(CGPoint(x: context.availableSize.width / 2.0, y: titleY))
-+                )
-+                context.add(subtitle
-+                    .position(CGPoint(x: context.availableSize.width / 2.0, y: titleY + title.size.height / 2.0 + 1.0 + subtitle.size.height / 2.0))
-+                )
-+            } else {
-+                context.add(title
-+                    .position(CGPoint(x: context.availableSize.width / 2.0, y: 16.0 + 22.0))
-+                )
-+            }
-+
-+            var contentHeight: CGFloat = 68.0
-+
-+            let globe = globe.update(
-+                component: StatsGlobeSheetBodyComponent(
-+                    theme: theme,
-+                    strings: environment.strings,
-+                    countries: component.countries,
-+                    orientation: component.orientation
-+                ),
-+                availableSize: CGSize(width: context.availableSize.width, height: 10000.0),
-+                transition: context.transition
-+            )
-+            context.add(globe
-+                .position(CGPoint(x: context.availableSize.width / 2.0, y: contentHeight + globe.size.height / 2.0))
-+            )
-+            contentHeight += globe.size.height
-+            contentHeight += 16.0 + max(environment.safeInsets.bottom, 16.0)
-+
-+            return CGSize(width: context.availableSize.width, height: contentHeight)
-+        }
-+    }
-+}
-+
-+private final class StatsGlobeSheetContainerComponent: CombinedComponent {
-+    typealias EnvironmentType = ViewControllerComponentContainer.Environment
-+
-+    let countries: ChannelStatsCountries
-+    let orientation: StatsGlobeOrientation?
-+
-+    init(countries: ChannelStatsCountries, orientation: StatsGlobeOrientation?) {
-+        self.countries = countries
-+        self.orientation = orientation
-+    }
-+
-+    static func ==(lhs: StatsGlobeSheetContainerComponent, rhs: StatsGlobeSheetContainerComponent) -> Bool {
-+        if lhs.countries != rhs.countries {
-+            return false
-+        }
-+        if lhs.orientation != rhs.orientation {
-+            return false
-+        }
-+        return true
-+    }
-+
-+    static var body: Body {
-+        let sheet = Child(SheetComponent<EnvironmentType>.self)
-+        let animateOut = StoredActionSlot(Action<Void>.self)
-+
-+        let sheetExternalState = SheetComponent<EnvironmentType>.ExternalState()
-+
-+        return { context in
-+            let environment = context.environment[EnvironmentType.self]
-+
-+            let controller = environment.controller
-+
-+            let sheet = sheet.update(
-+                component: SheetComponent<EnvironmentType>(
-+                    content: AnyComponent<EnvironmentType>(StatsGlobeSheetContent(
-+                        countries: context.component.countries,
-+                        orientation: context.component.orientation,
-+                        dismiss: {
-+                            animateOut.invoke(Action { _ in
-+                                if let controller = controller() {
-+                                    controller.dismiss(completion: nil)
-+                                }
-+                            })
-+                        }
-+                    )),
-+                    style: .glass,
-+                    backgroundColor: .color(environment.theme.list.modalBlocksBackgroundColor),
-+                    followContentSizeChanges: true,
-+                    externalState: sheetExternalState,
-+                    animateOut: animateOut
-+                ),
-+                environment: {
-+                    environment
-+                    SheetComponentEnvironment(
-+                        metrics: environment.metrics,
-+                        deviceMetrics: environment.deviceMetrics,
-+                        isDisplaying: environment.value.isVisible,
-+                        isCentered: environment.presentsFloatingPanels,
-+                        hasInputHeight: !environment.inputHeight.isZero,
-+                        regularMetricsSize: CGSize(width: 430.0, height: 900.0),
-+                        dismiss: { animated in
-+                            if animated {
-+                                animateOut.invoke(Action { _ in
-+                                    if let controller = controller() {
-+                                        controller.dismiss(completion: nil)
-+                                    }
-+                                })
-+                            } else {
-+                                if let controller = controller() {
-+                                    controller.dismiss(completion: nil)
-+                                }
-+                            }
-+                        }
-+                    )
-+                },
-+                availableSize: context.availableSize,
-+                transition: context.transition
-+            )
-+
-+            context.add(sheet
-+                .position(CGPoint(x: context.availableSize.width / 2.0, y: context.availableSize.height / 2.0))
-+            )
-+
-+            if let controller = controller(), !controller.automaticallyControlPresentationContextLayout {
-+                let layout = ContainerViewLayout(
-+                    size: context.availableSize,
-+                    metrics: environment.metrics,
-+                    deviceMetrics: environment.deviceMetrics,
-+                    intrinsicInsets: UIEdgeInsets(top: 0.0, left: 0.0, bottom: max(environment.safeInsets.bottom, sheetExternalState.contentHeight), right: 0.0),
-+                    safeInsets: UIEdgeInsets(top: 0.0, left: environment.safeInsets.left, bottom: 0.0, right: environment.safeInsets.right),
-+                    reservedCorners: environment.reservedCorners,
-+                    division: nil,
-+                    additionalInsets: .zero,
-+                    statusBarHeight: environment.fullStatusBarHeight,
-+                    inputHeight: nil,
-+                    inputHeightIsInteractivellyChanging: false,
-+                    inVoiceOver: false,
-+                    presentedInFormSheet: false
-+                )
-+                controller.presentationContext.containerLayoutUpdated(layout, transition: context.transition.containedViewLayoutTransition)
-+            }
-+
-+            return context.availableSize
-+        }
-+    }
-+}
-+
-+/// The globe sheet. It opens at the turn of the card's globe it was opened from.
-+final class StatsGlobeSheetScreen: ViewControllerComponentContainer {
-+    /// The card's globe: it stops while the sheet covers it, so two globes do not render at once.
-+    private weak var sourceView: StatsGlobeView?
-+
-+    init(context: AccountContext, sourceView: StatsGlobeView) {
-+        self.sourceView = sourceView
-+
-+        super.init(
-+            context: context,
-+            component: StatsGlobeSheetContainerComponent(
-+                countries: sourceView.countries,
-+                orientation: sourceView.orientation
-+            ),
-+            navigationBarAppearance: .none,
-+            statusBarStyle: .ignore,
-+            theme: .default
-+        )
-+
-+        self.navigationPresentation = .flatModal
-+        sourceView.isPaused = true
-+    }
-+
-+    required public init(coder aDecoder: NSCoder) {
-+        fatalError("init(coder:) has not been implemented")
-+    }
-+
-+    deinit {
-+        let sourceView = self.sourceView
-+        Queue.mainQueue().async {
-+            sourceView?.isPaused = false
-+        }
-+    }
-+
-+    override func viewDidLoad() {
-+        super.viewDidLoad()
-+
-+        // The sheet dismisses itself on a downward drag; the navigation controller's would fight it.
-+        self.view.disablesInteractiveModalDismiss = true
-+    }
-+
-+    override func viewDidDisappear(_ animated: Bool) {
-+        super.viewDidDisappear(animated)
-+
-+        self.sourceView?.isPaused = false
-+    }
-+}
 diff --git a/submodules/StatisticsUI/Sources/StatsGlobeView.swift b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
 new file mode 100644
-index 00000000..18742972
+index 00000000..2209b660
 --- /dev/null
 +++ b/submodules/StatisticsUI/Sources/StatsGlobeView.swift
-@@ -0,0 +1,667 @@
+@@ -0,0 +1,590 @@
 +import Foundation
 +import UIKit
 +import SceneKit
@@ -1493,17 +1114,10 @@ index 00000000..18742972
 +    }
 +}
 +
-+/// The globe: drag to turn it, and in the sheet pinch or double-tap to zoom.
++/// The globe: a sideways drag turns it; the list still scrolls over it.
 +final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
 +    let countries: ChannelStatsCountries
 +    private(set) var colors: StatsGlobeColors
-+    /// In the sheet the globe zooms and drags go any way. In the card it only takes horizontal
-+    /// drags, so the list still scrolls over it.
-+    let isExpanded: Bool
-+
-+    /// Called on a tap; the card opens the globe sheet.
-+    var tapped: (() -> Void)?
-+
 +    private let glowLayer: CAGradientLayer
 +    private let sceneView: SCNView
 +    private let shadeLayer: CAGradientLayer
@@ -1518,21 +1132,18 @@ index 00000000..18742972
 +    private var ringNodes: [SCNNode] = []
 +    private let cameraNode: SCNNode
 +
-+    /// Points from the globe's centre to its edge at zoom 1.
++    /// Points from the globe's centre to its edge.
 +    var radius: CGFloat = 100.0 {
 +        didSet {
 +            self.setNeedsLayout()
 +        }
 +    }
-+    private(set) var zoom: CGFloat = 1.0
 +
 +    var orientation: StatsGlobeOrientation
 +    private var velocity = CGPoint()
 +    private var isTracking = false
 +    private var lastInteraction: Double = 0.0
 +    private var spinFactor: CGFloat = 1.0
-+    private var zoomAtPinchStart: CGFloat = 1.0
-+    private var zoomAnimation: (from: CGFloat, to: CGFloat, start: Double)?
 +    private var turnAnimation: (from: StatsGlobeOrientation, to: StatsGlobeOrientation, start: Double, duration: Double)?
 +
 +    private var displayLink: SharedDisplayLinkDriver.Link?
@@ -1548,10 +1159,9 @@ index 00000000..18742972
 +        }
 +    }
 +
-+    init(countries: ChannelStatsCountries, colors: StatsGlobeColors, strings: PresentationStrings, isExpanded: Bool, orientation: StatsGlobeOrientation? = nil) {
++    init(countries: ChannelStatsCountries, colors: StatsGlobeColors, strings: PresentationStrings, orientation: StatsGlobeOrientation? = nil) {
 +        self.countries = countries
 +        self.colors = colors
-+        self.isExpanded = isExpanded
 +
 +        // The globe opens over the largest audience.
 +        if let orientation {
@@ -1640,20 +1250,9 @@ index 00000000..18742972
 +        let pan = UIPanGestureRecognizer(target: self, action: #selector(self.panGesture(_:)))
 +        pan.delegate = self
 +        self.addGestureRecognizer(pan)
-+        let tap = UITapGestureRecognizer(target: self, action: #selector(self.tapGesture(_:)))
-+        self.addGestureRecognizer(tap)
-+        if isExpanded {
-+            let pinch = UIPinchGestureRecognizer(target: self, action: #selector(self.pinchGesture(_:)))
-+            self.addGestureRecognizer(pinch)
-+            let doubleTap = UITapGestureRecognizer(target: self, action: #selector(self.doubleTapGesture(_:)))
-+            doubleTap.numberOfTapsRequired = 2
-+            self.addGestureRecognizer(doubleTap)
-+            tap.require(toFail: doubleTap)
-+        } else {
-+            // The back swipe keeps the screen's left edge, as on Telegram's map screens.
-+            self.interactiveTransitionGestureRecognizerTest = { point in
-+                return point.x > 44.0
-+            }
++        // The back swipe keeps the screen's left edge, as on Telegram's map screens.
++        self.interactiveTransitionGestureRecognizerTest = { point in
++            return point.x > 44.0
 +        }
 +    }
 +
@@ -1749,9 +1348,9 @@ index 00000000..18742972
 +
 +    // MARK: Layout
 +
-+    /// The globe's circle in this view's coordinates, at the current zoom.
++    /// The globe's circle in this view's coordinates.
 +    var globeFrame: CGRect {
-+        let radius = self.radius * self.zoom
++        let radius = self.radius
 +        let center = CGPoint(x: self.bounds.midX, y: self.bounds.midY)
 +        return CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2.0, height: radius * 2.0)
 +    }
@@ -1771,7 +1370,7 @@ index 00000000..18742972
 +        guard size.width > 0.0, size.height > 0.0 else {
 +            return
 +        }
-+        let radius = max(1.0, self.radius * self.zoom)
++        let radius = max(1.0, self.radius)
 +
 +        // An orthographic scale is half the visible height, in scene units: the sphere's radius of 1
 +        // comes out at exactly `radius` points.
@@ -1862,15 +1461,6 @@ index 00000000..18742972
 +        let deltaTime = min(deltaTime, 1.0 / 20.0)
 +        let now = CACurrentMediaTime()
 +
-+        if let zoomAnimation = self.zoomAnimation {
-+            let t = min(1.0, CGFloat((now - zoomAnimation.start) / 0.35))
-+            let eased = 1.0 - pow(1.0 - t, 3.0)
-+            self.zoom = zoomAnimation.from + (zoomAnimation.to - zoomAnimation.from) * eased
-+            if t >= 1.0 {
-+                self.zoomAnimation = nil
-+            }
-+        }
-+
 +        if let turnAnimation = self.turnAnimation {
 +            let t = min(1.0, CGFloat((now - turnAnimation.start) / turnAnimation.duration))
 +            let eased = 1.0 - pow(1.0 - t, 3.0)
@@ -1895,7 +1485,7 @@ index 00000000..18742972
 +            // Then the slow turn, eased back in.
 +            if now - self.lastInteraction > idleSpinDelay {
 +                self.spinFactor = min(1.0, self.spinFactor + deltaTime * 0.5)
-+                self.orientation.longitude += idleSpinSpeed * self.spinFactor * deltaTime / max(1.0, self.zoom)
++                self.orientation.longitude += idleSpinSpeed * self.spinFactor * deltaTime
 +            }
 +        }
 +        if self.orientation.longitude > CGFloat.pi {
@@ -1923,8 +1513,8 @@ index 00000000..18742972
 +    }
 +
 +    @objc private func panGesture(_ recognizer: UIPanGestureRecognizer) {
-+        // A drag across the globe's width turns it about half a turn, whatever the zoom.
-+        let scale = max(1.0, self.radius * self.zoom)
++        // The surface follows the finger: a drag across the globe's width is about half a turn.
++        let scale = max(1.0, self.radius)
 +        switch recognizer.state {
 +        case .began:
 +            self.isTracking = true
@@ -1947,59 +1537,13 @@ index 00000000..18742972
 +        }
 +    }
 +
-+    @objc private func pinchGesture(_ recognizer: UIPinchGestureRecognizer) {
-+        switch recognizer.state {
-+        case .began:
-+            self.zoomAnimation = nil
-+            self.zoomAtPinchStart = self.zoom
-+            self.noteInteraction()
-+        case .changed:
-+            self.zoom = max(0.85, min(3.0, self.zoomAtPinchStart * recognizer.scale))
-+            self.noteInteraction()
-+        case .ended, .cancelled:
-+            // Settles back into the range it can rest in.
-+            let settled = max(1.0, min(2.5, self.zoom))
-+            if settled != self.zoom {
-+                self.zoomAnimation = (self.zoom, settled, CACurrentMediaTime())
-+            }
-+            self.noteInteraction()
-+        default:
-+            break
-+        }
-+    }
-+
-+    @objc private func doubleTapGesture(_ recognizer: UITapGestureRecognizer) {
-+        if recognizer.state == .ended {
-+            self.zoomAnimation = (self.zoom, self.zoom > 1.4 ? 1.0 : 2.0, CACurrentMediaTime())
-+            self.noteInteraction()
-+        }
-+    }
-+
-+    @objc private func tapGesture(_ recognizer: UITapGestureRecognizer) {
-+        if recognizer.state == .ended {
-+            self.tapped?()
-+        }
-+    }
-+
 +    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-+        guard let pan = gestureRecognizer as? UIPanGestureRecognizer else {
-+            return true
-+        }
-+        if pan.view !== self {
-+            // UIKit also asks the touched view about its ancestors' drags, as UISlider uses it. In
-+            // the sheet a drag that starts on the globe turns it rather than dragging the sheet down;
-+            // in the card the list's scroll stays as it is.
-+            return !self.isExpanded
-+        }
-+        if !self.isExpanded {
-+            // In the card only sideways drags turn the globe; the rest scroll the list.
++        if let pan = gestureRecognizer as? UIPanGestureRecognizer, pan.view === self {
++            // Only sideways drags turn the globe; the rest scroll the list. Once turning, the
++            // drag also tilts it.
 +            let velocity = pan.velocity(in: self)
 +            return abs(velocity.x) > abs(velocity.y) * 1.2
 +        }
 +        return true
-+    }
-+
-+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-+        return self.isExpanded && otherGestureRecognizer is UIPinchGestureRecognizer
 +    }
 +}
