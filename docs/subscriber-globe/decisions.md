@@ -148,7 +148,7 @@ the card is where it is looked at and turned. A sideways drag turns it (and, onc
 it), a flick lets it coast, and left alone it turns slowly. Up-and-down drags still scroll the
 list, and the back swipe keeps the screen's left edge. Zoom went with the sheet.
 
-**D-024. A drag on the globe goes to the globe or to the list, never both.** The globe's drag
+**D-024. A drag on the globe goes to the globe or to the list, never both.** Which drags go to the globe is replaced by D-029. The globe's drag
 started only when clearly sideways, while the list's scroll, a vertical scroll view, started on a
 drag in any direction, so some drags turned the globe and scrolled the list at once, and some
 started neither. The globe now decides for both by one test at the start of the drag: sideways
@@ -186,3 +186,10 @@ taken from a Telegram component (the nearest is the chart legend's chips). Their
 the colour dot, so the text ended 1 pt from the right edge; it now ends 10 pt from it (the dot
 sits 8 pt in). The land dots had six sides, which showed as hexagons when pinched closer; they
 have twelve.
+
+**D-029. A drag that starts on the sphere turns the globe, in any direction. (moondiel)** On a
+device, an up-and-down drag on the globe scrolled the list, which read as the globe not
+responding. A drag now belongs to the globe when it starts on the sphere (any direction, so it
+tilts as well as turns) or goes sideways anywhere on the card; only an up-and-down drag that starts
+beside the sphere, or on the tabs and the note, scrolls the list. The list's scroll still gets
+exactly the drags the globe does not, by the same test.

@@ -644,22 +644,26 @@ final class StatsGlobeView: UIView, UIGestureRecognizerDelegate {
         guard let pan = gestureRecognizer as? UIPanGestureRecognizer else {
             return true
         }
+        // A drag belongs to the globe when it starts on the sphere, in any direction, or when it
+        // goes sideways anywhere on the card. Only an up-and-down drag that starts beside the
+        // sphere scrolls the list, so the list can still be scrolled through the card.
         let velocity = pan.velocity(in: self)
         let isSideways = abs(velocity.x) > abs(velocity.y)
+        let start = pan.location(in: self).offsetBy(dx: -pan.translation(in: self).x, dy: -pan.translation(in: self).y)
+        let globeFrame = self.globeFrame
+        let startsOnGlobe = hypot(start.x - globeFrame.midX, start.y - globeFrame.midY) <= globeFrame.width / 2.0
+        let belongsToGlobe = startsOnGlobe || isSideways
         if pan.view === self {
-            // Sideways drags turn the globe; once turning, the drag also tilts it.
-            return isSideways
+            return belongsToGlobe
         }
         if pan.view is UIScrollView {
-            // Two fingers on the globe pinch it; they never scroll the list.
+            // UIKit also asks the touched view about its ancestors' drags, as UISlider uses it.
+            // The list's scroll gets exactly the drags the globe does not, so a drag never moves
+            // both and none moves neither. Two fingers on the globe pinch it.
             if self.isPinching || pan.numberOfTouches > 1 {
                 return false
             }
-            // UIKit also asks the touched view about its ancestors' drags, as UISlider uses it.
-            // The list's scroll takes the up-and-down drags and the globe the sideways ones, by
-            // the same test, so a drag never moves both and there is no angle where neither
-            // starts. A vertical list's scroll would otherwise also start on a sideways drag.
-            return !isSideways
+            return !belongsToGlobe
         }
         return true
     }
