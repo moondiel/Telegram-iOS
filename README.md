@@ -8,8 +8,9 @@ This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-i
 
 1. A message or channel post that mentions an account, by `@username` or by a name linked to it, shows that account's card under the text: the avatar, the name, the description and a button ("View Channel", "Send Message", "View Group").
 2. The card is Telegram's own link preview, the one a `t.me/username` link gets, so it looks and behaves exactly like it. Tapping it opens the account.
-3. It works in every chat, group and channel, and needs nothing from the sender: any text message with a mention shows the card, including old ones.
-4. One card per message, for the first mention, as Telegram shows one preview per message.
+3. While writing, typing `@username` brings up the account's preview above the composer, as a pasted link does: close it with ✕ or keep it, and it is sent as a real link preview that every Telegram app shows.
+4. On the reading side it works in every chat, group and channel and needs nothing from the sender: any text message with a mention shows the card, including old ones and ones from other apps.
+5. One card per message, for the first mention, as Telegram shows one preview per message.
 
 ## Links
 

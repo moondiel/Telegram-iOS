@@ -134,6 +134,32 @@ public final class MentionPreviewStore {
 /// How many of a message's mentions are considered for its card, in order.
 private let maxMentionCandidates = 5
 
+/// `@username` as Telegram writes it: not inside a word or an address, a letter first, then
+/// letters, digits and underscores, four to thirty-two in all.
+private let composerMentionExpression = try? NSRegularExpression(pattern: "(?<![A-Za-z0-9_@./])@([A-Za-z][A-Za-z0-9_]{3,31})(?![A-Za-z0-9_])", options: [])
+
+/// The composer's side of mention cards: the `t.me` links of the `@username` mentions in the text
+/// being written, in order, without repeats. The composer treats them as the text's links after its
+/// own, so a message with a mention gets the account's link preview before it is sent, with the
+/// preview panel, its close button and its options, and sends it as a real link preview.
+public func mentionCardComposerUrls(text: String) -> [String] {
+    guard let composerMentionExpression else {
+        return []
+    }
+    let nsText = text as NSString
+    var result: [String] = []
+    for match in composerMentionExpression.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length)) {
+        if result.count >= maxMentionCandidates {
+            break
+        }
+        let url = "https://t.me/\(MentionPreviewStore.normalized(nsText.substring(with: match.range(at: 1))))"
+        if !result.contains(url) {
+            result.append(url)
+        }
+    }
+    return result
+}
+
 /// The usernames a message's mentions point to, in order, without repeats: `@username` mentions,
 /// and names linked to an account that has a username. Mentions under a spoiler are left out, since
 /// a card would reveal them.
@@ -188,6 +214,12 @@ public func mentionCard(message: EngineMessage, context: AccountContext) -> (web
     }
     if message.id.peerId.namespace == Namespaces.Peer.SecretChat {
         return (nil, [])
+    }
+    // The sender closed the preview in the composer.
+    for attribute in message.attributes {
+        if let attribute = attribute as? OutgoingContentInfoMessageAttribute, attribute.flags.contains(.disableLinkPreviews) {
+            return (nil, [])
+        }
     }
     guard let entities = message.textEntitiesAttribute?.entities, !entities.isEmpty else {
         return (nil, [])

@@ -78,3 +78,22 @@ a username (a preview needs a `t.me` link).
 
 **D-016. Opening without the "Open this link?" question.** The copy marks the preview as safe:
 the link is Telegram's own `t.me` link to the mentioned account, not one the sender typed.
+
+## The composer (2026-10-30)
+
+**D-017. A mention gets the link preview in the composer too. (moondiel)** Typing `@username` shows
+the account's preview above the field, as a pasted `t.me` link does. It is done by counting the
+mention as its `t.me` link in `detectUrls`, so the panel, ✕, the link-preview options and the
+sending are all Telegram's own, unchanged.
+
+**D-018. Sent as a real link preview.** The preview goes out as `inputMediaWebPage` with the `t.me`
+link, which the server accepts without the link being in the text. The message then carries the
+preview for everyone, in every app; drawing cards when reading (D-012) remains for messages without
+one.
+
+**D-019. The text's own links come first.** A mention is added after the text's links, so a message
+with a link keeps that link's preview, and the mentions are offered as the other links in the
+preview options.
+
+**D-020. Closing the preview is respected.** A message whose preview was closed with ✕ carries
+`disableLinkPreviews`, and this app does not draw a card for it either.
