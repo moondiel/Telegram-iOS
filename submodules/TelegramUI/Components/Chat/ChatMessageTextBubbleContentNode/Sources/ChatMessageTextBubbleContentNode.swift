@@ -28,6 +28,7 @@ import ChatControllerInteraction
 import InteractiveTextComponent
 import ShimmeringMask
 import StreamingTextReveal
+import ChatMessageMentionCards
 import WalletContext
 
 private final class CachedChatMessageText {
@@ -355,6 +356,9 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 var rawText: String
                 let attributedText: NSAttributedString
                 var messageEntities: [MessageTextEntity]?
+                // Mention cards whose usernames are not resolved yet: resolved after this layout,
+                // which then runs again.
+                var pendingMentionUsernames: [String] = []
                 
                 var mediaDuration: Double? = nil
                 var isSeekableWebMedia = false
@@ -601,7 +605,31 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                         }
                     }
                     
-                    attributedText = stringWithAppliedEntities(rawText, entities: entities, strings: item.presentationData.strings, dateTimeFormat: item.presentationData.dateTimeFormat, baseColor: messageTheme.primaryTextColor, linkColor: messageTheme.linkTextColor, baseQuoteTintColor: mainColor, baseQuoteSecondaryTintColor: secondaryColor, baseQuoteTertiaryTintColor: tertiaryColor, codeBlockTitleColor: codeBlockTitleColor, codeBlockAccentColor: codeBlockAccentColor, codeBlockBackgroundColor: codeBlockBackgroundColor, baseFont: textFont, linkFont: textFont, boldFont: item.presentationData.messageBoldFont, italicFont: item.presentationData.messageItalicFont, boldItalicFont: item.presentationData.messageBoldItalicFont, fixedFont: item.presentationData.messageFixedFont, blockQuoteFont: item.presentationData.messageBlockQuoteFont, underlineLinks: underlineLinks, message: item.message, adjustQuoteFontSize: true, cachedMessageSyntaxHighlight: cachedMessageSyntaxHighlight)
+                    let entitiesText = stringWithAppliedEntities(rawText, entities: entities, strings: item.presentationData.strings, dateTimeFormat: item.presentationData.dateTimeFormat, baseColor: messageTheme.primaryTextColor, linkColor: messageTheme.linkTextColor, baseQuoteTintColor: mainColor, baseQuoteSecondaryTintColor: secondaryColor, baseQuoteTertiaryTintColor: tertiaryColor, codeBlockTitleColor: codeBlockTitleColor, codeBlockAccentColor: codeBlockAccentColor, codeBlockBackgroundColor: codeBlockBackgroundColor, baseFont: textFont, linkFont: textFont, boldFont: item.presentationData.messageBoldFont, italicFont: item.presentationData.messageItalicFont, boldItalicFont: item.presentationData.messageBoldItalicFont, fixedFont: item.presentationData.messageFixedFont, blockQuoteFont: item.presentationData.messageBlockQuoteFont, underlineLinks: underlineLinks, message: item.message, adjustQuoteFontSize: true, cachedMessageSyntaxHighlight: cachedMessageSyntaxHighlight)
+                    
+                    // Mention cards: each mention drawn as a card with the account's avatar, name
+                    // and username, on the quote's bar (see ChatMessageMentionCards).
+                    let mentionCards = applyMentionCards(
+                        to: entitiesText,
+                        context: item.context,
+                        strings: item.presentationData.strings,
+                        nameDisplayOrder: item.presentationData.nameDisplayOrder,
+                        style: MentionCardStyle(
+                            titleFont: Font.semibold(item.presentationData.messageBlockQuoteFont.pointSize),
+                            subtitleFont: item.presentationData.messageBlockQuoteFont,
+                            titleColor: mainColor,
+                            subtitleColor: messageTheme.secondaryTextColor,
+                            barColor: mainColor,
+                            secondaryBarColor: secondaryColor,
+                            tertiaryBarColor: tertiaryColor
+                        ),
+                        peerById: { peerId in
+                            return item.message.peers[peerId].flatMap(EnginePeer.init)
+                        },
+                        resolver: MentionCardResolver.shared(context: item.context)
+                    )
+                    attributedText = mentionCards.text
+                    pendingMentionUsernames = mentionCards.pendingUsernames
                 } else if !rawText.isEmpty {
                     attributedText = NSAttributedString(string: rawText, font: textFont, textColor: messageTheme.primaryTextColor)
                 } else {
@@ -773,6 +801,18 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     return (boundingSize, { [weak self] animation, synchronousLoads, itemApply in
                         if let strongSelf = self {
                             strongSelf.item = item
+                            if !pendingMentionUsernames.isEmpty {
+                                // Once a username is resolved, the message is laid out again and
+                                // its mention becomes a card (or stays as written if no such account).
+                                let resolver = MentionCardResolver.shared(context: item.context)
+                                let messageId = item.message.id
+                                let controllerInteraction = item.controllerInteraction
+                                for username in pendingMentionUsernames {
+                                    resolver.resolve(username: username, completion: {
+                                        controllerInteraction.requestMessageUpdate(messageId, false, nil)
+                                    })
+                                }
+                            }
                             if let updatedCachedChatMessageText = updatedCachedChatMessageText {
                                 strongSelf.cachedChatMessageText = updatedCachedChatMessageText
                             }

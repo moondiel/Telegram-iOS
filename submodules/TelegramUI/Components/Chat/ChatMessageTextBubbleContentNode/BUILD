@@ -41,6 +41,7 @@ swift_library(
         "//submodules/TelegramUI/Components/InteractiveTextComponent",
         "//submodules/TelegramUI/Components/ShimmeringMask",
         "//submodules/TelegramUI/Components/StreamingTextReveal:StreamingTextReveal",
+        "//submodules/TelegramUI/Components/Chat/ChatMessageMentionCards",
     ],
     visibility = [
         "//visibility:public",

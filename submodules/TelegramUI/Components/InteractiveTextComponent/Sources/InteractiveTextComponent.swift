@@ -1649,6 +1649,8 @@ open class InteractiveTextNode: ASDisplayNode, TextNodeProtocol, UIGestureRecogn
                     if segment.title != nil {
                         additionalSegmentRightInset = blockQuoteIconInset
                     }
+                case .mention:
+                    break
                 }
             }
             
@@ -3202,6 +3204,8 @@ final class TextContentItemLayer: SimpleLayer {
                 quoteTypeIcon = codeIcon
             case .quote:
                 quoteTypeIcon = quoteIcon
+            case .mention:
+                quoteTypeIcon = nil
             }
             
             if let quoteTypeIcon {
