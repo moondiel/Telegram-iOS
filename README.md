@@ -20,4 +20,4 @@ This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-i
 
 ## Status
 
-A client-side prototype; there are no automated tests, and it has not been built or run yet. It changes only how messages are drawn: messages are sent and stored as before, so other apps keep showing plain mentions. Limits are listed in the write-up.
+A client-side prototype, built and checked by hand on a device (2026-10-30); there are no automated tests. It changes only how messages are drawn: messages are sent and stored as before, so other apps keep showing plain mentions. Limits are listed in the write-up.
