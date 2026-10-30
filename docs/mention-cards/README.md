@@ -1,24 +1,29 @@
 # Mention Cards
 
-Mention Cards draws a mention in a message as a card: the mentioned account's avatar, name and
-@username in a block of its own, styled as the message's quotes are. Tapping the card opens the
-account.
+A text message that mentions an account shows that account's card under the text: the same
+preview Telegram draws for a `t.me/username` link, with the avatar, the name, the description and a
+button. Tapping the card opens the account.
 
-It is a change in how messages are drawn only. Nothing is sent differently, nothing is stored, and
-no server change is needed: every message with a mention, old or new, from any app, shows cards.
+It is a change in how messages are drawn only. Nothing is sent differently and nothing is stored:
+every text message with a mention, old or new, from any app, shows the card.
 
 ## The flow
 
-1. Someone writes "Subscribe to @durov and to the channel." in a chat, a group or a channel post.
-2. The message shows "Subscribe to", then a card, then "and to the channel.". The card has the
-   quote's coloured bar and tint (the sender's name colours, as quotes use), a round avatar on the
-   left, the name in semibold and "@durov" under it.
-3. A name linked to a person (a text mention) becomes a card the same way. If the account has no
-   username, the card has one line: the avatar and the name.
-4. Tapping anywhere on the card opens the account; holding it shows the mention's menu, as for a
-   mention. Selecting and copying the message give back the text as it was written.
-5. The first time a username is seen, it is looked up: the message shows the mention as written
-   and becomes a card a moment later. After that the answer is known, and the card shows at once.
+1. Someone writes "Subscribe to @durov" in a chat, a group or a channel post.
+2. The message shows its text as before, the mention included, and under it the card Telegram
+   shows for `t.me/durov`: the bar in the sender's colour, the name, the description, the avatar on
+   the right, and "Send Message" (a channel's card says "View Channel", a group's "View Group").
+3. A name linked to an account (a text mention) gets the card of that account's username.
+4. Tapping the card or its button opens the account.
+5. The first time a username is seen, its preview is asked for: the message shows without the card
+   and gets it a moment later. After that the card shows at once.
+
+## What Telegram already has
+
+Telegram shows this card only for a link: paste `t.me/username` and the composer asks the server
+for the link's preview, then sends it with the message. A message gets one preview, the sender can
+remove it, and a mention (`@username`) never gets one. Mention Cards gives mentions that same card,
+on the reading side.
 
 ## Requirements
 
@@ -51,75 +56,54 @@ python3 build-system/Make/Make.py \
     --cacheDir="$HOME/telegram-bazel-cache" \
     generateProject \
     --configurationPath=build-system/template_minimal_development_configuration.json \
-    --disableProvisioningProfiles
+    --xcodeManagedCodesigning
 ```
-
-For a device, use `--xcodeManagedCodesigning` instead of `--disableProvisioningProfiles`.
 
 ### 4. Run
 
-Open the generated project, choose the `Telegram` scheme and a simulator or your iPhone, then Run.
-Send yourself a message with a mention, for example in Saved Messages.
+Open `Telegram/Telegram.xcodeproj`, choose the `Telegram` scheme and a simulator or your iPhone,
+then Run. Send yourself a message with a mention, for example in Saved Messages.
 
-## How a mention becomes a card
+The build needs room: keep 30–40 GB free on the disk.
 
-The card is text, not a view laid over the message. After the message's entities are applied
-(`stringWithAppliedEntities`), `applyMentionCards` replaces each mention's range with the card's
-lines:
+## How the card is made
 
-- the spaces around the mention are dropped and a line break goes in on each side that has none,
-  so the card is a paragraph of its own;
-- the card's lines are the avatar's room (a run whose width a run delegate sets, as custom emoji
-  reserve theirs) followed by the name, then the same room followed by "@username";
-- the whole card is a block quote of a new kind, `.mention`: the quote's bar and tint, without the
-  quote icon;
-- the whole card carries the mention's own tap attribute (`PeerMention` or `PeerTextMention`), so
-  the bubble's existing tap and long-press handling opens the account;
-- the whole replacement carries an `OriginalTextAttribute` with the mention as written, the
-  mechanism custom emoji use, so selection and copy map back to the original text.
+- **Which mention.** `mentionCardUsernames` takes the message's mention entities in order:
+  `@username`, and text mentions of accounts that have a username. Mentions under a spoiler are
+  left out, so the card cannot reveal them. At most the first five are considered.
+- **The preview.** `MentionPreviewStore` asks the server for the preview of
+  `https://t.me/<username>` with `webpagePreview`, the call the composer makes for a pasted link,
+  once per username, and keeps the answer for the session. It is safe to read during layout, which
+  runs off the main queue. The text bubble starts the request when it lays the message out and asks
+  for the message to be laid out again when the answer comes (`requestMessageUpdate`).
+- **The card.** `mentionCard` picks the preview of the first mention that has one. While an earlier
+  mention is still being asked about there is no card yet, so the card never jumps from a later
+  mention to an earlier one. `ChatMessageBubbleItemNode` then adds Telegram's
+  `ChatMessageWebpageBubbleContentNode` for a copy of the message that carries the preview, exactly
+  where a real link preview goes. The copy is only for drawing; the stored message is untouched.
+- **Opening.** The copy marks the preview as safe (`WebpagePreviewMessageAttribute.isSafe`), so the
+  `t.me` link opens the account directly, without the "Open this link?" question.
 
-The avatar is drawn by the text node: the avatar's run carries an `InteractiveTextEmbeddedLayerItem`,
-a small generic hook added to `InteractiveTextNodeWithEntities` beside custom emoji. The node keeps
-one layer per item key, places it where the run is (here centred on the card's lines), and removes
-it when the run goes. The layer draws `peerAvatarCompleteImage`: the photo, or the initials on the
-account's colour.
-
-So the card wraps, truncates, highlights on touch and lays out with the rest of the message, and
-the bubble needs no layout of its own.
-
-### Which account a mention is
-
-- A text mention carries its account's id; the account comes from the message's own peers.
-- `@username` is looked up with `resolvePeerByName`, which keeps answers for two days, so a username
-  costs at most one request in that time. `MentionCardResolver` keeps the answers for the session,
-  shares one request per username, and is safe to read during layout, which runs off the main
-  queue. A message whose usernames are not known yet is laid out with the mentions as written,
-  starts the lookups, and asks to be laid out again when they answer
-  (`requestMessageUpdate`).
-- A username with no account stays a plain mention. So does any mention inside a quote or a code
-  block (a block cannot hold another), under a spoiler, or with a custom emoji in it.
+Everything the card shows and does (layout, colours, avatar, button title, tap, long press) is the
+link preview's own code.
 
 ## What is real and what is limited
 
 **Works for real**
 
-- Cards for `@username` and text mentions in text messages and media captions, in every chat.
-- Avatars, names and usernames of real accounts; channels and bots mentioned by username get their
-  card too.
-- Tap, long press, selection and copy behave as they did for the mention.
+- Cards for users, bots, channels and groups mentioned by `@username`, and for text mentions of
+  accounts with a username, in text messages in every chat.
+- The cards are the server's previews, so names, descriptions and photos are real and current.
 
 **Limited**
 
-- The first time a username appears, its message changes height once, when the mention turns into
-  a card.
-- A message that is mostly mentions, such as a list of @usernames, becomes a stack of cards.
-- Mentions inside quotes, code, spoilers and custom emoji stay inline (see above).
-- Only the message bubble draws cards; chat list previews, replies and notifications keep the text.
+- One card per message, for the first mention that has a preview.
+- Only text messages: a media caption, a message with its own link preview, a sponsored message and
+  a secret chat get no card.
+- A text mention of an account without a username gets no card: the preview needs a `t.me` link.
+- The first time a username appears, its message gets taller once, when the card arrives.
+- Each new username costs one preview request, once per session.
 - There are no automated tests.
-
-**Not verified**
-
-- The branch has not been built or run yet.
 
 ## Where the code is
 
@@ -127,19 +111,16 @@ New files:
 
 | File | Role |
 |---|---|
-| `submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift` | The resolver, the card's text and its avatar layer |
+| `submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift` | The preview store, which mentions count, which card a message gets |
 | `submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/BUILD` | The module |
 | `docs/mention-cards/*` | This write-up and the decision log |
 
 Changed files:
 
-- `submodules/Display/Source/TextNode.swift`: the `.mention` block kind (no icon, no icon inset).
-- `submodules/TelegramUI/Components/InteractiveTextComponent/Sources/InteractiveTextComponent.swift`:
-  the same for the interactive text node.
-- `submodules/TelegramUI/Components/InteractiveTextComponent/Sources/InteractiveTextNodeWithEntities.swift`:
-  `InteractiveTextEmbeddedLayerItem`, layers kept for embedded runs beside custom emoji.
+- `submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift`
+  and its `BUILD`: adds the link-preview node for a message with a card.
 - `submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/Sources/ChatMessageTextBubbleContentNode.swift`
-  and its `BUILD`: applies the cards and resolves pending usernames.
+  and its `BUILD`: asks for the previews and lays the message out again when they come.
 
 The whole change is one patch against the base commit `16a3d3c5`, without the Xcode 26 build fix:
 [`mention-cards.patch`](mention-cards.patch). Apply it with `git apply`.

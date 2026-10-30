@@ -12,35 +12,6 @@ import MultiAnimationRenderer
 import TelegramCore
 import EmojiTextAttachmentView
 
-/// A run of text drawn by a layer of its own, the way custom emoji are: put an instance in the
-/// string as the `Attribute__EmbeddedItem` of a run whose width a run delegate sets, and the node
-/// keeps a layer for it in the run's place. Instances with the same `key` share one layer across
-/// layouts. Used by mention cards for their avatars.
-open class InteractiveTextEmbeddedLayerItem: NSObject {
-    public let key: AnyHashable
-
-    public init(key: AnyHashable) {
-        self.key = key
-
-        super.init()
-    }
-
-    /// A new layer for this item's key.
-    open func makeLayer() -> CALayer {
-        return CALayer()
-    }
-
-    /// Brings a layer made for this key up to date with this item.
-    open func update(layer: CALayer) {
-    }
-
-    /// The layer's frame for the run's rect, both in the text's coordinates. The layer may reach
-    /// past the run, for example down over the next line.
-    open func layerFrame(runRect: CGRect) -> CGRect {
-        return runRect
-    }
-}
-
 private final class InlineStickerItem: Hashable {
     let emoji: ChatTextInputTextCustomEmojiAttribute
     let file: TelegramMediaFile?
@@ -140,7 +111,6 @@ public final class InteractiveTextNodeWithEntities {
     public let textNode: InteractiveTextNode
     
     private var inlineStickerItemLayers: [InlineStickerItemLayer.Key: InlineStickerItemLayerData] = [:]
-    private var embeddedLayers: [AnyHashable: CALayer] = [:]
     private var displayContentsUnderSpoilers: Bool?
     
     private var enableLooping: Bool = true
@@ -329,7 +299,6 @@ public final class InteractiveTextNodeWithEntities {
         
         var nextIndexById: [Int64: Int] = [:]
         var validIds: [InlineStickerItemLayer.Key] = []
-        var validEmbeddedKeys = Set<AnyHashable>()
         
         if let textLayout {
             for i in 0 ..< textLayout.segments.count {
@@ -339,28 +308,7 @@ public final class InteractiveTextNodeWithEntities {
                 }
                 
                 for item in segment.embeddedItems {
-                    if let layerItem = item.value.base as? InteractiveTextEmbeddedLayerItem {
-                        validEmbeddedKeys.insert(layerItem.key)
-                        let itemLayer: CALayer
-                        if let current = self.embeddedLayers[layerItem.key] {
-                            itemLayer = current
-                        } else {
-                            itemLayer = layerItem.makeLayer()
-                            self.embeddedLayers[layerItem.key] = itemLayer
-                        }
-                        if itemLayer.superlayer !== segmentLayer.renderNode.layer {
-                            segmentLayer.renderNode.layer.addSublayer(itemLayer)
-                        }
-                        layerItem.update(layer: itemLayer)
-                        var itemFrame = layerItem.layerFrame(runRect: item.rect)
-                        itemFrame.origin.x += segmentParams.item.contentOffset.x
-                        itemFrame.origin.y += segmentParams.item.contentOffset.y
-                        CATransaction.begin()
-                        CATransaction.setDisableActions(true)
-                        itemLayer.frame = itemFrame
-                        CATransaction.commit()
-                        animation.transition.updateAlpha(layer: itemLayer, alpha: item.isHiddenBySpoiler ? 0.0 : 1.0)
-                    } else if let stickerItem = item.value as? InlineStickerItem {
+                    if let stickerItem = item.value as? InlineStickerItem {
                         let index: Int
                         if let currentNext = nextIndexById[stickerItem.emoji.fileId] {
                             index = currentNext
@@ -417,11 +365,6 @@ public final class InteractiveTextNodeWithEntities {
         }
         for key in removeKeys {
             self.inlineStickerItemLayers.removeValue(forKey: key)
-        }
-
-        for (key, itemLayer) in self.embeddedLayers where !validEmbeddedKeys.contains(key) {
-            itemLayer.removeFromSuperlayer()
-            self.embeddedLayers.removeValue(forKey: key)
         }
     }
 }

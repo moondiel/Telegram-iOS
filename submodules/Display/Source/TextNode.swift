@@ -86,8 +86,6 @@ public final class TextNodeBlockQuoteData: NSObject {
     public enum Kind: Equatable {
         case quote
         case code(language: String?)
-        /// A mention drawn as a card (avatar, name, username): the quote's bar and tint, no icon.
-        case mention
     }
     
     public let kind: Kind
@@ -1497,8 +1495,6 @@ open class TextNode: ASDisplayNode, TextNodeProtocol {
                     if segment.title != nil {
                         additionalSegmentRightInset = blockQuoteIconInset
                     }
-                case .mention:
-                    break
                 }
             }
             
@@ -2440,8 +2436,6 @@ open class TextNode: ASDisplayNode, TextNodeProtocol {
                         context.restoreGState()
                         context.resetClip()
                     }
-                case .mention:
-                    break
                 }
                 
                 let lineFrame = CGRect(origin: CGPoint(x: blockFrame.minX, y: blockFrame.minY), size: CGSize(width: lineWidth, height: blockFrame.height))

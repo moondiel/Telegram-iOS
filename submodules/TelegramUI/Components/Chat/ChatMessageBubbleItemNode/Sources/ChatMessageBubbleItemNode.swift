@@ -43,6 +43,7 @@ import ChatMessageCallBubbleContentNode
 import ChatMessageInteractiveFileNode
 import ChatMessageFileBubbleContentNode
 import ChatMessageWebpageBubbleContentNode
+import ChatMessageMentionCards
 import ChatMessagePollBubbleContentNode
 import ChatMessageTodoBubbleContentNode
 import ChatMessageItem
@@ -408,6 +409,17 @@ private func contentNodeMessagesAndClassesForItem(_ item: ChatMessageItem) -> ([
                 }
                 break inner
             }
+        }
+        
+        // Mention cards: a text message that mentions an account shows the account's card, which
+        // is Telegram's own preview of its `t.me` link, on a copy of the message carrying it.
+        if richText == nil, !skipText, let webpage = mentionCard(message: EngineMessage(message), context: item.context).webpage {
+            var previewAttributes = message.attributes.filter { !($0 is WebpagePreviewMessageAttribute) }
+            // `isSafe`: the link is Telegram's own, so opening it does not ask first.
+            previewAttributes.append(WebpagePreviewMessageAttribute(leadingPreview: false, forceLargeMedia: nil, isManuallyAdded: false, isSafe: true))
+            let previewMessage = message.withUpdatedMedia(message.media + [webpage]).withUpdatedAttributes(previewAttributes)
+            result.append((previewMessage, ChatMessageWebpageBubbleContentNode.self, itemAttributes, BubbleItemAttributes(isAttachment: false, neighborType: .text, neighborSpacing: .default)))
+            needReactions = false
         }
         
         if richText != nil && !skipText {
