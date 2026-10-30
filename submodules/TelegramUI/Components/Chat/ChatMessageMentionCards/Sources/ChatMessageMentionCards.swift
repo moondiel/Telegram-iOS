@@ -5,8 +5,10 @@ import Display
 import SwiftSignalKit
 import TelegramCore
 import TelegramPresentationData
+import TelegramUIPreferences
 import TextFormat
 import AccountContext
+import LocalizedPeerData
 import AvatarNode
 import InteractiveTextComponent
 
