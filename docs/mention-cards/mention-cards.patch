@@ -31,10 +31,10 @@ index f3b2b90c..ae3002fd 100644
                  let lineFrame = CGRect(origin: CGPoint(x: blockFrame.minX, y: blockFrame.minY), size: CGSize(width: lineWidth, height: blockFrame.height))
 diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/BUILD b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/BUILD
 new file mode 100644
-index 00000000..49a512c0
+index 00000000..fc5c6a7e
 --- /dev/null
 +++ b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/BUILD
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,28 @@
 +load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 +
 +swift_library(
@@ -52,8 +52,10 @@ index 00000000..49a512c0
 +        "//submodules/SSignalKit/SwiftSignalKit",
 +        "//submodules/TelegramCore",
 +        "//submodules/TelegramPresentationData",
++        "//submodules/TelegramUIPreferences",
 +        "//submodules/TextFormat",
 +        "//submodules/AccountContext",
++        "//submodules/LocalizedPeerData",
 +        "//submodules/AvatarNode",
 +        "//submodules/TelegramUI/Components/InteractiveTextComponent",
 +    ],
@@ -63,10 +65,10 @@ index 00000000..49a512c0
 +)
 diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift
 new file mode 100644
-index 00000000..35c61a40
+index 00000000..a9ee10e2
 --- /dev/null
 +++ b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift
-@@ -0,0 +1,438 @@
+@@ -0,0 +1,440 @@
 +import Foundation
 +import UIKit
 +import CoreText
@@ -74,8 +76,10 @@ index 00000000..35c61a40
 +import SwiftSignalKit
 +import TelegramCore
 +import TelegramPresentationData
++import TelegramUIPreferences
 +import TextFormat
 +import AccountContext
++import LocalizedPeerData
 +import AvatarNode
 +import InteractiveTextComponent
 +
