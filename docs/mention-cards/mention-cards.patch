@@ -1,3 +1,15 @@
+diff --git a/submodules/TelegramUI/BUILD b/submodules/TelegramUI/BUILD
+index 364009bc..573a0abf 100644
+--- a/submodules/TelegramUI/BUILD
++++ b/submodules/TelegramUI/BUILD
+@@ -387,6 +387,7 @@ swift_library(
+         "//submodules/TelegramUI/Components/Chat/ChatMessageAttachedContentNode",
+         "//submodules/TelegramUI/Components/Chat/ChatMessageAttachedContentButtonNode",
+         "//submodules/TelegramUI/Components/Chat/ChatMessageWebpageBubbleContentNode",
++        "//submodules/TelegramUI/Components/Chat/ChatMessageMentionCards",
+         "//submodules/TelegramUI/Components/Chat/ChatMessageItem",
+         "//submodules/TelegramUI/Components/Chat/ChatMessageStickerItemNode",
+         "//submodules/TelegramUI/Components/Chat/ChatMessageSwipeToReplyNode",
 diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/BUILD b/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/BUILD
 index c4badf4e..1b719c34 100644
 --- a/submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/BUILD
@@ -68,10 +80,10 @@ index 00000000..c9e7a2ae
 +)
 diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift
 new file mode 100644
-index 00000000..c653d01b
+index 00000000..9262616b
 --- /dev/null
 +++ b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift
-@@ -0,0 +1,215 @@
+@@ -0,0 +1,247 @@
 +import Foundation
 +import SwiftSignalKit
 +import TelegramCore
@@ -208,6 +220,32 @@ index 00000000..c653d01b
 +/// How many of a message's mentions are considered for its card, in order.
 +private let maxMentionCandidates = 5
 +
++/// `@username` as Telegram writes it: not inside a word or an address, a letter first, then
++/// letters, digits and underscores, four to thirty-two in all.
++private let composerMentionExpression = try? NSRegularExpression(pattern: "(?<![A-Za-z0-9_@./])@([A-Za-z][A-Za-z0-9_]{3,31})(?![A-Za-z0-9_])", options: [])
++
++/// The composer's side of mention cards: the `t.me` links of the `@username` mentions in the text
++/// being written, in order, without repeats. The composer treats them as the text's links after its
++/// own, so a message with a mention gets the account's link preview before it is sent, with the
++/// preview panel, its close button and its options, and sends it as a real link preview.
++public func mentionCardComposerUrls(text: String) -> [String] {
++    guard let composerMentionExpression else {
++        return []
++    }
++    let nsText = text as NSString
++    var result: [String] = []
++    for match in composerMentionExpression.matches(in: text, options: [], range: NSRange(location: 0, length: nsText.length)) {
++        if result.count >= maxMentionCandidates {
++            break
++        }
++        let url = "https://t.me/\(MentionPreviewStore.normalized(nsText.substring(with: match.range(at: 1))))"
++        if !result.contains(url) {
++            result.append(url)
++        }
++    }
++    return result
++}
++
 +/// The usernames a message's mentions point to, in order, without repeats: `@username` mentions,
 +/// and names linked to an account that has a username. Mentions under a spoiler are left out, since
 +/// a card would reveal them.
@@ -262,6 +300,12 @@ index 00000000..c653d01b
 +    }
 +    if message.id.peerId.namespace == Namespaces.Peer.SecretChat {
 +        return (nil, [])
++    }
++    // The sender closed the preview in the composer.
++    for attribute in message.attributes {
++        if let attribute = attribute as? OutgoingContentInfoMessageAttribute, attribute.flags.contains(.disableLinkPreviews) {
++            return (nil, [])
++        }
 +    }
 +    guard let entities = message.textEntitiesAttribute?.entities, !entities.isEmpty else {
 +        return (nil, [])
@@ -331,3 +375,30 @@ index 04235ab9..8fd00edb 100644
                              if let updatedCachedChatMessageText = updatedCachedChatMessageText {
                                  strongSelf.cachedChatMessageText = updatedCachedChatMessageText
                              }
+diff --git a/submodules/TelegramUI/Sources/ChatInterfaceStateContextQueries.swift b/submodules/TelegramUI/Sources/ChatInterfaceStateContextQueries.swift
+index 2b3f3484..670d477e 100644
+--- a/submodules/TelegramUI/Sources/ChatInterfaceStateContextQueries.swift
++++ b/submodules/TelegramUI/Sources/ChatInterfaceStateContextQueries.swift
+@@ -12,6 +12,7 @@ import DeviceLocationManager
+ import TelegramNotices
+ import ChatPresentationInterfaceState
+ import ChatContextQuery
++import ChatMessageMentionCards
+ 
+ func contextQueryResultStateForChatInterfacePresentationState(_ chatPresentationInterfaceState: ChatPresentationInterfaceState, context: AccountContext, currentQueryStates: inout [ChatPresentationInputQueryKind: (ChatPresentationInputQuery, Disposable)], requestBotLocationStatus: @escaping (EnginePeer.Id) -> Void) -> [ChatPresentationInputQueryKind: ChatContextQueryUpdate] {
+     let inputQueries = inputContextQueriesForChatPresentationIntefaceState(chatPresentationInterfaceState).filter({ query in
+@@ -547,6 +548,14 @@ func detectUrls(_ inputText: NSAttributedString?) -> [String] {
+                 }
+             }
+         })
++
++        // Mention cards: an `@username` mention counts as its `t.me` link, after the text's own
++        // links, so it gets the account's link preview.
++        for url in mentionCardComposerUrls(text: text.string) {
++            if !detectedUrls.contains(url) {
++                detectedUrls.append(url)
++            }
++        }
+     }
+     return detectedUrls
+ }
