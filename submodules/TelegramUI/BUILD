@@ -387,7 +387,6 @@ swift_library(
         "//submodules/TelegramUI/Components/Chat/ChatMessageAttachedContentNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageAttachedContentButtonNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageWebpageBubbleContentNode",
-        "//submodules/TelegramUI/Components/Chat/ChatMessageMentionCards",
         "//submodules/TelegramUI/Components/Chat/ChatMessageItem",
         "//submodules/TelegramUI/Components/Chat/ChatMessageStickerItemNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessageSwipeToReplyNode",

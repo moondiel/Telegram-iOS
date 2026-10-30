@@ -12,7 +12,6 @@ import DeviceLocationManager
 import TelegramNotices
 import ChatPresentationInterfaceState
 import ChatContextQuery
-import ChatMessageMentionCards
 
 func contextQueryResultStateForChatInterfacePresentationState(_ chatPresentationInterfaceState: ChatPresentationInterfaceState, context: AccountContext, currentQueryStates: inout [ChatPresentationInputQueryKind: (ChatPresentationInputQuery, Disposable)], requestBotLocationStatus: @escaping (EnginePeer.Id) -> Void) -> [ChatPresentationInputQueryKind: ChatContextQueryUpdate] {
     let inputQueries = inputContextQueriesForChatPresentationIntefaceState(chatPresentationInterfaceState).filter({ query in
@@ -548,14 +547,6 @@ func detectUrls(_ inputText: NSAttributedString?) -> [String] {
                 }
             }
         })
-
-        // Mention cards: an `@username` mention counts as its `t.me` link, after the text's own
-        // links, so it gets the account's link preview.
-        for url in mentionCardComposerUrls(text: text.string) {
-            if !detectedUrls.contains(url) {
-                detectedUrls.append(url)
-            }
-        }
     }
     return detectedUrls
 }
