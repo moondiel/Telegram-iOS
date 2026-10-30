@@ -1,6 +1,6 @@
-# Mention Cards
+# Mention Pills
 
-Mention Cards draws a mention in a message as a pill in the line: the mentioned account's round
+Mention Pills draws a mention in a message as a pill in the line: the mentioned account's round
 avatar and name on a tinted capsule, the way Notion, Slack and Discord draw mentions. Tapping the
 pill opens the account.
 
@@ -35,7 +35,7 @@ of the feature.
 ### 1. Clone
 
 ```sh
-git clone --recursive -j8 -b feature/mention-cards https://github.com/moondiel/Telegram-iOS.git
+git clone --recursive -j8 -b feature/mention-pills https://github.com/moondiel/Telegram-iOS.git
 cd Telegram-iOS
 ```
 
@@ -116,9 +116,9 @@ New files:
 
 | File | Role |
 |---|---|
-| `submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift` | The resolver, the pill's run and its layer |
-| `submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/BUILD` | The module |
-| `docs/mention-cards/*` | This write-up and the decision log |
+| `submodules/TelegramUI/Components/Chat/ChatMessageMentionPills/Sources/ChatMessageMentionPills.swift` | The resolver, the pill's run and its layer |
+| `submodules/TelegramUI/Components/Chat/ChatMessageMentionPills/BUILD` | The module |
+| `docs/mention-pills/*` | This write-up and the decision log |
 
 Changed files:
 
@@ -128,4 +128,4 @@ Changed files:
   and its `BUILD`: applies the pills and resolves pending usernames.
 
 The whole change is one patch against the base commit `16a3d3c5`, without the Xcode 26 build fix:
-[`mention-cards.patch`](mention-cards.patch). Apply it with `git apply`.
+[`mention-pills.patch`](mention-pills.patch). Apply it with `git apply`.

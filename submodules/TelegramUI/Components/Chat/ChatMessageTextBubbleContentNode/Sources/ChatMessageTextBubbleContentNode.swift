@@ -28,7 +28,7 @@ import ChatControllerInteraction
 import InteractiveTextComponent
 import ShimmeringMask
 import StreamingTextReveal
-import ChatMessageMentionCards
+import ChatMessageMentionPills
 import WalletContext
 
 private final class CachedChatMessageText {
@@ -608,7 +608,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     let entitiesText = stringWithAppliedEntities(rawText, entities: entities, strings: item.presentationData.strings, dateTimeFormat: item.presentationData.dateTimeFormat, baseColor: messageTheme.primaryTextColor, linkColor: messageTheme.linkTextColor, baseQuoteTintColor: mainColor, baseQuoteSecondaryTintColor: secondaryColor, baseQuoteTertiaryTintColor: tertiaryColor, codeBlockTitleColor: codeBlockTitleColor, codeBlockAccentColor: codeBlockAccentColor, codeBlockBackgroundColor: codeBlockBackgroundColor, baseFont: textFont, linkFont: textFont, boldFont: item.presentationData.messageBoldFont, italicFont: item.presentationData.messageItalicFont, boldItalicFont: item.presentationData.messageBoldItalicFont, fixedFont: item.presentationData.messageFixedFont, blockQuoteFont: item.presentationData.messageBlockQuoteFont, underlineLinks: underlineLinks, message: item.message, adjustQuoteFontSize: true, cachedMessageSyntaxHighlight: cachedMessageSyntaxHighlight)
                     
                     // Mention pills: each mention drawn in the line as a pill with the account's
-                    // avatar and name (see ChatMessageMentionCards).
+                    // avatar and name (see ChatMessageMentionPills).
                     let mentionPills = applyMentionPills(
                         to: entitiesText,
                         context: item.context,

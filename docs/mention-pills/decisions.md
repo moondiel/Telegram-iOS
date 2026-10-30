@@ -1,11 +1,11 @@
-# Mention Cards — decision log
+# Mention Pills — decision log
 
 Each entry is one decision and the reason for it. A decision that was later replaced stays in the
 list, marked "Replaced by D-0xx". Entries marked (moondiel) are design calls made by the author.
 
 ## Base (2026-10-30)
 
-**D-001. A separate branch from the clean base.** `feature/mention-cards` starts from `16a3d3c5`,
+**D-001. A separate branch from the clean base.** `feature/mention-pills` starts from `16a3d3c5`,
 like the other features, and shares no code with them. It carries the same Xcode 26 build fix,
 which is left out of the patch.
 
@@ -117,3 +117,7 @@ mention pills elsewhere show one short name, shortened with an ellipsis past 220
 
 **D-024. The line grows by 1 pt above and below.** The capsule is a little taller than the text so
 the avatar has room; lines without a pill keep their height.
+
+**D-025. Named Mention Pills. (moondiel)** The feature, its branch (`feature/mention-pills`, was
+`feature/mention-cards`), its module (`ChatMessageMentionPills`) and its docs carry the name of what
+it draws.

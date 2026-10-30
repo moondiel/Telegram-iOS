@@ -13,7 +13,7 @@ import InteractiveTextComponent
 // Mention pills: a mention in a message (`@username`, or a name linked to an account) is drawn in
 // the line as a pill: the account's round avatar and its name on a tinted capsule, the way Notion,
 // Slack and Discord draw mentions. Tapping it opens the account, as tapping the mention did. See
-// docs/mention-cards/README.md.
+// docs/mention-pills/README.md.
 //
 // The pill is one run of the message's text: the mention's characters are replaced with a single
 // character whose width a run delegate sets (the way custom emoji reserve their room), and the text

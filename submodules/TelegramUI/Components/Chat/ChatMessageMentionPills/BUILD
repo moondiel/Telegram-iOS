@@ -1,8 +1,8 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 swift_library(
-    name = "ChatMessageMentionCards",
-    module_name = "ChatMessageMentionCards",
+    name = "ChatMessageMentionPills",
+    module_name = "ChatMessageMentionPills",
     srcs = glob([
         "Sources/**/*.swift",
     ]),

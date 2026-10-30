@@ -1,8 +1,8 @@
-# Mention Cards for Telegram iOS
+# Mention Pills for Telegram iOS
 
 Mentions drawn as pills: the person's avatar and name, right in the line.
 
-This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) with the **Mention Cards** feature on the `feature/mention-cards` branch. For compiling Telegram in general, see Telegram's [original guide](https://github.com/TelegramMessenger/Telegram-iOS/blob/master/README.md).
+This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-iOS) with the **Mention Pills** feature on the `feature/mention-pills` branch. For compiling Telegram in general, see Telegram's [original guide](https://github.com/TelegramMessenger/Telegram-iOS/blob/master/README.md).
 
 ## What it does
 
@@ -13,10 +13,10 @@ This is a copy of [Telegram-iOS](https://github.com/TelegramMessenger/Telegram-i
 
 ## Links
 
-- [All changes of the feature](https://github.com/moondiel/Telegram-iOS/compare/16a3d3c5...feature/mention-cards)
-- [Write-up](docs/mention-cards/README.md): building from scratch, how the pill is made, what is limited, where the code is
-- [Decision log](docs/mention-cards/decisions.md)
-- [The whole change as one patch](docs/mention-cards/mention-cards.patch)
+- [All changes of the feature](https://github.com/moondiel/Telegram-iOS/compare/16a3d3c5...feature/mention-pills)
+- [Write-up](docs/mention-pills/README.md): building from scratch, how the pill is made, what is limited, where the code is
+- [Decision log](docs/mention-pills/decisions.md)
+- [The whole change as one patch](docs/mention-pills/mention-pills.patch)
 
 ## Status
 
