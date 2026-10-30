@@ -1,14 +1,14 @@
-diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/BUILD b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/BUILD
+diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageMentionPills/BUILD b/submodules/TelegramUI/Components/Chat/ChatMessageMentionPills/BUILD
 new file mode 100644
-index 00000000..c3060dec
+index 00000000..e6f4577d
 --- /dev/null
-+++ b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/BUILD
++++ b/submodules/TelegramUI/Components/Chat/ChatMessageMentionPills/BUILD
 @@ -0,0 +1,25 @@
 +load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 +
 +swift_library(
-+    name = "ChatMessageMentionCards",
-+    module_name = "ChatMessageMentionCards",
++    name = "ChatMessageMentionPills",
++    module_name = "ChatMessageMentionPills",
 +    srcs = glob([
 +        "Sources/**/*.swift",
 +    ]),
@@ -29,11 +29,11 @@ index 00000000..c3060dec
 +        "//visibility:public",
 +    ],
 +)
-diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift
+diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageMentionPills/Sources/ChatMessageMentionPills.swift b/submodules/TelegramUI/Components/Chat/ChatMessageMentionPills/Sources/ChatMessageMentionPills.swift
 new file mode 100644
-index 00000000..992d0c46
+index 00000000..6fcff7cb
 --- /dev/null
-+++ b/submodules/TelegramUI/Components/Chat/ChatMessageMentionCards/Sources/ChatMessageMentionCards.swift
++++ b/submodules/TelegramUI/Components/Chat/ChatMessageMentionPills/Sources/ChatMessageMentionPills.swift
 @@ -0,0 +1,483 @@
 +import Foundation
 +import UIKit
@@ -50,7 +50,7 @@ index 00000000..992d0c46
 +// Mention pills: a mention in a message (`@username`, or a name linked to an account) is drawn in
 +// the line as a pill: the account's round avatar and its name on a tinted capsule, the way Notion,
 +// Slack and Discord draw mentions. Tapping it opens the account, as tapping the mention did. See
-+// docs/mention-cards/README.md.
++// docs/mention-pills/README.md.
 +//
 +// The pill is one run of the message's text: the mention's characters are replaced with a single
 +// character whose width a run delegate sets (the way custom emoji reserve their room), and the text
@@ -519,26 +519,26 @@ index 00000000..992d0c46
 +    return (result, pendingUsernames)
 +}
 diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/BUILD b/submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/BUILD
-index b722c93b..911403db 100644
+index b722c93b..dff88413 100644
 --- a/submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/BUILD
 +++ b/submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/BUILD
 @@ -41,6 +41,7 @@ swift_library(
          "//submodules/TelegramUI/Components/InteractiveTextComponent",
          "//submodules/TelegramUI/Components/ShimmeringMask",
          "//submodules/TelegramUI/Components/StreamingTextReveal:StreamingTextReveal",
-+        "//submodules/TelegramUI/Components/Chat/ChatMessageMentionCards",
++        "//submodules/TelegramUI/Components/Chat/ChatMessageMentionPills",
      ],
      visibility = [
          "//visibility:public",
 diff --git a/submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/Sources/ChatMessageTextBubbleContentNode.swift b/submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/Sources/ChatMessageTextBubbleContentNode.swift
-index 04235ab9..f490bf46 100644
+index 04235ab9..2c50e91c 100644
 --- a/submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/Sources/ChatMessageTextBubbleContentNode.swift
 +++ b/submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/Sources/ChatMessageTextBubbleContentNode.swift
 @@ -28,6 +28,7 @@ import ChatControllerInteraction
  import InteractiveTextComponent
  import ShimmeringMask
  import StreamingTextReveal
-+import ChatMessageMentionCards
++import ChatMessageMentionPills
  import WalletContext
  
  private final class CachedChatMessageText {
@@ -560,7 +560,7 @@ index 04235ab9..f490bf46 100644
 +                    let entitiesText = stringWithAppliedEntities(rawText, entities: entities, strings: item.presentationData.strings, dateTimeFormat: item.presentationData.dateTimeFormat, baseColor: messageTheme.primaryTextColor, linkColor: messageTheme.linkTextColor, baseQuoteTintColor: mainColor, baseQuoteSecondaryTintColor: secondaryColor, baseQuoteTertiaryTintColor: tertiaryColor, codeBlockTitleColor: codeBlockTitleColor, codeBlockAccentColor: codeBlockAccentColor, codeBlockBackgroundColor: codeBlockBackgroundColor, baseFont: textFont, linkFont: textFont, boldFont: item.presentationData.messageBoldFont, italicFont: item.presentationData.messageItalicFont, boldItalicFont: item.presentationData.messageBoldItalicFont, fixedFont: item.presentationData.messageFixedFont, blockQuoteFont: item.presentationData.messageBlockQuoteFont, underlineLinks: underlineLinks, message: item.message, adjustQuoteFontSize: true, cachedMessageSyntaxHighlight: cachedMessageSyntaxHighlight)
 +                    
 +                    // Mention pills: each mention drawn in the line as a pill with the account's
-+                    // avatar and name (see ChatMessageMentionCards).
++                    // avatar and name (see ChatMessageMentionPills).
 +                    let mentionPills = applyMentionPills(
 +                        to: entitiesText,
 +                        context: item.context,
